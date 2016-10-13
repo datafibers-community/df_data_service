@@ -1,0 +1,24 @@
+{
+  "debug.mode":"false",
+  "rest.port.df.processor":8080,
+  "http.port.df.processor":8000,
+
+  "db.name":"df",
+  "db.collection.name":"df_processor",
+  "repo.connection.string":"mongodb://localhost:27017",
+
+  "kafka.server.port":9092,
+  "kafka.connect.rest.host":"localhost",
+  "kafka.connect.rest.port":8083,
+  "kafka.connect.enable":"true",
+  "kafka.connect.import.start":"true",
+
+  "transform.engine.flink.enable":"true",
+  "flink.servers.host":"localhost",
+  "flink.job.parallelism":1,
+  "flink.server.port":6123,
+  "flink.trans.client.timeout":120000,
+
+  "zookeeper.server.host":"localhost",
+  "zookeeper.server.port":2181
+}
