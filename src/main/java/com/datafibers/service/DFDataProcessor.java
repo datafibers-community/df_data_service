@@ -70,7 +70,7 @@ public class DFDataProcessor extends AbstractVerticle {
     private static Boolean kafka_connect_import_start;
 
     // Transforms attributes
-    private static Boolean transform_engine_flink_enabled;
+    public static Boolean transform_engine_flink_enabled;
     private static String flink_server_host;
     private static Integer flink_server_port;
     private static String zookeeper_server_host;
@@ -78,8 +78,8 @@ public class DFDataProcessor extends AbstractVerticle {
     private static String zookeeper_server_host_and_port;
     private static String kafka_server_host;
     private static Integer kafka_server_port;
-    private static String kafka_server_host_and_port;
-    private static StreamExecutionEnvironment env;
+    public static String kafka_server_host_and_port;
+    public static StreamExecutionEnvironment env;
 
     private static final Logger LOG = LoggerFactory.getLogger(DFDataProcessor.class);
 

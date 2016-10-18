@@ -83,6 +83,9 @@ customHeaderTemplate =
                                 {value:'FLINK_TRANS', label:'Flink Streaming SQL'},
                                 {value:'FLINK_UDF', label:'Flink User Defined Function'}]).label('Transforms Type'),
         nga.field('udfUpload', 'file').label('Upload Jar').uploadInformation({ 'url': 'http://localhost:8080/api/df/uploaded_files', 'method': 'POST', 'apifilename': 'uploaded_file_name' })
+        .validation({ validator: function(value) {
+                if (value.indexOf('.jar') == -1) throw new Error ('Invalid .jar file!');
+        } })
         .template('<ma-field ng-if="entry.values.connectorType == \'FLINK_UDF\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true),
         nga.field('status').editable(false).label('Job Status'),
         nga.field('description', 'text'),

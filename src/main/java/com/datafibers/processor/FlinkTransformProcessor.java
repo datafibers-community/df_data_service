@@ -16,6 +16,7 @@ import org.apache.flink.api.java.table.StreamTableEnvironment;
 import org.apache.flink.api.table.Table;
 import org.apache.flink.api.table.TableEnvironment;
 import org.apache.flink.client.CliFrontend;
+import org.apache.flink.client.program.ProgramInvocationException;
 import org.apache.flink.runtime.client.JobExecutionException;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -328,9 +329,11 @@ public class FlinkTransformProcessor {
             LOG.info(respMsg);
 
         } catch (IllegalArgumentException ire) {
-            LOG.warn("No Flink job found with ID for cancellation");
-        } catch (Throwable t) {
-            LOG.error("Fatal error while running command line interface.", t.getCause());
+            LOG.error("No Flink job found with ID for cancellation");
+        } catch (ProgramInvocationException t) {
+            LOG.error("Fatal error while running the jar file.", t.getCause());
+        } catch (Exception e) {
+            LOG.error("Flink submit UDF Jar run-time exception.");
         }
 
 
