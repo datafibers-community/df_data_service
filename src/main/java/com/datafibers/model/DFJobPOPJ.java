@@ -280,7 +280,7 @@ public class DFJobPOPJ {
     	udfUpload = tmpUDFUpload;
     }
     
-    public String getUdfupload() {
+    public String getUdfUpload() {
     	return udfUpload;
     }
     
