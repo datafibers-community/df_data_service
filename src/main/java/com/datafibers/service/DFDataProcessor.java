@@ -393,7 +393,7 @@ public class DFDataProcessor extends AbstractVerticle {
 
         if (this.transform_engine_flink_enabled && dfJob.getConnectorType().contains("FLINK_UDF")) {
             // Submit flink sql
-            FlinkTransformProcessor.runFlinkJar(dfJob.getUdfupload(),
+            FlinkTransformProcessor.runFlinkJar(dfJob.getUdfUpload(),
                     this.flink_server_host + ":" + this.flink_server_port);
         }
             mongo.insert(COLLECTION, dfJob.toJson(), r -> routingContext
