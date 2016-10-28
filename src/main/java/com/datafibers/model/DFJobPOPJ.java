@@ -22,7 +22,8 @@ public class DFJobPOPJ {
     private String connectorCategory;
     private String description; // Description about job and connector
     private String status; // Job/Connector status
-
+    private String udfUpload;
+    
     /*
      * The reason we keep them as HashMap is because we do not want to SerDe all field (in that case, we have to define all attribute in
      * configuration file we may use. By using hashmap, we have such flexibility to have one attribute packs all possible configurations.
@@ -83,7 +84,8 @@ public class DFJobPOPJ {
         this.description = json.getString("description");
         this.status = json.getString("status");
         this.id = json.getString("_id");
-
+        this.udfUpload = json.getString("udfUpload");
+        
         try {
 
             String jobConfig = json.getString("jobConfig");
@@ -130,7 +132,8 @@ public class DFJobPOPJ {
                 .put("description", description)
                 .put("status", status)
                 .put("jobConfig", mapToJsonString(jobConfig))
-                .put("connectorConfig", mapToJsonString(connectorConfig));
+                .put("connectorConfig", mapToJsonString(connectorConfig))
+                .put("udfUpload", udfUpload);
 
         if (id != null && !id.isEmpty()) {
             json.put("_id", id);
@@ -273,5 +276,13 @@ public class DFJobPOPJ {
         return json;
     }
 
-
+    public void setUdfUpload(String tmpUDFUpload) {
+    	udfUpload = tmpUDFUpload;
+    }
+    
+    public String getUdfUpload() {
+    	return udfUpload;
+    }
+    
+    
 }

@@ -70,7 +70,7 @@ public class DFDataProcessor extends AbstractVerticle {
     private static Boolean kafka_connect_import_start;
 
     // Transforms attributes
-    private static Boolean transform_engine_flink_enabled;
+    public static Boolean transform_engine_flink_enabled;
     private static String flink_server_host;
     private static Integer flink_server_port;
     private static String zookeeper_server_host;
@@ -78,8 +78,8 @@ public class DFDataProcessor extends AbstractVerticle {
     private static String zookeeper_server_host_and_port;
     private static String kafka_server_host;
     private static Integer kafka_server_port;
-    private static String kafka_server_host_and_port;
-    private static StreamExecutionEnvironment env;
+    public static String kafka_server_host_and_port;
+    public static StreamExecutionEnvironment env;
 
     private static final Logger LOG = LoggerFactory.getLogger(DFDataProcessor.class);
 
@@ -257,75 +257,45 @@ public class DFDataProcessor extends AbstractVerticle {
         }
     }
 
+   
+    
     private void uploadFiles (RoutingContext routingContext) {
-
-        LOG.info("UPLOADING FILES ..." + routingContext.request().toString());
-
         Set<FileUpload> fileUploadSet = routingContext.fileUploads();
 
         Iterator<FileUpload> fileUploadIterator = fileUploadSet.iterator();
+        String fileName = "";
+        
         while (fileUploadIterator.hasNext()) {
             FileUpload fileUpload = fileUploadIterator.next();
-
-            // To get the uploaded file do
-            // TODO - do not put buffer since it is bottle neck for huge file
-            // TODO check file size and extention
-            Buffer uploadedFile = vertx.fileSystem().readFileBlocking(fileUpload.uploadedFileName());
-
-            // Uploaded File Name
-            try {
-                String fileName = URLDecoder.decode(fileUpload.fileName(), "UTF-8");
-                LOG.info("UPLOADED FILE NAME ..." + fileName);
-                LOG.info("UPLOADED FILE CONTENT ..." + uploadedFile.toString());
-
-                routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_OK)
-                        .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                        .end(Json.encodePrettily(new JsonObject().put("uploaded_file_name", "test.csv")));
-            } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
-            }
+            // String fileName = fileUpload.uploadedFileName();
+            
+			try {
+				fileName = URLDecoder.decode(fileUpload.fileName(), "UTF-8");
+            
+				String jarPath = new HelpFunc().getCurrentJarRunnigFolder();
+				String currentDir = config().getString("upload.dest", jarPath);
+				String fileToBeCopied = currentDir + HelpFunc.generateUniqueFileName(fileName);
+	            LOG.debug("UPLOADED FILE NAME (decode): " + currentDir + fileName + ", fileUpload.uploadedFileName(): " + fileUpload.uploadedFileName());
+	            LOG.debug("===== fileToBeCopied: " + fileToBeCopied);
+	            
+	            vertx.fileSystem().copy(fileUpload.uploadedFileName(), fileToBeCopied, res -> {
+	                if (res.succeeded()) {
+	                    LOG.info("FILE COPIED GOOD ==> " + fileToBeCopied);
+	                    
+	                    routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_OK)
+	                    .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+	                    .end(Json.encodePrettily(new JsonObject().put("uploaded_file_name", fileToBeCopied)));
+	                } else {
+	                    // Something went wrong
+	                	routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+	                    .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+	                    .end(Json.encodePrettily(new JsonObject().put("uploaded_file_name", "Failed")));
+	                }
+	            });
+			} catch (UnsupportedEncodingException e) {
+				e.printStackTrace();
+			}
         }
-
-
-
-//        routingContext.request().setExpectMultipart(true);
-//        routingContext.request().uploadHandler(upload -> {
-//            upload.exceptionHandler(cause -> {
-//                routingContext.request().response().setChunked(true).end("Upload failed");
-//            });
-//
-//            upload.endHandler(v -> {
-//                routingContext.request().response().setChunked(true).end("Successfully uploaded to " + upload.filename());
-//            });
-//            // FIXME - Potential security exploit! In a real system you must check this filename
-//            // to make sure you're not saving to a place where you don't want!
-//            // Or better still, just use Vert.x-Web which controls the upload area.
-//            upload.streamToFileSystem("jar/" + upload.filename());
-//        });
-
-/*        routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_OK)
-                .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                .end(Json.encodePrettily(new JsonObject().put("uploaded_file_name", "test.csv")));*/
-
-        /*Set<FileUpload> fileUploadSet = routingContext.fileUploads();
-
-        Iterator<FileUpload> fileUploadIterator = fileUploadSet.iterator();
-        while (fileUploadIterator.hasNext()){
-            FileUpload fileUpload = fileUploadIterator.next();
-
-            // To get the uploaded file do
-            Buffer uploadedFile = vertx.fileSystem().readFileBlocking(fileUpload.uploadedFileName());
-
-            // Uploaded File Name
-            try {
-                String fileName = URLDecoder.decode(fileUpload.fileName(), "UTF-8");
-                *//*routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_OK)
-                        .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                        .end(Json.encodePrettily(new JsonObject().put("uploaded_file_name", "test.csv")));*//*
-            } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
-            }
-        }*/
     }
 
     /**
@@ -423,7 +393,7 @@ public class DFDataProcessor extends AbstractVerticle {
 
         if (this.transform_engine_flink_enabled && dfJob.getConnectorType().contains("FLINK_UDF")) {
             // Submit flink sql
-            FlinkTransformProcessor.runFlinkJar("",
+            FlinkTransformProcessor.runFlinkJar(dfJob.getUdfUpload(),
                     this.flink_server_host + ":" + this.flink_server_port);
         }
             mongo.insert(COLLECTION, dfJob.toJson(), r -> routingContext

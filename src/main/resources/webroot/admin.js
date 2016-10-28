@@ -1,4 +1,10 @@
 var myApp = angular.module('myApp', ['ng-admin']);
+myApp.config(function(RestangularProvider) {
+    RestangularProvider.addElementTransformer('posts', function(element) {
+        element.connectorConfig_2 = element.connectorConfig;
+        return element;
+    });
+});
 myApp.config(['NgAdminConfigurationProvider', function (nga) {
 customHeaderTemplate =
 '<div class="navbar-header">' +
@@ -54,7 +60,7 @@ customHeaderTemplate =
         nga.field('status').editable(false).label('Job Status'),
         nga.field('description', 'text'),
         nga.field('jobConfig','json').attributes({placeholder:'Json format of job configuration is request.'}).label('Job Config'),
-        nga.field('connectorConfig','json').attributes({placeholder:'Json format of connects configuration is request.'}).label('Connects Config')
+        nga.field('connectorConfig','json').label('Connects Config')
 		.defaultValue({
 		"connector.class": "org.apache.kafka.connect.file.FileStreamSourceConnector",
 		"file": "File name for streaming to Kafka.",
@@ -63,7 +69,7 @@ customHeaderTemplate =
 		"topic": "The single Kafka topic name having data streamed."
 		})
 		.template('<ma-field ng-if="entry.values.connectorType == \'KAFKA_SOURCE\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true),
-		        nga.field('connectorConfig','json').attributes({placeholder:'Json format of connects configuration is request.'}).label('Connects Config')
+		        nga.field('connectorConfig_2','json').label('Connects Config')
 		.defaultValue({
 		"connector.class": "org.apache.kafka.connect.file.FileStreamSinkConnector",
 		"file": "File name to keep the data exported from Kafka.",
@@ -82,12 +88,27 @@ customHeaderTemplate =
                 .choices([
                                 {value:'FLINK_TRANS', label:'Flink Streaming SQL'},
                                 {value:'FLINK_UDF', label:'Flink User Defined Function'}]).label('Transforms Type'),
-        nga.field('UDFUpload', 'file').uploadInformation({ 'url': 'http://localhost:8080/api/df/uploaded_files', 'method': 'POST', 'uploaded_file_name': 'picture_name' })
+        nga.field('udfUpload', 'file').label('Upload Jar').uploadInformation({ 'url': 'http://localhost:8080/api/df/uploaded_files', 'method': 'POST', 'apifilename': 'uploaded_file_name' })
+        .defaultValue('empty.jar')
+        .validation({ validator: function(value) {
+                if (value.indexOf('.jar') == -1) throw new Error ('Invalid .jar file!');
+        } })
         .template('<ma-field ng-if="entry.values.connectorType == \'FLINK_UDF\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true),
         nga.field('status').editable(false).label('Job Status'),
         nga.field('description', 'text'),
         nga.field('jobConfig','json').label('Job Config'),
         nga.field('connectorConfig','json').label('Transforms Config')
+        .defaultValue({
+        "group.id":"Kafka consumer id.",
+        "data.format.input":"json_string|json",
+        "data.format.output":"json_string|json",
+        "avro.schema.enabled":"Whether AVRO schema is enabled in Kafka Connect.",
+        "topic.for.query":"The Kafka topic to query data",
+        "topic.for.result":"The Kafka topic to output data",
+        "trans.jar":"The name of UDF Jar file uploaded"
+        })
+        .template('<ma-field ng-if="entry.values.connectorType == \'FLINK_UDF\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true),
+        nga.field('connectorConfig_2','json').label('Transforms Config')
 		.defaultValue({
 		"group.id":"Kafka consumer id.",
 		"data.format.input":"json_string|json",
@@ -99,18 +120,7 @@ customHeaderTemplate =
 		"topic.for.result":"The Kafka topic to output data",
 		"trans.sql":"The Flink Stream SQL query."
 		})
-		.template('<ma-field ng-if="entry.values.connectorType == \'FLINK_TRANS\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true),
-	    nga.field('connectorConfig','json').label('Transforms Config')
-		.defaultValue({
-		"group.id":"Kafka consumer id.",
-		"data.format.input":"json_string|json",
-		"data.format.output":"json_string|json",
-		"avro.schema.enabled":"Whether AVRO schema is enabled in Kafka Connect.",
-		"topic.for.query":"The Kafka topic to query data",
-		"topic.for.result":"The Kafka topic to output data",
-        "trans.jar":"The name of UDF Jar file uploaded"
-		})
-		.template('<ma-field ng-if="entry.values.connectorType == \'FLINK_UDF\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true)
+		.template('<ma-field ng-if="entry.values.connectorType == \'FLINK_TRANS\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true)
 
     ]);
 
