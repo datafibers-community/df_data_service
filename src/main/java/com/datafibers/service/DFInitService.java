@@ -1,14 +1,11 @@
 package com.datafibers.service;
 
-import com.datafibers.model.DFJobPOPJ;
 import com.datafibers.processor.FlinkTransformProcessor;
+import com.datafibers.util.CLIParser;
 import com.datafibers.util.Runner;
-import io.vertx.core.json.JsonObject;
-import org.apache.avro.data.Json;
-import org.apache.avro.reflect.AvroSchema;
+import org.apache.commons.cli.CommandLine;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.table.StreamTableEnvironment;
-import org.apache.flink.api.java.typeutils.runtime.kryo.Serializers;
 import org.apache.flink.api.table.Table;
 import org.apache.flink.api.table.TableEnvironment;
 import org.apache.flink.api.table.sinks.CsvTableSink;
@@ -25,7 +22,6 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.HashMap;
 import java.util.Properties;
 
 public class DFInitService {
@@ -34,45 +30,23 @@ public class DFInitService {
 
     public static void main(String[] args) {
         welcome();
+
         if (null == args || args.length == 0) { // Use all default start settings - standalone with web ui
             Runner.runExample(DFDataProcessor.class);
             LOG.info("Start DF Data Processor in standalone mode ...");
             Runner.runExample(DFWebUI.class);
-
-        } else { // Use full parameters start
-            if(args[0].equalsIgnoreCase("c") && args[1].equalsIgnoreCase("ui")) {
-                Runner.runClusteredExample(DFDataProcessor.class);
-                LOG.info("Start DF Data Processor in cluster mode...");
-                Runner.runExample(DFWebUI.class);
-
-            } else if(args[0].equalsIgnoreCase("c") && args[1].equalsIgnoreCase("no-ui")) {
-                Runner.runClusteredExample(DFDataProcessor.class);
-                LOG.info("Start DF Data Processor in cluster mode without Web UI...");
-
-            } else if(args[0].equalsIgnoreCase("s") && args[1].equalsIgnoreCase("ui")) {
-                Runner.runExample(DFDataProcessor.class);
-                LOG.info("Start DF Data Processor in standalone mode ...");
-                Runner.runExample(DFWebUI.class);
-
-            } else if(args[0].equalsIgnoreCase("s") && args[1].equalsIgnoreCase("no-ui")) {
-                Runner.runExample(DFDataProcessor.class);
-                LOG.info("Start DF Data Processor in standalone mode without Web UI...");
-
-            } else if(args[0].equalsIgnoreCase("t")) {
-                testFlinkRun();
-            } else {
-                System.err.println("Usage: java -jar DFDataProcessor.jar <SERVICE_TO_DEPLOY> <UI_Enabled>");
-                System.err.println("Note:");
-                System.err.println("<SERVICE_TO_DEPLOY>=s: Deploy DFDataProcessor vertical in standalone mode.");
-                System.err.println("<SERVICE_TO_DEPLOY>=c: Deploy DFDataProcessor vertical in cluster mode.");
-                System.err.println("<UI_Enabled>=ui: Deploy Web UI.");
-                System.err.println("<UI_Enabled>=no-ui: Start without Web UI.");
-                System.exit(0);
-            }
+        } else {
+            CLIParser cli = new CLIParser(args);
+            cli.parse();
+            if(cli.getRunMode().contains("TEST")) runTestCases();
+            if (cli.getRunMode().contains("Cluster")) Runner.runClusteredExample(DFDataProcessor.class);
+            if (cli.getRunMode().contains("Standalone")) Runner.runExample(DFDataProcessor.class);
+            if (cli.getRunMode().contains("WebUI")) Runner.runExample(DFWebUI.class);
         }
-        LOG.info("Start DF Services Completed :)");
 
+        LOG.info("Start DF Services Completed :)");
     }
+
     public static void welcome() {
         System.out.println(" __    __     _                            _             ___      _          ___ _ _                   \n" +
                 "/ / /\\ \\ \\___| | ___ ___  _ __ ___   ___  | |_ ___      /   \\__ _| |_ __ _  / __(_) |__   ___ _ __ ___ \n" +
@@ -80,6 +54,9 @@ public class DFInitService {
                 " \\  /\\  /  __/ | (_| (_) | | | | | |  __/ | || (_) |  / /_// (_| | || (_| / /   | | |_) |  __/ |  \\__ \\\n" +
                 "  \\/  \\/ \\___|_|\\___\\___/|_| |_| |_|\\___|  \\__\\___/  /___,' \\__,_|\\__\\__,_\\/    |_|_.__/ \\___|_|  |___/\n" +
                 "                                                                                                       ");
+    }
+    public static void runTestCases() {
+
     }
 
     public static void testFlinkRun() {
