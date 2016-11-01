@@ -1,12 +1,10 @@
 package com.datafibers.util;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import org.apache.commons.cli.*;
+import org.slf4j.LoggerFactory;
 
 public class CLIParser {
-    private static final Logger LOG = Logger.getLogger(CLIParser.class.getName());
+    private static final org.slf4j.Logger LOG = LoggerFactory.getLogger(CLIParser.class);
     private String[] args = null;
     private Options options = new Options();
     public static String run_mode;
@@ -24,6 +22,7 @@ public class CLIParser {
     public CommandLine parse() {
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = null;
+        if (args == null || args.length == 0) return null;
         try {
             cmd = parser.parse(options, args);
             if (cmd.hasOption("h"))
@@ -54,13 +53,21 @@ public class CLIParser {
 
 
         } catch (ParseException e) {
-            LOG.log(Level.SEVERE, "Failed to parse command line properties", e);
+            LOG.warn("Failed to parse command line properties", e);
             help();
         }
         return null;
     }
 
     public String getRunMode () {
+        if (args == null || args.length == 0) {
+            LOG.info("Starting both DataFibers Service and Web UI ...");
+            return null;
+        }
+        LOG.info("Starting DataFibers in customized options.");
+        LOG.info("run_mode = " + this.run_mode);
+        LOG.info("service_mode = " + this.service_mode);
+        LOG.info("test_mode = " + this.test_mode);
         return this.run_mode + this.service_mode + this.test_mode;
     }
 

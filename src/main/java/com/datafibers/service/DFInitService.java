@@ -3,7 +3,6 @@ package com.datafibers.service;
 import com.datafibers.processor.FlinkTransformProcessor;
 import com.datafibers.util.CLIParser;
 import com.datafibers.util.Runner;
-import org.apache.commons.cli.CommandLine;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.table.StreamTableEnvironment;
 import org.apache.flink.api.table.Table;
@@ -27,24 +26,28 @@ import java.util.Properties;
 public class DFInitService {
 
     private static final Logger LOG = LoggerFactory.getLogger(DFInitService.class);
+    private static String runningMode;
 
     public static void main(String[] args) {
-        welcome();
 
-        if (null == args || args.length == 0) { // Use all default start settings - standalone with web ui
+        welcome();
+        LOG.info("*********Starting DataFibers Services ...");
+
+        CLIParser cli = new CLIParser(args);
+        cli.parse();
+        runningMode = cli.getRunMode();
+
+        if (runningMode == null) {
             Runner.runExample(DFDataProcessor.class);
-            LOG.info("Start DF Data Processor in standalone mode ...");
             Runner.runExample(DFWebUI.class);
         } else {
-            CLIParser cli = new CLIParser(args);
-            cli.parse();
-            if(cli.getRunMode().contains("TEST")) runTestCases();
-            if (cli.getRunMode().contains("Cluster")) Runner.runClusteredExample(DFDataProcessor.class);
-            if (cli.getRunMode().contains("Standalone")) Runner.runExample(DFDataProcessor.class);
-            if (cli.getRunMode().contains("WebUI")) Runner.runExample(DFWebUI.class);
+            if (runningMode.contains("TEST")) runTestCases();
+            if (runningMode.contains("Cluster")) Runner.runClusteredExample(DFDataProcessor.class);
+            if (runningMode.contains("Standalone")) Runner.runExample(DFDataProcessor.class);
+            if (runningMode.contains("WebUI")) Runner.runExample(DFWebUI.class);
         }
 
-        LOG.info("Start DF Services Completed :)");
+        LOG.info("*********Start DataFibers Services Completed :)");
     }
 
     public static void welcome() {
@@ -55,6 +58,7 @@ public class DFInitService {
                 "  \\/  \\/ \\___|_|\\___\\___/|_| |_| |_|\\___|  \\__\\___/  /___,' \\__,_|\\__\\__,_\\/    |_|_.__/ \\___|_|  |___/\n" +
                 "                                                                                                       ");
     }
+
     public static void runTestCases() {
 
     }
