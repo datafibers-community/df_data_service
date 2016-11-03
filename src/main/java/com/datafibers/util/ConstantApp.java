@@ -49,6 +49,10 @@ public final class ConstantApp {
     public static final int STATUS_CODE_NOT_FOUND = 404;
     public static final int STATUS_CODE_CONFLICT = 409;
 
+    // Kafka Confluent Protocol
+    public static final byte MAGIC_BYTE = 0x0;
+    public static final int idSize = 4;
+
     public enum DF_STATUS {
         UNASSIGNED,         // The Kafka connector/task has not yet been assigned to a worker.
         RUNNING,            // The Kafka connector/task is running.

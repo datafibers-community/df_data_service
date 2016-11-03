@@ -14,8 +14,8 @@ public class CLIParser {
     public CLIParser(String[] args) {
         this.args = args;
         options.addOption("h", "help", false, "show help.");
-        options.addOption("t", "test", false, "run test cases");
-        options.addOption("u", "webui", true, "enable web <arg>=ui|noui");
+        options.addOption("t", "test", true, "run configured test cases, <arg>=test_case_number");
+        options.addOption("u", "webui", true, "enable web, <arg>=ui|noui");
         options.addOption("m", "mode", true, "running vertx mode, <arg>=cluster|standalone");
     }
 
@@ -46,7 +46,11 @@ public class CLIParser {
             }
 
             if (cmd.hasOption("t")) {
-                this.test_mode = "TEST";
+                if(cmd.getOptionValue("t").matches("[-+]?\\d*\\.?\\d+")) {
+                    this.test_mode = "TEST_CASE_" + cmd.getOptionValue("t");
+                } else {
+                    this.test_mode = "TEST_CASE_1";
+                }
             } else {
                 this.test_mode = "NO_TEST";
             }
