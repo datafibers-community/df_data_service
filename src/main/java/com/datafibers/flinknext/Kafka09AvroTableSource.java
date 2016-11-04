@@ -14,7 +14,7 @@ import java.util.Properties;
 public class Kafka09AvroTableSource extends KafkaAvroTableSource {
 
     /**
-     * Creates a Kafka 0.9 JSON {@link StreamTableSource}.
+     * Creates a Kafka 0.9 AVRO {@link StreamTableSource}.
      *
      * @param topic      Kafka topic to consume.
      * @param properties Properties for the Kafka consumer.
@@ -31,7 +31,19 @@ public class Kafka09AvroTableSource extends KafkaAvroTableSource {
     }
 
     /**
-     * Creates a Kafka 0.9 JSON {@link StreamTableSource}.
+     * Creates a Kafka 0.9 AVRO fields name and type are derived from schema info in properties
+     * @param topic
+     * @param properties
+     */
+    public Kafka09AvroTableSource(
+            String topic,
+            Properties properties) {
+
+        super(topic, properties);
+    }
+
+    /**
+     * Creates a Kafka 0.9 AVRO {@link StreamTableSource}.
      *
      * @param topic      Kafka topic to consume.
      * @param properties Properties for the Kafka consumer.

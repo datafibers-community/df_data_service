@@ -1,14 +1,15 @@
 package com.datafibers.flinknext;
 
+import com.datafibers.util.SchemaRegistryClient;
+import org.apache.avro.Schema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.table.sources.StreamTableSource;
 import org.apache.flink.streaming.util.serialization.DeserializationSchema;
-import org.apache.flink.streaming.util.serialization.JsonRowDeserializationSchema;
 
 import java.util.Properties;
 
 /**
- * A version-agnostic Kafka Avro {@link StreamTableSource}.
+ * A version-agnostic Kafka AVRO {@link StreamTableSource}.
  *
  * <p>The version-specific Kafka consumers need to extend this class and
  * override {@link #getKafkaConsumer(String, Properties, DeserializationSchema)}}.
@@ -18,7 +19,7 @@ import java.util.Properties;
 public abstract class KafkaAvroTableSource extends KafkaTableSource {
 
     /**
-     * Creates a generic Kafka JSON {@link StreamTableSource}.
+     * Creates a generic Kafka AVRO {@link StreamTableSource}.
      *
      * @param topic      Kafka topic to consume.
      * @param properties Properties for the Kafka consumer.
@@ -31,11 +32,45 @@ public abstract class KafkaAvroTableSource extends KafkaTableSource {
             String[] fieldNames,
             Class<?>[] fieldTypes) {
 
-        super(topic, properties, createDeserializationSchema(fieldNames, fieldTypes), fieldNames, fieldTypes);
+        super(topic, properties, createDeserializationSchema(fieldNames, fieldTypes, properties), fieldNames, fieldTypes);
     }
 
     /**
-     * Creates a generic Kafka JSON {@link StreamTableSource}.
+     * Creates a generic Kafka AVRO with fields and types derived from Schema Registry
+     * @param topic
+     * @param properties
+     */
+    KafkaAvroTableSource(String topic, Properties properties) {
+        super(topic, properties,
+                createDeserializationSchema(
+                        SchemaRegistryClient.getFieldNamesFromProperty(properties),
+                        SchemaRegistryClient.getFieldTypesFromProperty(properties),
+                        properties
+                ),
+                SchemaRegistryClient.getFieldNamesFromProperty(properties),
+                SchemaRegistryClient.getFieldTypesFromProperty(properties)
+        );
+    }
+
+    /**
+     * Creates a generic Kafka AVRO with fields and types derived from Avro Schema
+     * @param topic
+     * @param properties
+     */
+    KafkaAvroTableSource(String topic, Properties properties, Schema schema) {
+        super(topic, properties,
+                createDeserializationSchema(
+                        SchemaRegistryClient.getFieldNames(schema),
+                        SchemaRegistryClient.getFieldTypes(schema),
+                        properties
+                ),
+                SchemaRegistryClient.getFieldNames(schema),
+                SchemaRegistryClient.getFieldTypes(schema)
+        );
+    }
+
+    /**
+     * Creates a generic Kafka AVRO {@link StreamTableSource}.
      *
      * @param topic      Kafka topic to consume.
      * @param properties Properties for the Kafka consumer.
@@ -48,32 +83,32 @@ public abstract class KafkaAvroTableSource extends KafkaTableSource {
             String[] fieldNames,
             TypeInformation<?>[] fieldTypes) {
 
-        super(topic, properties, createDeserializationSchema(fieldNames, fieldTypes), fieldNames, fieldTypes);
+        super(topic, properties, createDeserializationSchema(fieldNames, fieldTypes, properties), fieldNames, fieldTypes);
     }
 
     /**
-     * Configures the failure behaviour if a JSON field is missing.
+     * Configures the failure behaviour if a AVRO field is missing.
      *
      * <p>By default, a missing field is ignored and the field is set to null.
      *
      * @param failOnMissingField Flag indicating whether to fail or not on a missing field.
      */
     public void setFailOnMissingField(boolean failOnMissingField) {
-        JsonRowDeserializationSchema deserializationSchema = (JsonRowDeserializationSchema) getDeserializationSchema();
+        AvroRowDeserializationSchema deserializationSchema = (AvroRowDeserializationSchema) getDeserializationSchema();
         deserializationSchema.setFailOnMissingField(failOnMissingField);
     }
 
-    private static JsonRowDeserializationSchema createDeserializationSchema(
+    private static AvroRowDeserializationSchema createDeserializationSchema(
             String[] fieldNames,
-            TypeInformation<?>[] fieldTypes) {
+            TypeInformation<?>[] fieldTypes, Properties properties) {
 
-        return new JsonRowDeserializationSchema(fieldNames, fieldTypes);
+        return new AvroRowDeserializationSchema(fieldNames, fieldTypes, properties);
     }
 
-    private static JsonRowDeserializationSchema createDeserializationSchema(
+    private static AvroRowDeserializationSchema createDeserializationSchema(
             String[] fieldNames,
-            Class<?>[] fieldTypes) {
+            Class<?>[] fieldTypes, Properties properties) {
 
-        return new JsonRowDeserializationSchema(fieldNames, fieldTypes);
+        return new AvroRowDeserializationSchema(fieldNames, fieldTypes, properties);
     }
 }

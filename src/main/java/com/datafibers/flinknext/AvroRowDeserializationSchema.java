@@ -1,20 +1,30 @@
 package com.datafibers.flinknext;
 
+import com.datafibers.util.ConstantApp;
+import com.datafibers.util.SchemaRegistryClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericDatumReader;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.io.BinaryDecoder;
+import org.apache.avro.io.DecoderFactory;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.typeutils.TypeExtractor;
 import org.apache.flink.api.table.Row;
 import org.apache.flink.api.table.typeutils.RowTypeInfo;
 import org.apache.flink.streaming.util.serialization.DeserializationSchema;
 import org.apache.flink.util.Preconditions;
+import org.apache.kafka.common.errors.SerializationException;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Properties;
 
 /**
  * Deserialization schema from AVRO to {@link Row}.
  *
- * <p>Deserializes the <code>byte[]</code> messages as a JSON object and reads
+ * <p>Deserializes the <code>byte[]</code> messages as a AVROject and reads
  * the specified fields.
  *
  * <p>Failure during deserialization are forwarded as wrapped IOExceptions.
@@ -33,13 +43,29 @@ public class AvroRowDeserializationSchema implements DeserializationSchema<Row> 
     /** Flag indicating whether to fail on a missing field. */
     private boolean failOnMissingField;
 
+    /** Avro Schema for the row */
+    private static Schema schema;
+
+    /** Generic Avro Schema reader for the row */
+    private transient GenericDatumReader<GenericRecord> reader;
+
+    /** TODO - When schema changes, the Source table does not need to be recreated.*/
+    private static boolean dynamicSchema = false;
+
+    private static Properties rowProperties;
+
     /**
-     * Creates a JSON deserializtion schema for the given fields and type classes.
+     * Creates a AVRO deserializtion schema for the given fields and type classes.
      *
      * @param fieldNames Names of JSON fields to parse.
      * @param fieldTypes Type classes to parse JSON fields as.
      */
-    public AvroRowDeserializationSchema(String[] fieldNames, Class<?>[] fieldTypes) {
+    public AvroRowDeserializationSchema(String[] fieldNames, Class<?>[] fieldTypes, Properties properties) {
+
+        this.rowProperties = properties;
+        this.schema = SchemaRegistryClient.getLatestSchemaFromProperty(properties);
+        this.reader = new GenericDatumReader<GenericRecord>(schema);
+
         this.fieldNames = Preconditions.checkNotNull(fieldNames, "Field names");
 
         this.fieldTypes = new TypeInformation[fieldTypes.length];
@@ -52,12 +78,18 @@ public class AvroRowDeserializationSchema implements DeserializationSchema<Row> 
     }
 
     /**
-     * Creates a JSON deserializtion schema for the given fields and types.
+     * Creates a AVRO deserializtion schema for the given fields and types.
      *
-     * @param fieldNames Names of JSON fields to parse.
-     * @param fieldTypes Types to parse JSON fields as.
+     * @param fieldNames Names of AVRO fields to parse.
+     * @param fieldTypes Types to parse AVRO fields as.
      */
-    public AvroRowDeserializationSchema(String[] fieldNames, TypeInformation<?>[] fieldTypes) {
+    public AvroRowDeserializationSchema(String[] fieldNames, TypeInformation<?>[] fieldTypes, Properties properties) {
+
+        this.rowProperties = properties;
+        this.schema = SchemaRegistryClient.getLatestSchemaFromProperty(properties);
+        this.reader = new GenericDatumReader<GenericRecord>(schema);
+
+
         this.fieldNames = Preconditions.checkNotNull(fieldNames, "Field names");
         this.fieldTypes = Preconditions.checkNotNull(fieldTypes, "Field types");
 
@@ -68,7 +100,22 @@ public class AvroRowDeserializationSchema implements DeserializationSchema<Row> 
     @Override
     public Row deserialize(byte[] message) throws IOException {
         try {
-            JsonNode root = objectMapper.readTree(message);
+            ByteBuffer buffer = ByteBuffer.wrap(message);
+            if (buffer.get() != ConstantApp.MAGIC_BYTE) {
+                throw new SerializationException("Unknown magic byte!");
+            }
+            int schema_id = buffer.getInt();
+
+            reader = new GenericDatumReader<GenericRecord>(schema);
+
+                int length = buffer.limit() - 1 - ConstantApp.idSize;
+                int start = buffer.position() + buffer.arrayOffset();
+                BinaryDecoder decoder = DecoderFactory.get().binaryDecoder(buffer.array(), start, length, null);
+                GenericRecord gr = reader.read(null, decoder);
+
+            //System.out.println("Decoded Avro Message is "+ gr.toString());
+
+            JsonNode root = objectMapper.readTree(gr.toString());
 
             Row row = new Row(fieldNames.length);
             for (int i = 0; i < fieldNames.length; i++) {
@@ -90,7 +137,7 @@ public class AvroRowDeserializationSchema implements DeserializationSchema<Row> 
 
             return row;
         } catch (Throwable t) {
-            throw new IOException("Failed to deserialize JSON object.", t);
+            throw new IOException("Failed to deserialize AVRO object.", t);
         }
     }
 

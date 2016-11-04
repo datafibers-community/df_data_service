@@ -54,16 +54,14 @@ public class DFInitService {
                     AvroProducerTest.main(new String[10]);
                     break;
                 case "2":
-                    UnitTestSuiteFlink.testFlinkAvro();
+                    UnitTestSuiteFlink.testFlinkAvroSQL();
                     break;
                 case "3":
+                    UnitTestSuiteFlink.testFlinkAvroSerDe();
                     break;
                 default:
                     break;
-
             }
-
-
 
         } catch (IOException|DecoderException ioe) {
             ioe.printStackTrace();

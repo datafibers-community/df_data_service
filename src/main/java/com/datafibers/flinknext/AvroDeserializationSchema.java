@@ -1,6 +1,7 @@
 package com.datafibers.flinknext;
 
 import com.datafibers.util.ConstantApp;
+import com.datafibers.util.SchemaRegistryClient;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaParseException;
 import org.apache.avro.generic.GenericDatumReader;
@@ -43,7 +44,7 @@ public class AvroDeserializationSchema implements DeserializationSchema<GenericR
     }
     public AvroDeserializationSchema(String schemaUri, String schemaSubject) {
         //get latest schema once for all records
-        this.avroSchema = getSchemaFromRegistry(schemaUri, schemaSubject, "latest");
+        this.avroSchema = SchemaRegistryClient.getSchemaFromRegistry(schemaUri, schemaSubject, "latest");
         this.schemaUri = schemaUri;
         this.schemaSubject = schemaSubject;
     }
@@ -57,7 +58,7 @@ public class AvroDeserializationSchema implements DeserializationSchema<GenericR
         int schema_id = buffer.getInt();
 
         if (dynamicSchema) {
-            this.avroSchema = getSchemaFromRegistry(schemaUri, schemaSubject, schema_id + "");
+            this.avroSchema = SchemaRegistryClient.getSchemaFromRegistry(schemaUri, schemaSubject, schema_id + "");
         }
 
         reader = new GenericDatumReader<GenericRecord>(avroSchema);
@@ -83,39 +84,5 @@ public class AvroDeserializationSchema implements DeserializationSchema<GenericR
     @Override
     public TypeInformation<GenericRecord> getProducedType() {
         return TypeExtractor.getForClass(GenericRecord.class);
-    }
-
-    private Schema getSchemaFromRegistry(String schemaUri, String schemaSubject, String schemaVersion) {
-        String fullUrl = String.format("%s/subjects/%s/versions/%s", schemaUri, schemaSubject, schemaVersion);
-
-        String schemaString;
-        BufferedReader br = null;
-        try {
-            StringBuilder response = new StringBuilder();
-            String line;
-            br = new BufferedReader(new InputStreamReader(new URL(fullUrl).openStream()));
-            while ((line = br.readLine()) != null) {
-                response.append(line);
-            }
-
-            JsonNode responseJson = new ObjectMapper().readValue(response.toString(), JsonNode.class);
-            schemaString = responseJson.get("schema").getValueAsText();
-
-            try {
-                return new Schema.Parser().parse(schemaString);
-            } catch (SchemaParseException ex) {
-                LOG.error(String.format("Unable to successfully parse schema from: %s", schemaString), ex);
-            }
-        } catch(Exception ex) {
-            ex.printStackTrace();
-        } finally {
-            try {
-                if (br != null)
-                    br.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        return null;
     }
 }
