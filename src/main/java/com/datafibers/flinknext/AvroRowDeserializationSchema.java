@@ -1,11 +1,9 @@
 package com.datafibers.flinknext;
 
-import com.datafibers.test_tool.UnitTestSuiteFlink;
 import com.datafibers.util.ConstantApp;
 import com.datafibers.util.SchemaRegistryClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.BinaryDecoder;
@@ -38,21 +36,16 @@ public class AvroRowDeserializationSchema implements DeserializationSchema<Row> 
 
     /** Field names to parse. Indices match fieldTypes indices. */
     private final String[] fieldNames;
-    private static Properties properties;
     /** Types to parse fields as. Indices match fieldNames indices. */
     private final TypeInformation<?>[] fieldTypes;
+    /** Avro Schema for the row is in this properties. It has to be final. */
+    private final Properties properties;
 
     /** Object mapper for parsing the JSON. */
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /** Flag indicating whether to fail on a missing field. */
     private boolean failOnMissingField;
-
-    /** Avro Schema for the row */
-    private static Schema avroSchema;
-    private static String schemaUri;
-    private static String schemaSubject;
-
 
     /** Generic Avro Schema reader for the row */
     private transient GenericDatumReader<GenericRecord> reader;
@@ -65,20 +58,9 @@ public class AvroRowDeserializationSchema implements DeserializationSchema<Row> 
      * @param fieldNames Names of JSON fields to parse.
      * @param fieldTypes Type classes to parse JSON fields as.
      */
-    public AvroRowDeserializationSchema(String[] fieldNames, Class<?>[] fieldTypes, String schemaUri, String schemaSubject) {
+    public AvroRowDeserializationSchema(String[] fieldNames, Class<?>[] fieldTypes, Properties properties) {
 
-        if (schemaUri == null) {
-            throw new SerializationException("empty schemaUri in AvroRowDeserializationSchema constructor");
-        }
-        LOG.info("String schemaUri, String schemaSubject are " + schemaUri + schemaSubject);
-        this.avroSchema = SchemaRegistryClient.getSchemaFromRegistry(schemaUri, schemaSubject, "latest");
-
-        if (this.avroSchema == null) {
-            throw new SerializationException("empty avroSchema in AvroRowDeserializationSchema constructor");
-        }
-
-        this.schemaUri = schemaUri;
-        this.schemaSubject = schemaSubject;
+        this.properties = Preconditions.checkNotNull(properties, "properties");
         this.fieldNames = Preconditions.checkNotNull(fieldNames, "Field names");
         this.fieldTypes = new TypeInformation[fieldTypes.length];
         for (int i = 0; i < fieldTypes.length; i++) {
@@ -87,10 +69,6 @@ public class AvroRowDeserializationSchema implements DeserializationSchema<Row> 
 
         Preconditions.checkArgument(fieldNames.length == fieldTypes.length,
                 "Number of provided field names and types does not match.");
-
-        if (this.avroSchema == null) {
-            throw new SerializationException("all in construct = " + this.schemaUri + this.schemaSubject + this.avroSchema);
-        }
     }
 
     /**
@@ -99,16 +77,9 @@ public class AvroRowDeserializationSchema implements DeserializationSchema<Row> 
      * @param fieldNames Names of AVRO fields to parse.
      * @param fieldTypes Types to parse AVRO fields as.
      */
-    public AvroRowDeserializationSchema(String[] fieldNames, TypeInformation<?>[] fieldTypes, String schemaUri, String schemaSubject) {
+    public AvroRowDeserializationSchema(String[] fieldNames, TypeInformation<?>[] fieldTypes, Properties properties) {
 
-        if (schemaUri == null) {
-            throw new SerializationException("empty schemaUri in AvroRowDeserializationSchema2 constructor");
-        }
-
-        this.avroSchema = SchemaRegistryClient.getSchemaFromRegistry(schemaUri, schemaSubject, "latest");
-        if (this.avroSchema == null) {
-            throw new SerializationException("empty avroSchema in AvroRowDeserializationSchema2 constructor");
-        }
+        this.properties = Preconditions.checkNotNull(properties, "properties");
         this.fieldNames = Preconditions.checkNotNull(fieldNames, "Field names");
         this.fieldTypes = Preconditions.checkNotNull(fieldTypes, "Field types");
 
@@ -130,11 +101,7 @@ public class AvroRowDeserializationSchema implements DeserializationSchema<Row> 
             int start = buffer.position() + buffer.arrayOffset();
             BinaryDecoder decoder = DecoderFactory.get().binaryDecoder(buffer.array(), start, length, null);
 
-            if (this.avroSchema == null) {
-                throw new SerializationException("avroSchema = null in deserialize");
-            }
-
-            reader = new GenericDatumReader<>(avroSchema);
+            reader = new GenericDatumReader<>(SchemaRegistryClient.getLatestSchemaFromProperty(properties));
             GenericRecord gr = reader.read(null, decoder);
 
             JsonNode root = objectMapper.readTree(gr.toString());

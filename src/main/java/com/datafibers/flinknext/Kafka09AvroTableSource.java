@@ -23,11 +23,11 @@ public class Kafka09AvroTableSource extends KafkaAvroTableSource {
      */
     public Kafka09AvroTableSource(
             String topic,
-            Properties properties, String schemaUri, String schemaSubject,
+            Properties properties,
             String[] fieldNames,
             TypeInformation<?>[] fieldTypes) {
 
-        super(topic, properties, schemaUri, schemaSubject, fieldNames, fieldTypes);
+        super(topic, properties, fieldNames, fieldTypes);
     }
 
     /**
@@ -35,9 +35,9 @@ public class Kafka09AvroTableSource extends KafkaAvroTableSource {
      * @param topic
      * @param properties
      */
-    public Kafka09AvroTableSource(String topic, Properties properties, String schemaUri, String schemaSubject) {
+    public Kafka09AvroTableSource(String topic, Properties properties) {
 
-        super(topic, properties, schemaUri, schemaSubject);
+        super(topic, properties);
     }
 
     /**
@@ -50,11 +50,11 @@ public class Kafka09AvroTableSource extends KafkaAvroTableSource {
      */
     public Kafka09AvroTableSource(
             String topic,
-            Properties properties, String schemaUri, String schemaSubject,
+            Properties properties,
             String[] fieldNames,
             Class<?>[] fieldTypes) {
 
-        super(topic, properties, schemaUri, schemaSubject, fieldNames, fieldTypes);
+        super(topic, properties, fieldNames, fieldTypes);
     }
 
     @Override

@@ -29,11 +29,11 @@ public abstract class KafkaAvroTableSource extends KafkaTableSource {
      */
     KafkaAvroTableSource(
             String topic,
-            Properties properties, String schemaUri, String schemaSubject,
+            Properties properties,
             String[] fieldNames,
             Class<?>[] fieldTypes) {
 
-        super(topic, properties, createDeserializationSchema(fieldNames, fieldTypes, schemaUri, schemaSubject), fieldNames, fieldTypes);
+        super(topic, properties, createDeserializationSchema(fieldNames, fieldTypes, properties), fieldNames, fieldTypes);
     }
 
     /**
@@ -41,12 +41,12 @@ public abstract class KafkaAvroTableSource extends KafkaTableSource {
      * @param topic
      * @param properties
      */
-    KafkaAvroTableSource(String topic, Properties properties, String schemaUri, String schemaSubject) {
+    KafkaAvroTableSource(String topic, Properties properties) {
         super(topic, properties,
                 createDeserializationSchema(
                         SchemaRegistryClient.getFieldNamesFromProperty(properties),
                         SchemaRegistryClient.getFieldTypesFromProperty(properties),
-                        schemaUri, schemaSubject
+                        properties
                 ),
                 SchemaRegistryClient.getFieldNamesFromProperty(properties),
                 SchemaRegistryClient.getFieldTypesFromProperty(properties)
@@ -63,11 +63,11 @@ public abstract class KafkaAvroTableSource extends KafkaTableSource {
      */
     KafkaAvroTableSource(
             String topic,
-            Properties properties, String schemaUri, String schemaSubject,
+            Properties properties,
             String[] fieldNames,
             TypeInformation<?>[] fieldTypes) {
 
-        super(topic, properties, createDeserializationSchema(fieldNames, fieldTypes, schemaUri, schemaSubject), fieldNames, fieldTypes);
+        super(topic, properties, createDeserializationSchema(fieldNames, fieldTypes, properties), fieldNames, fieldTypes);
     }
 
     /**
@@ -84,19 +84,15 @@ public abstract class KafkaAvroTableSource extends KafkaTableSource {
 
     private static AvroRowDeserializationSchema createDeserializationSchema(
             String[] fieldNames,
-            TypeInformation<?>[] fieldTypes, String schemaUri, String schemaSubject) {
+            TypeInformation<?>[] fieldTypes, Properties properties) {
 
-        return new AvroRowDeserializationSchema(fieldNames, fieldTypes, schemaUri, schemaSubject);
+        return new AvroRowDeserializationSchema(fieldNames, fieldTypes, properties);
     }
 
     private static AvroRowDeserializationSchema createDeserializationSchema(
             String[] fieldNames,
-            Class<?>[] fieldTypes, String schemaUri, String schemaSubject) {
+            Class<?>[] fieldTypes, Properties properties) {
 
-        if (schemaUri == null) {
-            throw new SerializationException("empty schemaUri in createDeserializationSchema");
-        }
-
-        return new AvroRowDeserializationSchema(fieldNames, fieldTypes, schemaUri, schemaSubject);
+        return new AvroRowDeserializationSchema(fieldNames, fieldTypes, properties);
     }
 }

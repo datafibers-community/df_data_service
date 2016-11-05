@@ -109,9 +109,6 @@ public class SchemaRegistryClient {
             }
         }
         String[] fieldNames = stringList.toArray( new String[] {} );
-        for ( String element : fieldNames ) {
-            System.out.println( element );
-        }
         return fieldNames;
     }
 
@@ -125,9 +122,6 @@ public class SchemaRegistryClient {
             }
         }
         String[] fieldNames = stringList.toArray( new String[] {} );
-        for ( String element : fieldNames ) {
-            System.out.println( element );
-        }
         return fieldNames;
     }
 

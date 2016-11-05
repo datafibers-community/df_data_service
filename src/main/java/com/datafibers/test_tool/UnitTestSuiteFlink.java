@@ -137,8 +137,7 @@ public class UnitTestSuiteFlink {
         properties.setProperty("schema.registry", "localhost:8081");
 
         try {
-            Kafka09AvroTableSource kafkaAvroTableSource =
-                    new Kafka09AvroTableSource("test", properties, "http://localhost:8081", "test-value");
+            Kafka09AvroTableSource kafkaAvroTableSource =  new Kafka09AvroTableSource("test", properties);
 
             tableEnv.registerTableSource("Orders", kafkaAvroTableSource);
 
@@ -150,7 +149,7 @@ public class UnitTestSuiteFlink {
             TableSink sink = new CsvTableSink(resultFile, "|");
             // write the result Table to the TableSink
             result.writeToSink(sink);
-            env.execute("Flink AVRO KAFKA Test");
+            env.execute("Flink AVRO SQL KAFKA Test");
         } catch (Exception e) {
             e.printStackTrace();
         }
