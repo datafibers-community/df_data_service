@@ -59,6 +59,8 @@ public class DFInitService {
                 case "3":
                     UnitTestSuiteFlink.testFlinkAvroSerDe();
                     break;
+                case "4":
+                    UnitTestSuiteFlink.testSchemaRegisterClient();
                 default:
                     break;
             }

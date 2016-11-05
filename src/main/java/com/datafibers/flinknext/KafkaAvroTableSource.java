@@ -5,6 +5,7 @@ import org.apache.avro.Schema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.table.sources.StreamTableSource;
 import org.apache.flink.streaming.util.serialization.DeserializationSchema;
+import org.apache.kafka.common.errors.SerializationException;
 
 import java.util.Properties;
 
@@ -14,7 +15,7 @@ import java.util.Properties;
  * <p>The version-specific Kafka consumers need to extend this class and
  * override {@link #getKafkaConsumer(String, Properties, DeserializationSchema)}}.
  *
- * <p>The field names are used to parse the JSON file and so are the types.
+ * <p>The field names are used to parse the AVRO file and so are the types.
  */
 public abstract class KafkaAvroTableSource extends KafkaTableSource {
 
@@ -28,11 +29,11 @@ public abstract class KafkaAvroTableSource extends KafkaTableSource {
      */
     KafkaAvroTableSource(
             String topic,
-            Properties properties,
+            Properties properties, String schemaUri, String schemaSubject,
             String[] fieldNames,
             Class<?>[] fieldTypes) {
 
-        super(topic, properties, createDeserializationSchema(fieldNames, fieldTypes, properties), fieldNames, fieldTypes);
+        super(topic, properties, createDeserializationSchema(fieldNames, fieldTypes, schemaUri, schemaSubject), fieldNames, fieldTypes);
     }
 
     /**
@@ -40,32 +41,15 @@ public abstract class KafkaAvroTableSource extends KafkaTableSource {
      * @param topic
      * @param properties
      */
-    KafkaAvroTableSource(String topic, Properties properties) {
+    KafkaAvroTableSource(String topic, Properties properties, String schemaUri, String schemaSubject) {
         super(topic, properties,
                 createDeserializationSchema(
                         SchemaRegistryClient.getFieldNamesFromProperty(properties),
                         SchemaRegistryClient.getFieldTypesFromProperty(properties),
-                        properties
+                        schemaUri, schemaSubject
                 ),
                 SchemaRegistryClient.getFieldNamesFromProperty(properties),
                 SchemaRegistryClient.getFieldTypesFromProperty(properties)
-        );
-    }
-
-    /**
-     * Creates a generic Kafka AVRO with fields and types derived from Avro Schema
-     * @param topic
-     * @param properties
-     */
-    KafkaAvroTableSource(String topic, Properties properties, Schema schema) {
-        super(topic, properties,
-                createDeserializationSchema(
-                        SchemaRegistryClient.getFieldNames(schema),
-                        SchemaRegistryClient.getFieldTypes(schema),
-                        properties
-                ),
-                SchemaRegistryClient.getFieldNames(schema),
-                SchemaRegistryClient.getFieldTypes(schema)
         );
     }
 
@@ -79,11 +63,11 @@ public abstract class KafkaAvroTableSource extends KafkaTableSource {
      */
     KafkaAvroTableSource(
             String topic,
-            Properties properties,
+            Properties properties, String schemaUri, String schemaSubject,
             String[] fieldNames,
             TypeInformation<?>[] fieldTypes) {
 
-        super(topic, properties, createDeserializationSchema(fieldNames, fieldTypes, properties), fieldNames, fieldTypes);
+        super(topic, properties, createDeserializationSchema(fieldNames, fieldTypes, schemaUri, schemaSubject), fieldNames, fieldTypes);
     }
 
     /**
@@ -100,15 +84,19 @@ public abstract class KafkaAvroTableSource extends KafkaTableSource {
 
     private static AvroRowDeserializationSchema createDeserializationSchema(
             String[] fieldNames,
-            TypeInformation<?>[] fieldTypes, Properties properties) {
+            TypeInformation<?>[] fieldTypes, String schemaUri, String schemaSubject) {
 
-        return new AvroRowDeserializationSchema(fieldNames, fieldTypes, properties);
+        return new AvroRowDeserializationSchema(fieldNames, fieldTypes, schemaUri, schemaSubject);
     }
 
     private static AvroRowDeserializationSchema createDeserializationSchema(
             String[] fieldNames,
-            Class<?>[] fieldTypes, Properties properties) {
+            Class<?>[] fieldTypes, String schemaUri, String schemaSubject) {
 
-        return new AvroRowDeserializationSchema(fieldNames, fieldTypes, properties);
+        if (schemaUri == null) {
+            throw new SerializationException("empty schemaUri in createDeserializationSchema");
+        }
+
+        return new AvroRowDeserializationSchema(fieldNames, fieldTypes, schemaUri, schemaSubject);
     }
 }

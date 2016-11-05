@@ -4,6 +4,7 @@ import com.datafibers.flinknext.AvroDeserializationSchema;
 import com.datafibers.flinknext.Kafka09AvroTableSource;
 import com.datafibers.processor.FlinkTransformProcessor;
 import com.datafibers.service.DFInitService;
+import com.datafibers.util.SchemaRegistryClient;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.flink.api.common.functions.MapFunction;
@@ -136,7 +137,8 @@ public class UnitTestSuiteFlink {
         properties.setProperty("schema.registry", "localhost:8081");
 
         try {
-            Kafka09AvroTableSource kafkaAvroTableSource = new Kafka09AvroTableSource("test", properties);
+            Kafka09AvroTableSource kafkaAvroTableSource =
+                    new Kafka09AvroTableSource("test", properties, "http://localhost:8081", "test-value");
 
             tableEnv.registerTableSource("Orders", kafkaAvroTableSource);
 
@@ -153,5 +155,35 @@ public class UnitTestSuiteFlink {
             e.printStackTrace();
         }
     }
+
+    public static void testSchemaRegisterClient() {
+        System.out.println("TestCase_Test Schema Register Client");
+
+        Properties properties = new Properties();
+        properties.setProperty("bootstrap.servers", "localhost:9092");
+        properties.setProperty("group.id", "consumer_test");
+        properties.setProperty("schema.subject", "test-value");
+        properties.setProperty("schema.registry", "localhost:8081");
+
+        try {
+            Schema schema = SchemaRegistryClient.getLatestSchemaFromProperty(properties);
+            System.out.println("raw schema1 for name is " + schema.getField("name"));
+
+            String USER_SCHEMA = "{"
+                    + "\"type\":\"record\","
+                    + "\"name\":\"test\","
+                    + "\"fields\":["
+                    + "  { \"name\":\"name\", \"type\":\"string\" },"
+                    + "  { \"name\":\"symbol\", \"type\":\"string\" },"
+                    + "  { \"name\":\"exchange\", \"type\":\"string\" }"
+                    + "]}";
+            Schema.Parser parser = new Schema.Parser();
+            Schema schema2 = parser.parse(USER_SCHEMA);
+            System.out.println("raw schema2 for name is " + schema.getField("name"));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 
 }

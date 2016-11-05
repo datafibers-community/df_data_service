@@ -1,5 +1,6 @@
 package com.datafibers.flinknext;
 
+import com.datafibers.test_tool.UnitTestSuiteFlink;
 import com.datafibers.util.ConstantApp;
 import com.datafibers.util.SchemaRegistryClient;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -16,6 +17,8 @@ import org.apache.flink.api.table.typeutils.RowTypeInfo;
 import org.apache.flink.streaming.util.serialization.DeserializationSchema;
 import org.apache.flink.util.Preconditions;
 import org.apache.kafka.common.errors.SerializationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -30,10 +33,12 @@ import java.util.Properties;
  * <p>Failure during deserialization are forwarded as wrapped IOExceptions.
  */
 public class AvroRowDeserializationSchema implements DeserializationSchema<Row> {
+    private static final Logger LOG = LoggerFactory.getLogger(AvroRowDeserializationSchema.class);
+    private static final long serialVersionUID = 4330538776656642779L;
 
     /** Field names to parse. Indices match fieldTypes indices. */
     private final String[] fieldNames;
-
+    private static Properties properties;
     /** Types to parse fields as. Indices match fieldNames indices. */
     private final TypeInformation<?>[] fieldTypes;
 
@@ -44,15 +49,15 @@ public class AvroRowDeserializationSchema implements DeserializationSchema<Row> 
     private boolean failOnMissingField;
 
     /** Avro Schema for the row */
-    private static Schema schema;
+    private static Schema avroSchema;
+    private static String schemaUri;
+    private static String schemaSubject;
+
 
     /** Generic Avro Schema reader for the row */
     private transient GenericDatumReader<GenericRecord> reader;
 
     /** TODO - When schema changes, the Source table does not need to be recreated.*/
-    private static boolean dynamicSchema = false;
-
-    private static Properties rowProperties;
 
     /**
      * Creates a AVRO deserializtion schema for the given fields and type classes.
@@ -60,14 +65,21 @@ public class AvroRowDeserializationSchema implements DeserializationSchema<Row> 
      * @param fieldNames Names of JSON fields to parse.
      * @param fieldTypes Type classes to parse JSON fields as.
      */
-    public AvroRowDeserializationSchema(String[] fieldNames, Class<?>[] fieldTypes, Properties properties) {
+    public AvroRowDeserializationSchema(String[] fieldNames, Class<?>[] fieldTypes, String schemaUri, String schemaSubject) {
 
-        this.rowProperties = properties;
-        this.schema = SchemaRegistryClient.getLatestSchemaFromProperty(properties);
-        this.reader = new GenericDatumReader<GenericRecord>(schema);
+        if (schemaUri == null) {
+            throw new SerializationException("empty schemaUri in AvroRowDeserializationSchema constructor");
+        }
+        LOG.info("String schemaUri, String schemaSubject are " + schemaUri + schemaSubject);
+        this.avroSchema = SchemaRegistryClient.getSchemaFromRegistry(schemaUri, schemaSubject, "latest");
 
+        if (this.avroSchema == null) {
+            throw new SerializationException("empty avroSchema in AvroRowDeserializationSchema constructor");
+        }
+
+        this.schemaUri = schemaUri;
+        this.schemaSubject = schemaSubject;
         this.fieldNames = Preconditions.checkNotNull(fieldNames, "Field names");
-
         this.fieldTypes = new TypeInformation[fieldTypes.length];
         for (int i = 0; i < fieldTypes.length; i++) {
             this.fieldTypes[i] = TypeExtractor.getForClass(fieldTypes[i]);
@@ -75,6 +87,10 @@ public class AvroRowDeserializationSchema implements DeserializationSchema<Row> 
 
         Preconditions.checkArgument(fieldNames.length == fieldTypes.length,
                 "Number of provided field names and types does not match.");
+
+        if (this.avroSchema == null) {
+            throw new SerializationException("all in construct = " + this.schemaUri + this.schemaSubject + this.avroSchema);
+        }
     }
 
     /**
@@ -83,13 +99,16 @@ public class AvroRowDeserializationSchema implements DeserializationSchema<Row> 
      * @param fieldNames Names of AVRO fields to parse.
      * @param fieldTypes Types to parse AVRO fields as.
      */
-    public AvroRowDeserializationSchema(String[] fieldNames, TypeInformation<?>[] fieldTypes, Properties properties) {
+    public AvroRowDeserializationSchema(String[] fieldNames, TypeInformation<?>[] fieldTypes, String schemaUri, String schemaSubject) {
 
-        this.rowProperties = properties;
-        this.schema = SchemaRegistryClient.getLatestSchemaFromProperty(properties);
-        this.reader = new GenericDatumReader<GenericRecord>(schema);
+        if (schemaUri == null) {
+            throw new SerializationException("empty schemaUri in AvroRowDeserializationSchema2 constructor");
+        }
 
-
+        this.avroSchema = SchemaRegistryClient.getSchemaFromRegistry(schemaUri, schemaSubject, "latest");
+        if (this.avroSchema == null) {
+            throw new SerializationException("empty avroSchema in AvroRowDeserializationSchema2 constructor");
+        }
         this.fieldNames = Preconditions.checkNotNull(fieldNames, "Field names");
         this.fieldTypes = Preconditions.checkNotNull(fieldTypes, "Field types");
 
@@ -100,20 +119,23 @@ public class AvroRowDeserializationSchema implements DeserializationSchema<Row> 
     @Override
     public Row deserialize(byte[] message) throws IOException {
         try {
+
             ByteBuffer buffer = ByteBuffer.wrap(message);
             if (buffer.get() != ConstantApp.MAGIC_BYTE) {
                 throw new SerializationException("Unknown magic byte!");
             }
-            int schema_id = buffer.getInt();
+            //int schema_id = buffer.getInt();
 
-            reader = new GenericDatumReader<GenericRecord>(schema);
+            int length = buffer.limit() - 1 - ConstantApp.idSize;
+            int start = buffer.position() + buffer.arrayOffset();
+            BinaryDecoder decoder = DecoderFactory.get().binaryDecoder(buffer.array(), start, length, null);
 
-                int length = buffer.limit() - 1 - ConstantApp.idSize;
-                int start = buffer.position() + buffer.arrayOffset();
-                BinaryDecoder decoder = DecoderFactory.get().binaryDecoder(buffer.array(), start, length, null);
-                GenericRecord gr = reader.read(null, decoder);
+            if (this.avroSchema == null) {
+                throw new SerializationException("avroSchema = null in deserialize");
+            }
 
-            //System.out.println("Decoded Avro Message is "+ gr.toString());
+            reader = new GenericDatumReader<>(avroSchema);
+            GenericRecord gr = reader.read(null, decoder);
 
             JsonNode root = objectMapper.readTree(gr.toString());
 

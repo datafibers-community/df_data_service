@@ -1,5 +1,6 @@
 package com.datafibers.test_tool;
 
+import com.datafibers.util.SchemaRegistryClient;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumReader;
@@ -12,6 +13,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 import static org.apache.avro.Schema.Type.RECORD;
 
@@ -100,6 +102,33 @@ public class SimpleAvroTest {
 
             for ( Class<?> element : fieldTypes ) {
                 System.out.println( element );
+            }
+
+            System.out.println("TestCase_Test Schema Register Client");
+
+            Properties properties = new Properties();
+            properties.setProperty("bootstrap.servers", "localhost:9092");
+            properties.setProperty("group.id", "consumer_test");
+            properties.setProperty("schema.subject", "test-value");
+            properties.setProperty("schema.registry", "localhost:8081");
+
+            try {
+                Schema schema1 = SchemaRegistryClient.getLatestSchemaFromProperty(properties);
+                System.out.println("raw schema1 for name is " + schema1.getField("name"));
+
+                String USER_SCHEMA = "{"
+                        + "\"type\":\"record\","
+                        + "\"name\":\"test\","
+                        + "\"fields\":["
+                        + "  { \"name\":\"name\", \"type\":\"string\" },"
+                        + "  { \"name\":\"symbol\", \"type\":\"string\" },"
+                        + "  { \"name\":\"exchange\", \"type\":\"string\" }"
+                        + "]}";
+                Schema.Parser parser2 = new Schema.Parser();
+                Schema schema2 = parser2.parse(USER_SCHEMA);
+                System.out.println("raw schema2 for name is " + schema.getField("name"));
+            } catch (Exception e) {
+                e.printStackTrace();
             }
 
         } catch (IOException ioe) {

@@ -55,13 +55,8 @@ public class AvroDeserializationSchema implements DeserializationSchema<GenericR
         if (buffer.get() != ConstantApp.MAGIC_BYTE) {
             throw new SerializationException("Unknown magic byte!");
         }
-        int schema_id = buffer.getInt();
 
-        if (dynamicSchema) {
-            this.avroSchema = SchemaRegistryClient.getSchemaFromRegistry(schemaUri, schemaSubject, schema_id + "");
-        }
-
-        reader = new GenericDatumReader<GenericRecord>(avroSchema);
+        reader = new GenericDatumReader<>(avroSchema);
 
         try {
             int length = buffer.limit() - 1 - ConstantApp.idSize;

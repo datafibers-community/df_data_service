@@ -25,6 +25,7 @@ public class SchemaRegistryClient {
 
     public static Schema getSchemaFromRegistry (String schemaUri, String schemaSubject, String schemaVersion) {
 
+        if(schemaVersion == null) schemaVersion = "latest";
         String fullUrl = String.format("%s/subjects/%s/versions/%s", schemaUri, schemaSubject, schemaVersion);
 
         String schemaString;
