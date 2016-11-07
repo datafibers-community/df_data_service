@@ -157,6 +157,48 @@ public class UnitTestSuiteFlink {
         }
     }
 
+    public static void testFlinkAvroSQLWithStaticSchema() {
+        System.out.println("TestCase_Test Avro SQL with static Schema");
+
+        final String STATIC_USER_SCHEMA = "{"
+                + "\"type\":\"record\","
+                + "\"name\":\"myrecord\","
+                + "\"fields\":["
+                + "  { \"name\":\"symbol\", \"type\":\"string\" },"
+                + "  { \"name\":\"name\", \"type\":\"string\" },"
+                + "  { \"name\":\"exchange\", \"type\":\"string\" }"
+                + "]}";
+        String resultFile = "/home/vagrant/test.txt";
+
+        String jarPath = DFInitService.class.getProtectionDomain().getCodeSource().getLocation().getPath();
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.createRemoteEnvironment("localhost", 6123, jarPath)
+                .setParallelism(1);
+        StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
+        Properties properties = new Properties();
+        properties.setProperty("bootstrap.servers", "localhost:9092");
+        properties.setProperty("group.id", "consumer_test");
+        properties.setProperty("schema.subject", "test-value");
+        properties.setProperty("schema.registry", "localhost:8081");
+        properties.setProperty("static.avro.schema", STATIC_USER_SCHEMA);
+
+        try {
+            Kafka09AvroTableSource kafkaAvroTableSource =  new Kafka09AvroTableSource("test", properties);
+            tableEnv.registerTableSource("Orders", kafkaAvroTableSource);
+
+            Table result = tableEnv.sql("SELECT STREAM name, symbol, exchange FROM Orders");
+
+            Files.deleteIfExists(Paths.get(resultFile));
+
+            // create a TableSink
+            TableSink sink = new CsvTableSink(resultFile, "|");
+            // write the result Table to the TableSink
+            result.writeToSink(sink);
+            env.execute("Flink AVRO SQL KAFKA Test");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     public static void testFlinkAvroSQLJson() {
         System.out.println("TestCase_Test Avro SQL to Json Sink");
 
