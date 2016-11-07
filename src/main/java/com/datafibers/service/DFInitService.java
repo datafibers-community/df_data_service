@@ -57,10 +57,10 @@ public class DFInitService {
                     UnitTestSuiteFlink.testFlinkAvroSQL();
                     break;
                 case "3":
-                    UnitTestSuiteFlink.testFlinkAvroSerDe();
+                    UnitTestSuiteFlink.testFlinkAvroSerDe("http://localhost:8081");
                     break;
                 case "4":
-                    UnitTestSuiteFlink.testSchemaRegisterClient();
+                    UnitTestSuiteFlink.testFlinkAvroSQLJson();
                 default:
                     break;
             }

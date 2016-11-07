@@ -95,13 +95,13 @@ public class AvroRowDeserializationSchema implements DeserializationSchema<Row> 
             if (buffer.get() != ConstantApp.MAGIC_BYTE) {
                 throw new SerializationException("Unknown magic byte!");
             }
-            //int schema_id = buffer.getInt();
+            String schema_id = buffer.getInt() +""; // Do not comment it out. Or else, set start as 5
 
             int length = buffer.limit() - 1 - ConstantApp.idSize;
             int start = buffer.position() + buffer.arrayOffset();
             BinaryDecoder decoder = DecoderFactory.get().binaryDecoder(buffer.array(), start, length, null);
 
-            reader = new GenericDatumReader<>(SchemaRegistryClient.getLatestSchemaFromProperty(properties));
+            reader = new GenericDatumReader<>(SchemaRegistryClient.getVersionedSchemaFromProperty(properties, schema_id));
             GenericRecord gr = reader.read(null, decoder);
 
             JsonNode root = objectMapper.readTree(gr.toString());

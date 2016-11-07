@@ -22,7 +22,7 @@ public class AvroProducerTest {
     public void producer(Schema schema) throws IOException {
 
         Properties props = new Properties();
-        props.put("metadata.broker.list", "0:9092");
+        props.put("metadata.broker.list", "localhost:9092");
         props.put("serializer.class", "kafka.serializer.DefaultEncoder");
 
         //props.put("serializer.class", "io.confluent.kafka.serializers.KafkaAvroSerializer");

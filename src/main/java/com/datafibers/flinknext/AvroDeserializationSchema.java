@@ -52,15 +52,18 @@ public class AvroDeserializationSchema implements DeserializationSchema<GenericR
     @Override
     public GenericRecord  deserialize(byte[] message) {
         ByteBuffer buffer = ByteBuffer.wrap(message);
+
         if (buffer.get() != ConstantApp.MAGIC_BYTE) {
             throw new SerializationException("Unknown magic byte!");
         }
-
+        int schema_version = buffer.getInt();
         reader = new GenericDatumReader<>(avroSchema);
-
+        System.out.println("message = " + new String(message));
+        System.out.println("avroSchema = " + avroSchema);
         try {
             int length = buffer.limit() - 1 - ConstantApp.idSize;
             int start = buffer.position() + buffer.arrayOffset();
+            System.out.println("length = " + length + " start = " + start);
             BinaryDecoder decoder = DecoderFactory.get().binaryDecoder(buffer.array(), start, length, null);
             GenericRecord gr = reader.read(null, decoder);
             return gr;
