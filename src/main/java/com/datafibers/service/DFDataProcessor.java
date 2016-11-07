@@ -79,6 +79,7 @@ public class DFDataProcessor extends AbstractVerticle {
     private static String kafka_server_host;
     private static Integer kafka_server_port;
     public static String kafka_server_host_and_port;
+    private static String schema_registry_host_and_port;
     public static StreamExecutionEnvironment env;
 
     private static final Logger LOG = LoggerFactory.getLogger(DFDataProcessor.class);
@@ -106,6 +107,8 @@ public class DFDataProcessor extends AbstractVerticle {
         this.kafka_server_host = this.kafka_connect_rest_host;
         this.kafka_server_port = config().getInteger("kafka.server.port", 9092);
         this.kafka_server_host_and_port = this.kafka_server_host + ":" + this.kafka_server_port.toString();
+        this.schema_registry_host_and_port = this.kafka_server_host + ":" +
+                config().getInteger("kafka.schema.registry.rest.port", 8081);
 
         /**
          * Create all application client
@@ -374,29 +377,66 @@ public class DFDataProcessor extends AbstractVerticle {
         LOG.info("rebuilt object as:" + dfJob.toJson());
         dfJob.setStatus(ConstantApp.DF_STATUS.RUNNING.name());
 
-        // Start Flink job Forward only if it is enabled and Connector type is FLINK_TRANS
-        if (this.transform_engine_flink_enabled && dfJob.getConnectorType().contains("FLINK_TRANS")) {
-            // Submit flink sql
-            FlinkTransformProcessor.submitFlinkSQL(dfJob, vertx,
-                    config().getInteger("flink.trans.client.timeout", 8000), env,
-                    this.zookeeper_server_host_and_port,
-                    this.kafka_server_host_and_port,
-                    HelpFunc.coalesce(dfJob.getConnectorConfig().get("group.id"),
-                            ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
-                    dfJob.getConnectorConfig().get("column.name.list"),
-                    dfJob.getConnectorConfig().get("column.schema.list"),
-                    dfJob.getConnectorConfig().get("topic.for.query"),
-                    dfJob.getConnectorConfig().get("topic.for.result"),
-                    dfJob.getConnectorConfig().get("trans.sql"),
-                    mongo, COLLECTION);
-        } // Mongo updated is delayed inside of above block
+        if (this.transform_engine_flink_enabled) {
+            // Submit Flink SQL General Transformation
+            if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.FLINK_TRANS.name()) {
+                FlinkTransformProcessor.submitFlinkSQL(dfJob, vertx,
+                        config().getInteger("flink.trans.client.timeout", 8000), env,
+                        this.zookeeper_server_host_and_port,
+                        this.kafka_server_host_and_port,
+                        HelpFunc.coalesce(dfJob.getConnectorConfig().get("group.id"),
+                                ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
+                        dfJob.getConnectorConfig().get("column.name.list"),
+                        dfJob.getConnectorConfig().get("column.schema.list"),
+                        dfJob.getConnectorConfig().get("topic.for.query"),
+                        dfJob.getConnectorConfig().get("topic.for.result"),
+                        dfJob.getConnectorConfig().get("trans.sql"),
+                        mongo, COLLECTION);
+            }
 
-        if (this.transform_engine_flink_enabled && dfJob.getConnectorType().contains("FLINK_UDF")) {
-            // Submit flink sql
-            FlinkTransformProcessor.runFlinkJar(dfJob.getUdfUpload(),
-                    this.flink_server_host + ":" + this.flink_server_port);
+            // Submit Flink UDF
+            if(dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.FLINK_UDF.name()) {
+                FlinkTransformProcessor.runFlinkJar(dfJob.getUdfUpload(),
+                        this.flink_server_host + ":" + this.flink_server_port);
+            }
+
+            // Submit Flink SQL Avro to Json
+            if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.FLINK_SQL_A2J.name()) {
+                // Submit Flink SQL General Transformation
+                FlinkTransformProcessor.submitFlinkSQLA2J(dfJob, vertx,
+                        config().getInteger("flink.trans.client.timeout", 8000), env,
+                        this.zookeeper_server_host_and_port,
+                        this.kafka_server_host_and_port,
+                        this.schema_registry_host_and_port,
+                        HelpFunc.coalesce(dfJob.getConnectorConfig().get("group.id"),
+                                ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
+                        dfJob.getConnectorConfig().get("topic.for.query"),
+                        dfJob.getConnectorConfig().get("topic.for.result"),
+                        dfJob.getConnectorConfig().get("trans.sql"),
+                        dfJob.getConnectorConfig().get("schema.subject"),
+                        dfJob.getConnectorConfig().get("static.avro.schema"),
+                        mongo, COLLECTION);
+            }
+
+            // Submit Flink SQL Json to Json
+            if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.FLINK_SQL_J2J.name()) {
+                // Submit Flink SQL General Transformation
+                FlinkTransformProcessor.submitFlinkSQLJ2J(dfJob, vertx,
+                        config().getInteger("flink.trans.client.timeout", 8000), env,
+                        this.zookeeper_server_host_and_port,
+                        this.kafka_server_host_and_port,
+                        HelpFunc.coalesce(dfJob.getConnectorConfig().get("group.id"),
+                                ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
+                        dfJob.getConnectorConfig().get("column.name.list"),
+                        dfJob.getConnectorConfig().get("column.schema.list"),
+                        dfJob.getConnectorConfig().get("topic.for.query"),
+                        dfJob.getConnectorConfig().get("topic.for.result"),
+                        dfJob.getConnectorConfig().get("trans.sql"),
+                        mongo, COLLECTION);
+            }
         }
-            mongo.insert(COLLECTION, dfJob.toJson(), r -> routingContext
+
+        mongo.insert(COLLECTION, dfJob.toJson(), r -> routingContext
                 .response().setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
                 .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
                 .end(Json.encodePrettily(dfJob.setId(r.result()))));

@@ -32,13 +32,13 @@ public class Kafka09AvroTableSource extends KafkaAvroTableSource {
 
     /**
      * Creates a Kafka 0.9 AVRO fields name and type are derived from schema info in properties
-     * @param topic
-     * @param properties
-     * Following property need to set ahead of using.
-     * properties.setProperty("schema.subject", "test-value"); //Subject Name for the SchemaRegistry
-     * properties.setProperty("schema.registry", "localhost:8081"); // Host and port for the SchemaRegistry
-     * properties.setProperty("static.avro.schema", STATIC_USER_SCHEMA); // Schema string when Schema is static.
-     * Note. With Static Schema, SchemaRegistry does not have to be used.
+     * @param topic - topic in Kafka to map the table source
+     * @param properties - list of properties to connect Kafka, etc
+     *
+     * <p>Following property need to set ahead of using.
+     * <p>properties.setProperty("schema.subject", "test-value"); // Subject Name for the SchemaRegistry
+     * <p>properties.setProperty("schema.registry", "localhost:8081"); // Host and port for the SchemaRegistry
+     * <p>properties.setProperty("static.avro.schema", STATIC_USER_SCHEMA); // Schema string when Schema is static. With Static Schema, SchemaRegistry does not have to be used.
      */
     public Kafka09AvroTableSource(String topic, Properties properties) {
 

@@ -1,5 +1,6 @@
 package com.datafibers.processor;
 
+import com.datafibers.flinknext.Kafka09AvroTableSource;
 import com.datafibers.flinknext.Kafka09JsonTableSink;
 import com.datafibers.model.DFJobPOPJ;
 import com.datafibers.util.ConstantApp;
@@ -242,6 +243,217 @@ public class FlinkTransformProcessor {
         });
     }
 
+    /**
+     * This is to read JSON data and output JSON format of data
+     * This method first submit a flink job against Kafka streaming in other thread. Then, it captures job_id from console.
+     * After that of 8000 milliseconds, it restores the system.out and put newly captured job_id to job config property
+     * flink.submit.job.id. At the end, update the record at repo - mongo as response.
+     * @param dfJob
+     * @param vertx
+     * @param maxRunTime
+     * @param flinkEnv
+     * @param zookeeperHostPort
+     * @param kafkaHostPort
+     * @param groupid
+     * @param colNameList
+     * @param colSchemaList
+     * @param inputTopic
+     * @param outputTopic
+     * @param transSql
+     * @param mongoClient
+     * @param mongoCOLLECTION
+     */
+    public static void submitFlinkSQLJ2J(DFJobPOPJ dfJob, Vertx vertx, Integer maxRunTime,
+                                      StreamExecutionEnvironment flinkEnv, String zookeeperHostPort,
+                                      String kafkaHostPort, String groupid, String colNameList,
+                                      String colSchemaList, String inputTopic, String outputTopic,
+                                      String transSql, MongoClient mongoClient, String mongoCOLLECTION) {
+
+        String uuid = dfJob.hashCode() + "_" +
+                dfJob.getName() + "_" + dfJob.getConnector() + "_" + dfJob.getTaskId();
+
+        // Create a stream to hold the output
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PrintStream ps = new PrintStream(baos);
+        PrintStream old = System.out;
+        WorkerExecutor exec_flink = vertx.createSharedWorkerExecutor(dfJob.getName() + dfJob.hashCode(),5, maxRunTime);
+
+        exec_flink.executeBlocking(future -> {
+
+            System.setOut(ps);
+            StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(flinkEnv);
+            Properties properties = new Properties();
+            properties.setProperty("bootstrap.servers", kafkaHostPort);
+            properties.setProperty("zookeeper.connect", zookeeperHostPort);
+            properties.setProperty("group.id", groupid);
+
+            String[] fieldNames = colNameList.split(",");
+
+            String[] fields = colSchemaList.split(",");
+            Class<?>[] fieldTypes = new Class[fields.length];
+            String temp;
+            for (int i = 0; i < fields.length; i++) {
+                try {
+                    switch (fields[i].trim().toLowerCase()) {
+                        case "boolean":
+                        case "string":
+                        case "long":
+                        case "float":
+                        case "integer":
+                        case "bytes":
+                            temp = StringUtils.capitalize(fields[i].trim().toLowerCase());
+                            break;
+                        case "date":
+                            temp = "java.util.Date";
+                            break;
+                        default: temp = fields[i].trim();
+                    }
+                    fieldTypes[i] = Class.forName(temp);
+                } catch (ClassNotFoundException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            Table result;
+            KafkaJsonTableSource kafkaTableSource =
+                        new Kafka09JsonTableSource(inputTopic, properties, fieldNames, fieldTypes);
+            tableEnv.registerTableSource(inputTopic, kafkaTableSource);
+            // run a SQL query on the Table and retrieve the result as a new Table
+            result = tableEnv.sql(transSql);
+            Kafka09JsonTableSink sink = new Kafka09JsonTableSink (outputTopic, properties, new FixedPartitioner());
+            result.writeToSink(sink); // Flink will create the output result topic automatically
+
+            try {
+                JobExecutionResult jres = flinkEnv.execute("DF_FLINK_TRANS_" + uuid);
+                future.complete(jres);
+            } catch (JobExecutionException je) {
+                LOG.info("Flink Client is terminated normally once the job is submitted.");
+            } catch (InterruptedException ie) {
+                LOG.info("Flink Client is terminated normally once the job is submitted.");
+            } catch (Exception e) {
+                LOG.error("Flink Submit Exception");
+            }
+
+        }, res -> {
+            LOG.debug("BLOCKING CODE IS TERMINATE?FINISHED");
+        });
+
+        long timerID = vertx.setTimer(8000, id -> {
+            // Put things back
+            System.out.flush();
+            System.setOut(old);
+            // Show what happened
+            String jobID = StringUtils.substringBetween(baos.toString(),
+                    "Submitting job with JobID:", "Waiting for job completion.").trim().replace(".", "");
+            /*
+            Close previous flink exec thread. This will lead Flink client to throw InterruptedException.
+            We capture it in above job submission code to ignore this as normal
+             */
+            exec_flink.close();
+            LOG.info("Job - DF_FLINK_TRANS_" + uuid +  "'s JobID is captured - " + jobID);
+            dfJob.setFlinkIDToJobConfig(jobID);
+
+            mongoClient.updateCollection(mongoCOLLECTION, new JsonObject().put("_id", dfJob.getId()),
+                    new JsonObject().put("$set", dfJob.toJson()), v -> {
+                        if (v.failed()) {
+                            LOG.error("update Flink JOb_ID Failed.", v.cause());
+                        }
+                    }
+            );
+        });
+    }
+    /**
+     * This is to read AVRO data and output JSON format of data
+     * This method first submit a flink job against Kafka streaming in other thread. Then, it captures job_id from console.
+     * After that of 8000 milliseconds, it restores the system.out and put newly captured job_id to job config property
+     * flink.submit.job.id. At the end, update the record at repo - mongo as response.
+     * @param dfJob
+     * @param vertx
+     * @param maxRunTime
+     * @param flinkEnv
+     * @param zookeeperHostPort
+     * @param kafkaHostPort
+     * @param groupid
+     * @param colNameList
+     * @param colSchemaList
+     * @param inputTopic
+     * @param outputTopic
+     * @param transSql
+     * @param mongoClient
+     * @param mongoCOLLECTION
+     */
+    public static void submitFlinkSQLA2J(DFJobPOPJ dfJob, Vertx vertx, Integer maxRunTime,
+                                         StreamExecutionEnvironment flinkEnv, String zookeeperHostPort,
+                                         String kafkaHostPort, String SchemaRegistryHostPort, String groupid,
+                                         String inputTopic, String outputTopic,
+                                         String transSql, String schemSubject, String staticSchemaString,
+                                         MongoClient mongoClient, String mongoCOLLECTION) {
+
+        String uuid = dfJob.hashCode() + "_" +
+                dfJob.getName() + "_" + dfJob.getConnector() + "_" + dfJob.getTaskId();
+
+        // Create a stream to hold the output
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PrintStream ps = new PrintStream(baos);
+        PrintStream old = System.out;
+        WorkerExecutor exec_flink = vertx.createSharedWorkerExecutor(dfJob.getName() + dfJob.hashCode(),5, maxRunTime);
+
+        exec_flink.executeBlocking(future -> {
+
+            System.setOut(ps);
+            StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(flinkEnv);
+            Properties properties = new Properties();
+            properties.setProperty("bootstrap.servers", kafkaHostPort);
+            properties.setProperty("zookeeper.connect", zookeeperHostPort);
+            properties.setProperty("group.id", groupid);
+            properties.setProperty("schema.subject", schemSubject);
+            properties.setProperty("schema.registry", SchemaRegistryHostPort);
+            properties.setProperty("static.avro.schema", staticSchemaString);
+
+            Kafka09AvroTableSource kafkaAvroTableSource =  new Kafka09AvroTableSource(inputTopic, properties);
+            tableEnv.registerTableSource(inputTopic, kafkaAvroTableSource);
+            Table result = tableEnv.sql(transSql);
+            Kafka09JsonTableSink json_sink = new Kafka09JsonTableSink(outputTopic, properties, new FixedPartitioner());
+            result.writeToSink(json_sink);
+            try {
+                JobExecutionResult jres = flinkEnv.execute("DF_FLINK_TRANS_SQL_AVRO_TO_JSON_" + uuid);
+                future.complete(jres);
+            } catch (JobExecutionException je) {
+                LOG.info("Flink Client is terminated normally once the job is submitted.");
+            } catch (InterruptedException ie) {
+                LOG.info("Flink Client is terminated normally once the job is submitted.");
+            } catch (Exception e) {
+                LOG.error("Flink Submit Exception");
+            }
+
+        }, res -> {
+            LOG.debug("BLOCKING CODE IS TERMINATE?FINISHED");
+        });
+
+        long timerID = vertx.setTimer(8000, id -> {
+            // Put things back
+            System.out.flush();
+            System.setOut(old);
+            // Show what happened
+            String jobID = StringUtils.substringBetween(baos.toString(),
+                    "Submitting job with JobID:", "Waiting for job completion.").trim().replace(".", "");
+            /*
+            Close previous flink exec thread. This will lead Flink client to throw InterruptedException.
+            We capture it in above job submission code to ignore this as normal
+             */
+            exec_flink.close();
+            LOG.info("Job - DF_FLINK_TRANS_" + uuid +  "'s JobID is captured - " + jobID);
+            dfJob.setFlinkIDToJobConfig(jobID);
+
+            mongoClient.updateCollection(mongoCOLLECTION, new JsonObject().put("_id", dfJob.getId()),
+                    new JsonObject().put("$set", dfJob.toJson()), v -> {
+                        if (v.failed()) {
+                            LOG.error("update Flink JOb_ID Failed.", v.cause());
+                        }
+                    }
+            );
+        });
+    }
     /**
      * This method lunch a local flink CLI and connect specified job manager in order to cancel the job.
      * Job may not exist. In this case, just delete it for now.

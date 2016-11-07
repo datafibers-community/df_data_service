@@ -22,7 +22,7 @@ All final data will kept as Avro format. All interim data will keep as Json form
 
 ## Topics
 #### Naming Conversion for Internal Topics
-DF_INTER_TOPICS_TRANSFORMS_JOB-NAME_TASK-NAME_TRANSFORM-NAME_TOPIC-NAME. For example,
-DF_INTER_TOPICS_TRANSFORMS_TestFlinkSql_TestFlinkSQLTask01_Avro_Json_SQL_testStage
+DF_INTER_TOPICS_TRANSFORMS_JOB-NAME_TASK-NAME_TRANSFORM-NAME_TOPIC-NAME_DATA-TYPE. For example,
+DF_INTER_TOPICS_TRANSFORMS_TestFlinkSql_TestFlinkSQLTask01_Avro_Json_SQL_testStage_JSON
 
 

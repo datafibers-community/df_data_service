@@ -72,6 +72,8 @@ public final class ConstantApp {
         HIVE_SOURCE,        // The plugin import data into Hive
         HIVE_SINK,          // The plugin export data out of Hive
         FLINK_TRANS,        // Flink streaming SQL
+        FLINK_SQL_A2J,      // Flink streaming SQL from Avro to Json
+        FLINK_SQL_J2J,      // Flink streaming SQL from Json to Json
         FLINK_JOINS,        // Flink streaming of Data Join
         FLINK_UDF,          // Flink user defined jar/program
         SPARK_TRANS,        // Spark streaming SQL

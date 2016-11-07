@@ -5,6 +5,14 @@ myApp.config(function(RestangularProvider) {
         return element;
     });
 });
+
+myApp.config(function(RestangularProvider) {
+    RestangularProvider.addElementTransformer('posts', function(element) {
+        element.connectorConfig_3 = element.connectorConfig;
+        return element;
+    });
+});
+
 myApp.config(['NgAdminConfigurationProvider', function (nga) {
 customHeaderTemplate =
 '<div class="navbar-header">' +
@@ -86,7 +94,9 @@ customHeaderTemplate =
         nga.field('connector').attributes({placeholder:'No space allowed and 5 chars min.'}).validation({ required: true, pattern: '[A-Za-z0-9\-]{5,20}' }).label('Transforms'),
         nga.field('connectorType', 'choice')
                 .choices([
-                                {value:'FLINK_TRANS', label:'Flink Streaming SQL'},
+                                {value:'FLINK_TRANS', label:'Flink Streaming SQL (Json|Json String)'},
+                                {value:'FLINK_SQL_A2J', label:'Flink Streaming SQL (Avro to Json)'},
+                                {value:'FLINK_SQL_J2J', label:'Flink Streaming SQL (Json to Json)'},
                                 {value:'FLINK_UDF', label:'Flink User Defined Function'}]).label('Transforms Type'),
         nga.field('udfUpload', 'file').label('Upload Jar').uploadInformation({ 'url': 'http://localhost:8080/api/df/uploaded_files', 'method': 'POST', 'apifilename': 'uploaded_file_name' })
         .defaultValue('empty.jar')
@@ -109,6 +119,16 @@ customHeaderTemplate =
         })
         .template('<ma-field ng-if="entry.values.connectorType == \'FLINK_UDF\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true),
         nga.field('connectorConfig_2','json').label('Transforms Config')
+        .defaultValue({
+        "group.id":"Kafka consumer id.",
+        "schema.subject":"The subject name for the schema",
+        "static.avro.schema":"The schema string as optional",
+        "topic.for.query":"The Kafka topic to query data",
+        "topic.for.result":"The Kafka topic to output data",
+        "trans.sql":"The Flink Stream SQL query."
+        })
+        .template('<ma-field ng-if="entry.values.connectorType == \'FLINK_SQL_A2J\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true),
+        nga.field('connectorConfig_3','json').label('Transforms Config')
 		.defaultValue({
 		"group.id":"Kafka consumer id.",
 		"data.format.input":"json_string|json",

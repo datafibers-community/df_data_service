@@ -259,6 +259,4 @@ public class UnitTestSuiteFlink {
     public static void main(String[] args) throws IOException, DecoderException {
         testFlinkAvroSerDe("http://localhost:18081");
     }
-
-
 }
