@@ -342,11 +342,13 @@ public class DFDataProcessor extends AbstractVerticle {
      * @param routingContext
      */
     private void addOneConnects(RoutingContext routingContext) {
+        LOG.info("received the body is:" + routingContext.getBodyAsString());
+        LOG.info("clean uo connectConfig to: " + HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()));
         // Get request as object
-        final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(), DFJobPOPJ.class);
+        final DFJobPOPJ dfJob = Json.decodeValue(
+                HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()), DFJobPOPJ.class);
         // Set initial status for the job
         dfJob.setStatus(ConstantApp.DF_STATUS.UNASSIGNED.name());
-        LOG.info("received the body is:" + routingContext.getBodyAsString());
         LOG.info("repack for kafka is:" + dfJob.toKafkaConnectJson().toString());
 
         // Start Kafka Connect REST API Forward only if Kafka is enabled and Connector type is Kafka Connect
@@ -370,11 +372,8 @@ public class DFDataProcessor extends AbstractVerticle {
      * @param routingContext
      */
     private void addOneTransforms(RoutingContext routingContext) {
-        // Get request as object
-        LOG.info("received the body is:" + routingContext.getBodyAsString());
-        final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(), DFJobPOPJ.class);
-        // Set initial status for the job
-        LOG.info("rebuilt object as:" + dfJob.toJson());
+        final DFJobPOPJ dfJob = Json.decodeValue(
+                HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()), DFJobPOPJ.class);
         dfJob.setStatus(ConstantApp.DF_STATUS.RUNNING.name());
 
         if (this.transform_engine_flink_enabled) {
@@ -712,7 +711,7 @@ public class DFDataProcessor extends AbstractVerticle {
      */
     private void updateKafkaConnectorStatus() {
         // Loop existing KAFKA connectors in repository and fetch their latest status from Kafka Server
-        LOG.info("Refreshing Connects status from Kafka Connect REST Server - Start.");
+        // LOG.info("Refreshing Connects status from Kafka Connect REST Server - Start.");
         List<String> list = new ArrayList<String>();
         list.add(ConstantApp.DF_CONNECT_TYPE.KAFKA_SINK.name());
         list.add(ConstantApp.DF_CONNECT_TYPE.KAFKA_SOURCE.name());
@@ -756,7 +755,7 @@ public class DFDataProcessor extends AbstractVerticle {
                                             }
                                     );
                                 } else {
-                                    LOG.info("Refreshing Connects status from Kafka Connect REST Server - No Changes.");
+                                    // LOG.info("Refreshing Connects status from Kafka Connect REST Server - No Changes.");
                                 }
                             } catch (UnirestException ue) {
                                 LOG.error("Refreshing status REST client exception", ue.getCause());
@@ -766,7 +765,7 @@ public class DFDataProcessor extends AbstractVerticle {
                         LOG.error("Refreshing status Mongo client find active connectors exception", result.cause());
                     }
         });
-        LOG.info("Refreshing Connects status from Kafka Connect REST Server - Complete.");
+        // LOG.info("Refreshing Connects status from Kafka Connect REST Server - Complete.");
     }
 
     /**

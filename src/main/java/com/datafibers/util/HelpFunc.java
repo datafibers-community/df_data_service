@@ -2,6 +2,8 @@ package com.datafibers.util;
 
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
+import org.json.JSONObject;
+
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Random;
@@ -70,4 +72,38 @@ public class HelpFunc {
                 .put("code", String.format("%6d", error_code))
                 .put("message", msg));
     }
+
+	/**
+	 * This function will search JSONSTRING to find patterned keys_1..n. If it has key_ignored_mark subkey, the element
+	 * will be removed. For example {"connectorConfig_1":{"config_ignored":"test"}, "connectorConfig_2":{"test":"test"}}
+	 * will be cleaned as {"connectorConfig":{"test":"test"}}
+	 * @param JSON_STRING
+	 * @param key_ingored_mark: If the
+	 * @return json toString()
+	 */
+	public static String cleanJsonConfig(String JSON_STRING, String key_pattern, String key_ingored_mark ) {
+		JSONObject json = new JSONObject(JSON_STRING);
+		int index = 0;
+		int index_found = 0;
+		String json_key_to_check;
+		while (true) {
+			if (index == 0) {
+				json_key_to_check = key_pattern.replace("_", "");
+			} else json_key_to_check = key_pattern + index;
+
+			if(json.has(json_key_to_check)) {
+				if(json.getJSONObject(json_key_to_check).has(key_ingored_mark)) {
+					json.remove(json_key_to_check);
+				} else index_found = index;
+			} else break;
+			index ++;
+		}
+		if (index_found > 0)
+			json.put(key_pattern.replace("_", ""), json.getJSONObject(key_pattern + index_found)).remove(key_pattern + index_found);
+		return json.toString();
+	}
+
+	public static String cleanJsonConfig(String JSON_STRING) {
+		return cleanJsonConfig(JSON_STRING, "connectorConfig_", "config_ignored");
+	}
 }

@@ -1,14 +1,10 @@
 var myApp = angular.module('myApp', ['ng-admin']);
 myApp.config(function(RestangularProvider) {
     RestangularProvider.addElementTransformer('posts', function(element) {
+        element.connectorConfig_1 = element.connectorConfig;
         element.connectorConfig_2 = element.connectorConfig;
-        return element;
-    });
-});
-
-myApp.config(function(RestangularProvider) {
-    RestangularProvider.addElementTransformer('posts', function(element) {
         element.connectorConfig_3 = element.connectorConfig;
+        element.connectorConfig_4 = element.connectorConfig;
         return element;
     });
 });
@@ -54,7 +50,6 @@ customHeaderTemplate =
     ]);
 
     producer.listView().title('Connects Dashboard');
-
     transformer.listView().title('Transforms Dashboard');
 
     producer.creationView().fields([
@@ -70,6 +65,7 @@ customHeaderTemplate =
         nga.field('jobConfig','json').attributes({placeholder:'Json format of job configuration is request.'}).label('Job Config'),
         nga.field('connectorConfig','json').label('Connects Config')
 		.defaultValue({
+		"config_ignored":"template marker, remove it to make config effective",
 		"connector.class": "org.apache.kafka.connect.file.FileStreamSourceConnector",
 		"file": "File name for streaming to Kafka.",
 		"tasks.max": "Number of tasks in parallel.",
@@ -77,8 +73,9 @@ customHeaderTemplate =
 		"topic": "The single Kafka topic name having data streamed."
 		})
 		.template('<ma-field ng-if="entry.values.connectorType == \'KAFKA_SOURCE\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true),
-		        nga.field('connectorConfig_2','json').label('Connects Config')
+		nga.field('connectorConfig_1','json').label('Connects Config')
 		.defaultValue({
+		"config_ignored":"template marker, remove it to make config effective",
 		"connector.class": "org.apache.kafka.connect.file.FileStreamSinkConnector",
 		"file": "File name to keep the data exported from Kafka.",
 		"tasks.max": "Number of tasks in parallel.",
@@ -107,8 +104,9 @@ customHeaderTemplate =
         nga.field('status').editable(false).label('Job Status'),
         nga.field('description', 'text'),
         nga.field('jobConfig','json').label('Job Config'),
-        nga.field('connectorConfig','json').label('Transforms Config')
+        nga.field('connectorConfig_1','json').label('Transforms Config')
         .defaultValue({
+        "config_ignored":"template marker, remove it to make config effective",
         "group.id":"Kafka consumer id.",
         "data.format.input":"json_string|json",
         "data.format.output":"json_string|json",
@@ -120,6 +118,7 @@ customHeaderTemplate =
         .template('<ma-field ng-if="entry.values.connectorType == \'FLINK_UDF\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true),
         nga.field('connectorConfig_2','json').label('Transforms Config')
         .defaultValue({
+        "config_ignored":"template marker, remove it to make config effective",
         "group.id":"Kafka consumer id.",
         "schema.subject":"The subject name for the schema",
         "static.avro.schema":"The schema string as optional",
@@ -129,8 +128,21 @@ customHeaderTemplate =
         })
         .template('<ma-field ng-if="entry.values.connectorType == \'FLINK_SQL_A2J\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true),
         nga.field('connectorConfig_3','json').label('Transforms Config')
+        .defaultValue({
+        "config_ignored":"template marker, remove it to make config effective",
+        "group.id":"Kafka consumer id, optional.",
+        "schema.subject":"The subject name for the schema",
+        "column.name.list":"The list of Json column names output to Kafka topic.",
+        "column.schema.list":"The list of data type for Json data, such as string,string",
+        "topic.for.query":"The Kafka topic to query data",
+        "topic.for.result":"The Kafka topic to output data",
+        "trans.sql":"The Flink Stream SQL query."
+        })
+        .template('<ma-field ng-if="entry.values.connectorType == \'FLINK_SQL_J2J\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true),
+        nga.field('connectorConfig','json').label('Transforms Config')
 		.defaultValue({
-		"group.id":"Kafka consumer id.",
+		"config_ignored":"template marker, remove it to make config effective",
+		"group.id":"Kafka consumer id, optional.",
 		"data.format.input":"json_string|json",
 		"data.format.output":"json_string|json",
 		"avro.schema.enabled":"Whether AVRO schema is enabled in Kafka Connect.",

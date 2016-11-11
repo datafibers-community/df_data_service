@@ -389,6 +389,8 @@ public class FlinkTransformProcessor {
                                          String transSql, String schemSubject, String staticSchemaString,
                                          MongoClient mongoClient, String mongoCOLLECTION) {
 
+        // TODO testing
+
         String uuid = dfJob.hashCode() + "_" +
                 dfJob.getName() + "_" + dfJob.getConnector() + "_" + dfJob.getTaskId();
 
