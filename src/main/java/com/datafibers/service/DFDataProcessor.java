@@ -527,7 +527,10 @@ public class DFDataProcessor extends AbstractVerticle {
                                         dfJob.getConnectorConfig().get("topic.for.result"),
                                         dfJob.getConnectorConfig().get("trans.sql"),
                                         mongo, COLLECTION, this.flink_server_host + ":" + this.flink_server_port,
-                                        routingContext);
+                                        routingContext, this.schema_registry_host_and_port,
+                                        dfJob.getConnectorConfig().get("schema.subject"),
+                                        dfJob.getConnectorConfig().get("static.avro.schema")
+                                        );
 
                             } else { // Where there is no change detected
                                 LOG.info("connectorConfig has NO change. Update in local repository only.");

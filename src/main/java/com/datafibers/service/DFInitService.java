@@ -5,6 +5,7 @@ import com.datafibers.util.CLIParser;
 import com.datafibers.util.Runner;
 import com.datafibers.test_tool.UnitTestSuiteFlink;
 import org.apache.commons.codec.DecoderException;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,6 +29,7 @@ public class DFInitService {
             Runner.runExample(DFDataProcessor.class);
             Runner.runExample(DFWebUI.class);
         } else {
+            if (runningMode.contains("ADMIN_TOOL")) runAdminTools();
             if (runningMode.contains("TEST")) runTestCases();
             if (runningMode.contains("Cluster")) Runner.runClusteredExample(DFDataProcessor.class);
             if (runningMode.contains("Standalone")) Runner.runExample(DFDataProcessor.class);
@@ -65,9 +67,22 @@ public class DFInitService {
                     break;
             }
 
-        } catch (IOException|DecoderException ioe) {
+        } catch (IOException | DecoderException ioe) {
             ioe.printStackTrace();
         }
+    }
 
+    public static void runAdminTools() {
+        String adminTool = StringUtils.substringAfterLast(runningMode, "ADMIN_TOOL_");
+        if (adminTool.equalsIgnoreCase("cleanmongo")) {
+            LOG.info("Clean up all history data in MongoDB repository");
+            LOG.info("Drop collection df.df_processor");
+           // new MongoAdminClient("localhost", 27017, "df").dropCollection("df_processor");
+        }
+
+        if (adminTool.contains("cleanmongo(")) {
+            String[] para = StringUtils.substringBetween(adminTool, "(", ")").split(",");
+          //  new MongoAdminClient(para[0], Integer.parseInt(para[1]), para[2]).dropCollection(para[3]);
+        }
     }
 }

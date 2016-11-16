@@ -19,7 +19,12 @@ public class CLIParser {
         options.addOption("t", "test", true, "run configured test cases, <arg>=test_case_number");
         options.addOption("u", "webui", true, "enable web, <arg>=ui|noui");
         options.addOption("m", "mode", true, "running vertx mode, <arg>=cluster|standalone");
-        options.addOption("a", "admin", true, "run admin tools, <arg>=admin_tool_name");
+        options.addOption("a", "admin", true,
+                "run admin tools, <arg>=function_name, such as " +
+                        "\n Function Name: cleanmongo - clean up repository data" +
+                        "\n Usage: " +
+                        "\n -a cleanmongo" +
+                        "\n -a cleanmongo(localhost,27017,df,df_processor)");
     }
 
     public CommandLine parse() {
@@ -82,7 +87,8 @@ public class CLIParser {
         LOG.info("run_mode = " + this.run_mode);
         LOG.info("service_mode = " + this.service_mode);
         LOG.info("test_mode = " + this.test_mode);
-        return this.run_mode + this.service_mode + this.test_mode;
+        LOG.info("admin_tool = " + this.admin_tool);
+        return this.run_mode + this.service_mode + this.test_mode + this.admin_tool;
     }
 
     public void help() {
