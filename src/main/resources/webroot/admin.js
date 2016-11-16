@@ -17,7 +17,7 @@ customHeaderTemplate =
     '</a>' +
 '</div>' +
 '<p class="navbar-text navbar-right">' +
-    '<a href="https://github.com/datafibers/df_data_processor/">' +
+    '<a href="https://github.com/datafibers-community/df_data_service">' +
         '<img src="https://raw.githubusercontent.com/datafibers/datafibers.github.io/master/img/logos/logo_blue.png" width="24" height="28">' +
     '</a>' +
 '</p>';
@@ -62,7 +62,7 @@ customHeaderTemplate =
                                 {value:'KAFKA_SINK', label:'Kafka Connect Sink'}]).label('Connector Type'),
         nga.field('status').editable(false).label('Job Status'),
         nga.field('description', 'text'),
-        nga.field('jobConfig','json').attributes({placeholder:'Json format of job configuration is request.'}).label('Job Config'),
+        nga.field('jobConfig','json').defaultValue({}).label('Job Config'),
         nga.field('connectorConfig','json').label('Connects Config')
 		.defaultValue({
 		"config_ignored":"template marker, remove it to make config effective",
@@ -103,7 +103,7 @@ customHeaderTemplate =
         .template('<ma-field ng-if="entry.values.connectorType == \'FLINK_UDF\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true),
         nga.field('status').editable(false).label('Job Status'),
         nga.field('description', 'text'),
-        nga.field('jobConfig','json').label('Job Config'),
+        nga.field('jobConfig','json').defaultValue({}).label('Job Config'),
         nga.field('connectorConfig_1','json').label('Transforms Config')
         .defaultValue({
         "config_ignored":"template marker, remove it to make config effective",

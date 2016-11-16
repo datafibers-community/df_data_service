@@ -1,8 +1,7 @@
 package com.datafibers.test_tool;
 
-import com.datafibers.flinknext.AvroDeserializationSchema;
-import com.datafibers.flinknext.Kafka09AvroTableSource;
-import com.datafibers.flinknext.Kafka09JsonTableSink;
+import com.datafibers.flinknext.*;
+import com.datafibers.model.DFJobPOPJ;
 import com.datafibers.processor.FlinkTransformProcessor;
 import com.datafibers.service.DFInitService;
 import com.datafibers.util.SchemaRegistryClient;
@@ -29,6 +28,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.Properties;
 
 /**
@@ -109,7 +109,9 @@ public class UnitTestSuiteFlink {
     public static void testFlinkAvroSerDe(String schema_registery_host) {
         System.out.println("TestCase_Test Avro SerDe");
 
-        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        //StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        String jarPath = DFInitService.class.getProtectionDomain().getCodeSource().getLocation().getPath();
+        DFRemoteStreamEnvironment env = new DFRemoteStreamEnvironment("localhost", 6123, jarPath).setParallelism(1);
         Properties properties = new Properties();
         properties.setProperty("bootstrap.servers", "localhost:9092");
         properties.setProperty("group.id", "consumer_test");
@@ -119,7 +121,9 @@ public class UnitTestSuiteFlink {
             FlinkKafkaConsumer09<GenericRecord> kafkaConsumer = new FlinkKafkaConsumer09<GenericRecord>("test", avroSchemaDecoder, properties);
             DataStream<GenericRecord> messageStream = env.addSource(kafkaConsumer);
             messageStream.rebalance().print();
-            env.execute("Flink AVRO KAFKA Test SerDe");
+            HashMap<String, String> hm = new HashMap<>();
+            hm.put("test", "test");
+            env.executeWithDFObj("Flink AVRO KAFKA Test SerDe", new DFJobPOPJ().setJobConfig(hm));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -203,7 +207,7 @@ public class UnitTestSuiteFlink {
         System.out.println("TestCase_Test Avro SQL to Json Sink");
 
         String jarPath = DFInitService.class.getProtectionDomain().getCodeSource().getLocation().getPath();
-        StreamExecutionEnvironment env = StreamExecutionEnvironment.createRemoteEnvironment("localhost", 6123, jarPath)
+        DFRemoteStreamEnvironment env = new DFRemoteStreamEnvironment("localhost", 6123, jarPath)
                 .setParallelism(1);
         StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
         Properties properties = new Properties();
@@ -213,6 +217,7 @@ public class UnitTestSuiteFlink {
         properties.setProperty("schema.registry", "localhost:8081");
 
         try {
+            HashMap<String, String> hm = new HashMap<>();
             Kafka09AvroTableSource kafkaAvroTableSource =  new Kafka09AvroTableSource("test", properties);
             tableEnv.registerTableSource("Orders", kafkaAvroTableSource);
 
@@ -221,7 +226,7 @@ public class UnitTestSuiteFlink {
 
             // write the result Table to the TableSink
             result.writeToSink(json_sink);
-            env.execute("Flink AVRO SQL KAFKA Test");
+            env.executeWithDFObj("Flink AVRO SQL KAFKA Test", new DFJobPOPJ().setJobConfig(hm) );
         } catch (Exception e) {
             e.printStackTrace();
         }

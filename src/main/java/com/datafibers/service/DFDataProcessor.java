@@ -1,5 +1,6 @@
 package com.datafibers.service;
 
+import com.datafibers.flinknext.DFRemoteStreamEnvironment;
 import com.datafibers.flinknext.Kafka09JsonTableSink;
 import com.datafibers.model.DFJobPOPJ;
 import com.datafibers.processor.FlinkTransformProcessor;
@@ -80,7 +81,7 @@ public class DFDataProcessor extends AbstractVerticle {
     private static Integer kafka_server_port;
     public static String kafka_server_host_and_port;
     private static String schema_registry_host_and_port;
-    public static StreamExecutionEnvironment env;
+    public static DFRemoteStreamEnvironment env;
 
     private static final Logger LOG = LoggerFactory.getLogger(DFDataProcessor.class);
 
@@ -136,15 +137,18 @@ public class DFDataProcessor extends AbstractVerticle {
         // Flink stream environment for data transformation
         if(transform_engine_flink_enabled) {
             if (config().getBoolean("debug.mode", Boolean.FALSE)) {
-                env = StreamExecutionEnvironment.getExecutionEnvironment()
-                        .setParallelism(config().getInteger("flink.job.parallelism", 1));
+                // TODO Add DF LocalExecutionEnvironment Spport
+//                env = StreamExecutionEnvironment.getExecutionEnvironment()
+//                        .setParallelism(config().getInteger("flink.job.parallelism", 1));
             } else {
                 String jarPath = getClass().getProtectionDomain().getCodeSource().getLocation().getPath();
                 LOG.debug("Distribute " + jarPath + " to Apache Flink cluster at " +
                         this.flink_server_host + ":" + this.flink_server_port);
-                env = StreamExecutionEnvironment.createRemoteEnvironment(this.flink_server_host,
-                        this.flink_server_port, jarPath)
+                env = new DFRemoteStreamEnvironment(this.flink_server_host, this.flink_server_port, jarPath)
                         .setParallelism(config().getInteger("flink.job.parallelism", 1));
+//                env = StreamExecutionEnvironment.createRemoteEnvironment(this.flink_server_host,
+//                        this.flink_server_port, jarPath)
+//                        .setParallelism(config().getInteger("flink.job.parallelism", 1));
             }
         }
 
@@ -376,6 +380,8 @@ public class DFDataProcessor extends AbstractVerticle {
                 HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()), DFJobPOPJ.class);
         dfJob.setStatus(ConstantApp.DF_STATUS.RUNNING.name());
 
+        LOG.info("received from UI form - " + HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()));
+
         if (this.transform_engine_flink_enabled) {
             // Submit Flink SQL General Transformation
             if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.FLINK_TRANS.name()) {
@@ -401,7 +407,6 @@ public class DFDataProcessor extends AbstractVerticle {
 
             // Submit Flink SQL Avro to Json
             if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.FLINK_SQL_A2J.name()) {
-                // Submit Flink SQL General Transformation
                 FlinkTransformProcessor.submitFlinkSQLA2J(dfJob, vertx,
                         config().getInteger("flink.trans.client.timeout", 8000), env,
                         this.zookeeper_server_host_and_port,
@@ -413,13 +418,12 @@ public class DFDataProcessor extends AbstractVerticle {
                         dfJob.getConnectorConfig().get("topic.for.result"),
                         dfJob.getConnectorConfig().get("trans.sql"),
                         dfJob.getConnectorConfig().get("schema.subject"),
-                        dfJob.getConnectorConfig().get("static.avro.schema"),
+                        HelpFunc.coalesce(dfJob.getConnectorConfig().get("static.avro.schema"),"empty_schema"),
                         mongo, COLLECTION);
             }
 
             // Submit Flink SQL Json to Json
             if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.FLINK_SQL_J2J.name()) {
-                // Submit Flink SQL General Transformation
                 FlinkTransformProcessor.submitFlinkSQLJ2J(dfJob, vertx,
                         config().getInteger("flink.trans.client.timeout", 8000), env,
                         this.zookeeper_server_host_and_port,

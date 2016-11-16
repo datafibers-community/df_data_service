@@ -4,8 +4,11 @@ import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import org.json.JSONObject;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Properties;
 import java.util.Random;
 
 /**
@@ -105,5 +108,16 @@ public class HelpFunc {
 
 	public static String cleanJsonConfig(String JSON_STRING) {
 		return cleanJsonConfig(JSON_STRING, "connectorConfig_", "config_ignored");
+	}
+
+	/**
+	 * Print list of Properties
+	 * @param prop
+	 * @return
+	 */
+	public static String getPropertyAsString(Properties prop) {
+		StringWriter writer = new StringWriter();
+		prop.list(new PrintWriter(writer));
+		return writer.getBuffer().toString();
 	}
 }

@@ -10,6 +10,8 @@ public class CLIParser {
     public static String run_mode;
     public static String service_mode;
     public static String test_mode;
+    public static String admin_tool;
+
 
     public CLIParser(String[] args) {
         this.args = args;
@@ -17,6 +19,7 @@ public class CLIParser {
         options.addOption("t", "test", true, "run configured test cases, <arg>=test_case_number");
         options.addOption("u", "webui", true, "enable web, <arg>=ui|noui");
         options.addOption("m", "mode", true, "running vertx mode, <arg>=cluster|standalone");
+        options.addOption("a", "admin", true, "run admin tools, <arg>=admin_tool_name");
     }
 
     public CommandLine parse() {
@@ -53,6 +56,13 @@ public class CLIParser {
                 }
             } else {
                 this.test_mode = "NO_TEST";
+            }
+
+            if (cmd.hasOption("a")) {
+                if(cmd.getOptionValue("a") != null)
+                    this.admin_tool = "ADMIN_TOOL_" + cmd.getOptionValue("a");
+            } else {
+                this.admin_tool = "NO_ADMIN_TOOL";
             }
 
 
