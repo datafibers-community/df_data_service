@@ -2,6 +2,7 @@ package com.datafibers.service;
 
 import com.datafibers.test_tool.AvroProducerTest;
 import com.datafibers.util.CLIParser;
+import com.datafibers.util.MongoAdminClient;
 import com.datafibers.util.Runner;
 import com.datafibers.test_tool.UnitTestSuiteFlink;
 import org.apache.commons.codec.DecoderException;
@@ -77,12 +78,12 @@ public class DFInitService {
         if (adminTool.equalsIgnoreCase("cleanmongo")) {
             LOG.info("Clean up all history data in MongoDB repository");
             LOG.info("Drop collection df.df_processor");
-           // new MongoAdminClient("localhost", 27017, "df").dropCollection("df_processor");
+            new MongoAdminClient("localhost", 27017, "DEFAULT_DB").dropCollection("df_processor");
         }
 
         if (adminTool.contains("cleanmongo(")) {
             String[] para = StringUtils.substringBetween(adminTool, "(", ")").split(",");
-          //  new MongoAdminClient(para[0], Integer.parseInt(para[1]), para[2]).dropCollection(para[3]);
+            new MongoAdminClient(para[0], Integer.parseInt(para[1]), para[2]).dropCollection(para[3]);
         }
     }
 }
