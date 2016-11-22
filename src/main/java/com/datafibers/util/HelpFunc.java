@@ -12,7 +12,7 @@ import java.util.Properties;
 import java.util.Random;
 
 /**
- * List of help functions
+ * List of help functions to be used for all DF classes
  */
 public class HelpFunc {
 	
