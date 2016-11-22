@@ -11,6 +11,8 @@ import java.util.Date;
 import java.util.Properties;
 import java.util.Random;
 
+import org.json.JSONObject;
+
 /**
  * List of help functions
  */

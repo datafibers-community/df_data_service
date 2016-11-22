@@ -27,6 +27,10 @@ public final class ConstantApp {
     public static final String DF_TRANSFORMS_REST_URL_WITH_ID = DF_TRANSFORMS_REST_URL + "/:id";
     public static final String DF_TRANSFORMS_UPLOAD_FILE_REST_URL_WILD = "/api/df/uploaded_files*";
     public static final String DF_TRANSFORMS_UPLOAD_FILE_REST_URL = "/api/df/uploaded_files";
+    // DF REST endpoint URLs for all registries: SZ
+    public static final String DF_SCHEMA_REST_URL = "/api/df/schema";
+    public static final String DF_SCHEMA_REST_URL_WILD = "/api/df/schema*";
+    public static final String DF_SCHEMA_REST_URL_WITH_ID = DF_SCHEMA_REST_URL + "/:id";
 
     // Kafka CONNECT endpoint URLs
     public static final String KAFKA_CONNECT_REST_URL = "/connectors";
@@ -41,6 +45,9 @@ public final class ConstantApp {
     public static final String APPLICATION_JSON_CHARSET_UTF_8 = "application/json; charset=utf-8";
     public static final String TEXT_HTML = "text/html";
 
+    public static final String AVRO_REGISTRY_CONTENT_TYPE = "application/vnd.schemaregistry.v1+json";
+    
+    
     // HTTP status codes
     public static final int STATUS_CODE_OK = 200;
     public static final int STATUS_CODE_OK_CREATED = 201;
@@ -84,4 +91,8 @@ public final class ConstantApp {
         NONE
     }
 
+    public static final String SCHEMA = "schema";
+    public static final String COMPATIBILITY = "compatibility";
+    public static final String SUBJECT = "subject";
+    
 }
