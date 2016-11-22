@@ -230,7 +230,7 @@ public class FlinkTransformProcessor {
      * @param outputTopic
      * @param transSql
      * @param mongoClient
-     * @param mongoCOLLECTION
+     * @param mongoCOLLECTION The mongodb collection name
      */
     public static void submitFlinkSQLJ2J(DFJobPOPJ dfJob, Vertx vertx, Integer maxRunTime,
                                       DFRemoteStreamEnvironment flinkEnv, String zookeeperHostPort,
