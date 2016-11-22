@@ -60,6 +60,7 @@ customHeaderTemplate =
     producer.listView().title('Connects Dashboard');
     transformer.listView().title('Transforms Dashboard');
     schema.listView().title('Schema Registry Dashboard');
+    schema.listView().batchActions([]);
 
     producer.creationView().fields([
         nga.field('taskId', 'number').format('0o').label('Task ID'),
@@ -182,6 +183,7 @@ customHeaderTemplate =
     producer.editionView().fields(producer.creationView().fields());
 	transformer.editionView().fields(transformer.creationView().fields());
 	schema.editionView().fields(schema.creationView().fields());
+	schema.editionView().actions(['list']);
 
 	// set the fields of the processor entity list view
     processor.listView().sortField('name').fields([
@@ -194,14 +196,14 @@ customHeaderTemplate =
         nga.field('status').label('Job Status')
     ]);
     processor.listView().title('All Connects and Transforms');
-    processor.listView().batchActions([])
+    processor.listView().batchActions([]);
 
     // set the fields of the producer entity list view
     installed_connects.listView().sortField('class').fields([
         nga.field('class').label('Connects')
     ]);
     installed_connects.listView().title('Connects Installed');
-    installed_connects.listView().batchActions([])
+    installed_connects.listView().batchActions([]);
 
     // add the producer entity to the admin application
     admin.addEntity(processor).addEntity(producer).addEntity(transformer).addEntity(installed_connects).addEntity(schema);
@@ -211,7 +213,7 @@ customHeaderTemplate =
   .addChild(nga.menu(processor).icon('<span class="fa fa-globe fa-fw"></span>'))
   .addChild(nga.menu(producer).icon('<span class="fa fa-plug fa-fw"></span>'))
   .addChild(nga.menu(transformer).icon('<span class="fa fa-flask fa-fw"></span>'))
-  .addChild(nga.menu(schema).icon('<span class="fa fa-cog fa-fw"></span>'))
+  .addChild(nga.menu(schema).icon('<span class="fa fa-scribd fa-fw"></span>'))
   .addChild(nga.menu(installed_connects).icon('<span class="fa fa-cog fa-fw"></span>'))
 );
     // attach the admin application to the DOM and execute it
