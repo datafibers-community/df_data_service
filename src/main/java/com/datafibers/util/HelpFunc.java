@@ -14,7 +14,7 @@ import java.util.Random;
 import org.json.JSONObject;
 
 /**
- * List of help functions
+ * List of help functions to be used for all DF class.
  */
 public class HelpFunc {
 	
