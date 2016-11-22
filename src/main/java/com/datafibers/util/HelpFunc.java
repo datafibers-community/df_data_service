@@ -2,7 +2,6 @@ package com.datafibers.util;
 
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
-import org.json.JSONObject;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
