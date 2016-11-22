@@ -27,6 +27,7 @@ customHeaderTemplate =
 	var processor = nga.entity('processor').label('ALL');
     var producer = nga.entity('ps').label('CONNECTS');
 	var transformer = nga.entity('tr').label('TRANSFORMS');
+	var schema = nga.entity('schema').identifier(nga.field('subject')).label('SCHEMA');
     var installed_connects = nga.entity('installed_connects').identifier(nga.field('class')).label('INSTALLED').readOnly();
 
     // set the fields of the producer entity list view
@@ -48,9 +49,17 @@ customHeaderTemplate =
         nga.field('connectorType').label('Type'),
         nga.field('status').label('Job Status')
     ]);
+  	schema.listView().sortField('name').fields([
+  	    nga.field('subject').label('Subject Name').isDetailLink(true),
+        nga.field('id').label('Schema ID'),
+        nga.field('version').label('Schema Version'),
+        nga.field('schema').label('Schema'),
+        nga.field('compatibility').label('Compatibility')
+    ]);
 
     producer.listView().title('Connects Dashboard');
     transformer.listView().title('Transforms Dashboard');
+    schema.listView().title('Schema Registry Dashboard');
 
     producer.creationView().fields([
         nga.field('taskId', 'number').format('0o').label('Task ID'),
@@ -156,12 +165,25 @@ customHeaderTemplate =
 
     ]);
 
+    schema.creationView().fields([
+        nga.field('id', 'number').format('0o').label('Schema ID'),
+        nga.field('subject').label('Subject'),
+        nga.field('version').label('Schema Version'),
+        nga.field('schema', 'json').label('Schema'),
+        nga.field('compatibility', 'choice').choices([
+                                {value:'NONE', label:'NONE'},
+                                {value:'FULL', label:'FULL'},
+                                {value:'FORWARD', label:'FORWARD'},
+                                {value:'BACKWARD', label:'BACKWARD'}
+                                ]).label('Compatibility')
+    ]);
 	// TODO populate default value for each type of transforms/connects as template
     // use the same fields for the editionView as for the creationView
     producer.editionView().fields(producer.creationView().fields());
 	transformer.editionView().fields(transformer.creationView().fields());
+	schema.editionView().fields(schema.creationView().fields());
 
-	// set the fields of the proceesor entity list view
+	// set the fields of the processor entity list view
     processor.listView().sortField('name').fields([
         nga.field('id').label('Job ID').isDetailLink(true),
         nga.field('taskId', 'number').format('0o').label('Task ID'),
@@ -182,13 +204,14 @@ customHeaderTemplate =
     installed_connects.listView().batchActions([])
 
     // add the producer entity to the admin application
-    admin.addEntity(processor).addEntity(producer).addEntity(transformer).addEntity(installed_connects);
+    admin.addEntity(processor).addEntity(producer).addEntity(transformer).addEntity(installed_connects).addEntity(schema);
 
 	// customize menubar
 	admin.menu(nga.menu()
   .addChild(nga.menu(processor).icon('<span class="fa fa-globe fa-fw"></span>'))
   .addChild(nga.menu(producer).icon('<span class="fa fa-plug fa-fw"></span>'))
   .addChild(nga.menu(transformer).icon('<span class="fa fa-flask fa-fw"></span>'))
+  .addChild(nga.menu(schema).icon('<span class="fa fa-cog fa-fw"></span>'))
   .addChild(nga.menu(installed_connects).icon('<span class="fa fa-cog fa-fw"></span>'))
 );
     // attach the admin application to the DOM and execute it
