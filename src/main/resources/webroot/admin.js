@@ -178,11 +178,23 @@ customHeaderTemplate =
                                 {value:'BACKWARD', label:'BACKWARD'}
                                 ]).label('Compatibility')
     ]);
+
+    schema.editionView().fields([
+                                nga.field('id', 'number').format('0o').editable(false).label('Schema ID').isDetailLink(false),
+                                nga.field('subject').editable(false).label('Subject'),
+                                nga.field('version').editable(false).label('Schema Version'),
+                                nga.field('schema', 'json').label('Schema'),
+                                nga.field('compatibility', 'choice').choices([
+                                                        {value:'NONE', label:'NONE'},
+                                                        {value:'FULL', label:'FULL'},
+                                                        {value:'FORWARD', label:'FORWARD'},
+                                                        {value:'BACKWARD', label:'BACKWARD'}
+                                                        ]).label('Compatibility')
+    ]);
 	// TODO populate default value for each type of transforms/connects as template
     // use the same fields for the editionView as for the creationView
     producer.editionView().fields(producer.creationView().fields());
 	transformer.editionView().fields(transformer.creationView().fields());
-	schema.editionView().fields(schema.creationView().fields());
 	schema.editionView().actions(['list']);
 
 	// set the fields of the processor entity list view

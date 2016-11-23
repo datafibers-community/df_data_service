@@ -1149,13 +1149,14 @@ public class DFDataProcessor extends AbstractVerticle {
                     String rs = portRestResponse.getBody();
                     
                     if (rs != null) {
-	                    LOG.info("== Update schema sucefully. Response rs: " + rs);
-	                    LOG.info("== Update schema sucefully. received response from schema registry server for updating schema: " + portRestResponse.statusMessage());
-	                    LOG.info("== Update schema sucefully. Received response from schema registry server for updating schema: " + portRestResponse.statusCode());
-	                    
-	                    routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_OK)
-	    	            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-	    	            .end(portRestResponse.statusMessage());
+	                    LOG.info("== Update schema successfully. Response rs: " + rs);
+	                    LOG.info("== Update schema successfully. received response from schema registry server for updating schema: " + portRestResponse.statusMessage());
+	                    LOG.info("== Update schema successfully. Received response from schema registry server for updating schema: " + portRestResponse.statusCode());
+
+                        routingContext
+                                .response().setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+                                .end();
                     }
                 });
 
