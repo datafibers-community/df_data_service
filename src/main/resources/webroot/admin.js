@@ -59,7 +59,7 @@ customHeaderTemplate =
 
     producer.listView().title('Connects Dashboard');
     transformer.listView().title('Transforms Dashboard');
-    schema.listView().title('Schema Registry Dashboard');
+    schema.listView().title('Schema Dashboard');
     schema.listView().batchActions([]);
 
     producer.creationView().fields([
@@ -93,6 +93,17 @@ customHeaderTemplate =
 		"topics": "List of Kafka topics having data streamed out"
 		})
 		.template('<ma-field ng-if="entry.values.connectorType == \'KAFKA_SINK\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true)
+    ]);
+
+    producer.editionView().fields([
+        nga.field('taskId', 'number').label('Task ID').editable(false),
+        nga.field('name').label('Job Name').editable(false),
+        nga.field('connector').attributes({placeholder:'No space allowed and 5 chars min.'}).validation({ required: true, pattern: '[A-Za-z0-9\-]{5,20}' }).label('Connects'),
+        nga.field('connectorType').editable(false),
+        nga.field('status').editable(false).label('Job Status'),
+        nga.field('description', 'text'),
+        nga.field('jobConfig','json').defaultValue({}).label('Job Config'),
+        nga.field('connectorConfig','json').label('Connects Config')
     ]);
 
 	transformer.creationView().fields([
@@ -166,6 +177,23 @@ customHeaderTemplate =
 
     ]);
 
+	transformer.editionView().fields([
+        nga.field('taskId', 'number').label('Task ID').editable(false),
+        nga.field('name').label('Job Name').editable(false),
+        nga.field('connector').attributes({placeholder:'No space allowed and 5 chars min.'}).validation({ required: true, pattern: '[A-Za-z0-9\-]{5,20}' }).label('Transforms'),
+        nga.field('connectorType').editable(false),
+        nga.field('udfUpload', 'file').label('Upload Jar').uploadInformation({ 'url': 'http://localhost:8080/api/df/uploaded_files', 'method': 'POST', 'apifilename': 'uploaded_file_name' })
+        .defaultValue('empty.jar')
+        .validation({ validator: function(value) {
+                if (value.indexOf('.jar') == -1) throw new Error ('Invalid .jar file!');
+        } })
+        .template('<ma-field ng-if="entry.values.connectorType == \'FLINK_UDF\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true),
+        nga.field('status').editable(false).label('Job Status'),
+        nga.field('description', 'text'),
+        nga.field('jobConfig','json').defaultValue({}).label('Job Config'),
+        nga.field('connectorConfig','json').label('Transforms Config')
+    ]);
+
     schema.creationView().fields([
         nga.field('id', 'number').format('0o').label('Schema ID'),
         nga.field('subject').label('Subject'),
@@ -180,7 +208,7 @@ customHeaderTemplate =
     ]);
 
     schema.editionView().fields([
-                                nga.field('id', 'number').format('0o').editable(false).label('Schema ID').isDetailLink(false),
+                                nga.field('id', 'number').editable(false).label('Schema ID').isDetailLink(false),
                                 nga.field('subject').editable(false).label('Subject'),
                                 nga.field('version').editable(false).label('Schema Version'),
                                 nga.field('schema', 'json').label('Schema'),
@@ -193,8 +221,7 @@ customHeaderTemplate =
     ]);
 	// TODO populate default value for each type of transforms/connects as template
     // use the same fields for the editionView as for the creationView
-    producer.editionView().fields(producer.creationView().fields());
-	transformer.editionView().fields(transformer.creationView().fields());
+
 	schema.editionView().actions(['list']);
 
 	// set the fields of the processor entity list view
