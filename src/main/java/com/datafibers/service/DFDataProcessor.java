@@ -560,6 +560,7 @@ public class DFDataProcessor extends AbstractVerticle {
      */
     private void updateOneTransforms(RoutingContext routingContext) {
         final String id = routingContext.request().getParam("id");
+        LOG.debug("Body received:" + routingContext.getBodyAsString());
         final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(), DFJobPOPJ.class);
         LOG.debug("received the body is from updateOne:" + routingContext.getBodyAsString());
         String connectorConfigString = dfJob.mapToJsonString(dfJob.getConnectorConfig());
@@ -592,7 +593,7 @@ public class DFDataProcessor extends AbstractVerticle {
                                         mongo, COLLECTION, this.flink_server_host + ":" + this.flink_server_port,
                                         routingContext, this.schema_registry_host_and_port,
                                         dfJob.getConnectorConfig().get("schema.subject"),
-                                        dfJob.getConnectorConfig().get("static.avro.schema")
+                                        HelpFunc.coalesce(dfJob.getConnectorConfig().get("static.avro.schema"),"empty_schema")
                                         );
 
                             } else { // Where there is no change detected

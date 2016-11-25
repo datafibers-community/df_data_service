@@ -63,7 +63,8 @@ public class AvroRowDeserializationSchema implements DeserializationSchema<Row> 
     public AvroRowDeserializationSchema(String[] fieldNames, Class<?>[] fieldTypes, Properties properties) {
 
         this.properties = Preconditions.checkNotNull(properties, "properties");
-        if (properties.getProperty("static.avro.schema") != null) {
+        if (properties.getProperty("static.avro.schema") != null &&
+                !properties.getProperty("static.avro.schema").equalsIgnoreCase("empty_schema") ) {
             static_avro_schema = properties.getProperty("static.avro.schema");
         } else static_avro_schema = null;
         this.fieldNames = Preconditions.checkNotNull(fieldNames, "Field names");

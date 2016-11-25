@@ -1,6 +1,7 @@
 package com.datafibers.model;
 
 import com.datafibers.util.ConstantApp;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.json.JsonObject;
@@ -258,6 +259,7 @@ public class DFJobPOPJ {
         return this;
     }
 
+    @JsonIgnore
     public String getFlinkIDFromJobConfig() {
         if(this.jobConfig != null)
             return this.jobConfig.get("flink.submit.job.id");

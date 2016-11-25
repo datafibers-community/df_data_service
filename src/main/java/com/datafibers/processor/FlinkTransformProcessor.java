@@ -12,6 +12,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.RoutingContext;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.logging.Log;
 import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.table.StreamTableEnvironment;
@@ -339,6 +340,8 @@ public class FlinkTransformProcessor {
         properties.setProperty("schema.subject", schemSubject);
         properties.setProperty("schema.registry", SchemaRegistryHostPort);
         properties.setProperty("static.avro.schema", staticSchemaString);
+
+        LOG.info(HelpFunc.getPropertyAsString(properties));
 
         WorkerExecutor exec_flink = vertx.createSharedWorkerExecutor(dfJob.getName() + dfJob.hashCode(),5, maxRunTime);
 
