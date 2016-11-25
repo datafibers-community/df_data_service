@@ -4,6 +4,7 @@ import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.WorkerExecutor;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
@@ -23,11 +24,17 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import com.datafibers.flinknext.DFRemoteStreamEnvironment;
+
+import org.apache.flink.api.common.JobExecutionResult;
+import org.apache.flink.api.table.Table;
+import org.apache.flink.streaming.connectors.kafka.partitioner.FixedPartitioner;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.datafibers.flinknext.DFRemoteStreamEnvironment;
+import com.datafibers.flinknext.Kafka09AvroTableSource;
 import com.datafibers.flinknext.Kafka09JsonTableSink;
 import com.datafibers.model.DFJobPOPJ;
 import com.datafibers.processor.FlinkTransformProcessor;
@@ -873,116 +880,61 @@ public class DFDataProcessor extends AbstractVerticle {
         postRestClientRequest.end();
     }
     public void getAllSchemas(RoutingContext routingContext) {
-		// curl -X GET -i http://localhost:8081/subjects
-		String restURI = "http://" + this.kafka_connect_rest_host + ":" + this.kafka_registry_rest_port + "/subjects";
-		LOG.debug("=== Starting List All Subjects ... restURI: " + restURI);
-		String returnString = "";
-		
-		try {
-			HttpResponse<String> res = Unirest.get(restURI).header("accept", "application/vnd.schemaregistry.v1+json").asString();
-			String subjects = res.getBody();
-			// ["Kafka-value","Kafka-key"]
-			LOG.debug("==== res ==> res: " + res);
-			LOG.debug("==== All subjects ==> subjects: " + subjects);
-			StringBuffer strBuff = new StringBuffer(1000);
-			int count = 0;
-			
-			if (subjects.compareToIgnoreCase("[]") != 0) { // Has active subjects
-				for (String subject : subjects.substring(2, subjects.length() - 2).split("\",\"")) {
-					// Get connector config: curl -X GET -i http://localhost:8081/subjects/Kafka-value/versions/latest
-					// {"subject":"Kafka-value","version":1,"id":1,"schema":"\"string\""}
-					HttpResponse<JsonNode> resSubject = Unirest.get(restURI + "/" + subject + "/versions/latest")
-							.header("accept", "application/json").asJson();
-					JsonNode resSchema = resSubject.getBody();
-					System.out.println("==== resSchema: " + resSchema);
-					
-					if (count == 0) {
-						strBuff.append("[");
-					}
-					
-					count++;
-					strBuff.append(resSchema).append(",");
-				}
-				
-				System.out.println("==== strBuf.toString(): " + strBuff.toString() + ", count = " + count);
-				
-				if (count > 0) {
-					returnString = strBuff.toString().substring(0, strBuff.toString().length() -1) + "]";
-				}
-				
-				System.out.println("==== returnString: " + returnString);
-				
-				routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_OK)
-                .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                .end(returnString);
-			} else {
-				routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_OK)
-                .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                .end(returnString);
-			}
-		} catch (JSONException e) {
-			routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-            .end(HelpFunc.errorMsg(31, "POST Request exception - " + e.toString()));
-			e.printStackTrace();
-		} catch (UnirestException e) {
-			routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-            .end(HelpFunc.errorMsg(31, "POST Request exception - " + e.toString()));
-			e.printStackTrace();
-		}
+    	LOG.debug("==================================================");
+    	LOG.debug("=== getAllSchemas === ");
+    	
+    	int maxRunTime = 1200;
+    	WorkerExecutor executor = vertx.createSharedWorkerExecutor("getAllSchemas_pool", ConstantApp.WORKER_POOL_SIZE, maxRunTime);
+    	
+    	executor.executeBlocking(future -> {
+    		// Call some blocking API that takes a significant amount of time to return
+    		int status_code = KafkaConnectProcessor.forwardGetAllSchemas(routingContext, rc_schema, schema_registry_host_and_port);
+    		LOG.debug("Step 11:  status_code: " + status_code);
+    		future.complete(status_code);
+        }, res -> {
+        	LOG.debug("Step 12:  BLOCKING CODE IS TERMINATE?FINISHED: " + res.cause());
+        	executor.close();
+        	
+        	if (routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_OK) {
+	        	routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+	            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+	            .end();
+        	}
+        });
 	}
     
     /*
+     * 1) Retrieve a specific subject latest information:
      * curl -X GET -i http://localhost:8081/subjects/Kafka-value/versions/latest
+     * 
+     * 2) Retrieve a specific subject compatibility:
+     * curl -X GET -i http://localhost:8081/config/finance-value
      */
     private void getOneSchema(RoutingContext routingContext) {
-    	LOG.debug("==== getOneSchema ====");
+    	LOG.debug("==================================================");
+    	LOG.debug("=== getOneSchema === ");
     	
         final String subject = routingContext.request().getParam("id");
     	LOG.debug("=== id:" + subject);
     	
-        String restURI = "http://" + this.kafka_connect_rest_host + ":" + this.kafka_registry_rest_port + "/subjects/" + subject + "/versions/latest";
-        
-        LOG.debug("=== restURI:" + restURI);
-        
-        if (subject == null) {
-            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
-                    .end(HelpFunc.errorMsg(20, "id is null in your request."));
-        } else {
-        	try {
-    			HttpResponse<String> res = Unirest.get(restURI).header("accept", "application/vnd.schemaregistry.v1+json").asString();
-    			String schema1 = res.getBody();
-    			LOG.debug("==== restURI2 ==> restURI2: " + restURI);
-    			LOG.debug("==== schema1 ==> schema1: " + schema1);
-    			
-    			String schema2 = schema1.replace(":\"{", ":{");
-    			LOG.debug("==== schema21 remove first quotation ==> : " + schema2);
-    			
-    			schema2 = schema2.replace("}]}\"", "}]}");
-    			LOG.debug("==== schema22 remove second quotation ==> : " + schema2);
-    			
-    			schema2 = schema2.replace("\\\"", "\"");
-    			LOG.debug("==== schema23: remove slash quotation ==> : " + schema2);
-    			
-    			schema2 = schema2.replace("\"\"", "\"");
-    			LOG.debug("==== schema24: remove double quotation ==> : " + schema2);
-    			
-    			routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_OK)
-                    .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                    .end(schema2);
-    		} catch (JSONException e) {
-    			 routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                 .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                 .end(HelpFunc.errorMsg(31, "POST Request exception - " + e.toString()));
-    			e.printStackTrace();
-    		} catch (UnirestException e) {
-    			routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                .end(HelpFunc.errorMsg(31, "POST Request exception - " + e.toString()));
-    			e.printStackTrace();
-    		}
-        }
+    	int maxRunTime = 1200;
+    	WorkerExecutor executor = vertx.createSharedWorkerExecutor("getOneSchema_pool" + subject.hashCode(), ConstantApp.WORKER_POOL_SIZE, maxRunTime);
+    	
+    	executor.executeBlocking(future -> {
+    		// Call some blocking API that takes a significant amount of time to return
+    		int status_code = KafkaConnectProcessor.forwardGetOneSchema(routingContext, rc_schema, subject, schema_registry_host_and_port);
+    		LOG.debug("Step 11:  status_code: " + status_code);
+    		future.complete(status_code);
+        }, res -> {
+        	LOG.debug("Step 12:  BLOCKING CODE IS TERMINATE?FINISHED: " + res.cause());
+        	executor.close();
+        	
+        	if (routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_OK) {
+	        	routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+	            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+	            .end();
+        	}
+        });
     }
     
     /*
@@ -1033,7 +985,7 @@ public class DFDataProcessor extends AbstractVerticle {
 	                    
 	                    routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_OK)
 	    	            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-	    	            .end(portRestResponse.statusMessage());
+	    	            .end();
                     }
                 });
 
@@ -1042,7 +994,7 @@ public class DFDataProcessor extends AbstractVerticle {
         	
             routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
                     .putHeader(ConstantApp.CONTENT_TYPE, "application/vnd.schemaregistry.v1+json")
-                    .end("== POST Request exception - " + exception.toString());
+                    .end();
         });
 
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
@@ -1067,7 +1019,7 @@ public class DFDataProcessor extends AbstractVerticle {
 	            if (routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_OK) {
 		            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_OK)
 		            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-		            .end(portRestResponse.statusMessage());
+		            .end();
 	            }
 	        });
 	        
@@ -1077,7 +1029,7 @@ public class DFDataProcessor extends AbstractVerticle {
 	        	if (routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_CONFLICT && routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_OK) {
 		            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
 		                    .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
-		                    .end("== POST Request exception - " + exception.toString());
+		                    .end();
 	        	}
 	        });
 	
@@ -1108,6 +1060,9 @@ public class DFDataProcessor extends AbstractVerticle {
      *    Form input data example: "{\"type\":\"record\",\"name\":\"test2\",\"fields\":[{\"name\":\"symbol\",\"type\":\"string\"},{\"name\":\"field1\",\"type\":\"double\"}, {\"name\":\"field2\",\"type\":\"double\"}]}"
      */
     private void updateOneSchema(RoutingContext routingContext) {
+    	LOG.debug("==================================================");
+    	LOG.debug("=== updateOneSchema === ");
+    	
     	JSONObject schema = null;
     	String subject = "";
     	String compatibility = null;

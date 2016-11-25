@@ -3,13 +3,20 @@ package com.datafibers.util;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.net.ConnectException;
+import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Properties;
 import java.util.Random;
 
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.node.ArrayNode;
 import org.json.JSONObject;
 
 /**
@@ -120,5 +127,80 @@ public class HelpFunc {
 		StringWriter writer = new StringWriter();
 		prop.list(new PrintWriter(writer));
 		return writer.getBuffer().toString();
+	}
+	
+	public static String getLatestVersion(String schemaUri, String schemaSubject) throws ConnectException {
+		BufferedReader br = null;
+		String version = null;
+		try {
+			String fullUrl = String.format("%s/subjects/%s/versions", schemaUri, schemaSubject);
+
+			StringBuilder response = new StringBuilder();
+			String line;
+			br = new BufferedReader(new InputStreamReader(new URL(fullUrl).openStream()));
+			while ((line = br.readLine()) != null) {
+				response.append(line);
+			}
+
+			ArrayNode responseJson = new ObjectMapper().readValue(response.toString(), ArrayNode.class);
+			version = responseJson.get(responseJson.size() - 1).toString();
+		} catch (IOException e) {
+			throw new ConnectException("Unable to retrieve schema from Schema Registry");
+		} finally {
+			try {
+				if (br != null)
+					br.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		return version;
+	}
+	
+	/**
+	 * curl -X GET -i http://localhost:8081/config/finance-value
+	 * 
+	 * @param schemaUri
+	 * @param schemaSubject
+	 * @return
+	 * @throws ConnectException
+	 */
+	public static String getCompatibilityOfSubject(String schemaUri, String schemaSubject) {
+		BufferedReader br = null;
+		String compatibility = null;
+		
+		try {
+			String fullUrl = String.format("http://%s/config/%s", schemaUri, schemaSubject);
+			
+			StringBuilder response = new StringBuilder();
+			String line;
+			br = new BufferedReader(new InputStreamReader(new URL(fullUrl).openStream()));
+			
+			while ((line = br.readLine()) != null) {
+				response.append(line);
+			}
+			
+			if (response.toString() != null && !response.toString().isEmpty()) {
+				JSONObject jason = new JSONObject(response.toString());
+				compatibility = jason.getString(ConstantApp.COMPATIBILITYLEVEL);
+			}
+		} catch (IOException e) {
+			System.out.println("getCompatibilityOfSubject() exception.getMessage: " + e.getMessage());
+			System.out.println("getCompatibilityOfSubject() exception.toString: " + e.toString());
+			// e.printStackTrace();
+			// throw new ConnectException("Unable to retrieve compatibility from Schema Registry");
+		} finally {
+			try {
+				if (br != null)
+					br.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		
+		return compatibility;
+	}
+	
+	public static void main(String[] args) {
 	}
 }
