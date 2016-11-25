@@ -25,20 +25,15 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.apache.flink.api.common.JobExecutionResult;
-import org.apache.flink.api.table.Table;
-import org.apache.flink.streaming.connectors.kafka.partitioner.FixedPartitioner;
-import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datafibers.flinknext.DFRemoteStreamEnvironment;
-import com.datafibers.flinknext.Kafka09AvroTableSource;
-import com.datafibers.flinknext.Kafka09JsonTableSink;
 import com.datafibers.model.DFJobPOPJ;
 import com.datafibers.processor.FlinkTransformProcessor;
 import com.datafibers.processor.KafkaConnectProcessor;
+import com.datafibers.processor.SchemaRegisterForward;
 import com.datafibers.util.ConstantApp;
 import com.datafibers.util.DFMediaType;
 import com.datafibers.util.HelpFunc;
@@ -57,35 +52,6 @@ import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
-import io.vertx.core.*;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.http.HttpServer;
-import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.mongo.MongoClient;
-import io.vertx.ext.web.FileUpload;
-import io.vertx.ext.web.Router;
-import io.vertx.ext.web.RoutingContext;
-import io.vertx.ext.web.handler.BodyHandler;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.flink.api.common.JobExecutionResult;
-import org.apache.flink.api.java.table.StreamTableEnvironment;
-import org.apache.flink.api.table.Table;
-import org.apache.flink.api.table.TableEnvironment;
-import org.apache.flink.api.table.sinks.CsvTableSink;
-import org.apache.flink.api.table.sinks.TableSink;
-import org.apache.flink.runtime.client.JobExecutionException;
-import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.connectors.kafka.Kafka09JsonTableSource;
-import org.apache.flink.streaming.connectors.kafka.KafkaJsonTableSource;
-import org.apache.flink.streaming.connectors.kafka.partitioner.FixedPartitioner;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import java.io.*;
-import java.net.URLDecoder;
-import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * DF Producer is used to route producer service to kafka connect rest or lunch locally
@@ -887,18 +853,19 @@ public class DFDataProcessor extends AbstractVerticle {
     	
     	executor.executeBlocking(future -> {
     		// Call some blocking API that takes a significant amount of time to return
-    		int status_code = KafkaConnectProcessor.forwardGetAllSchemas(routingContext, rc_schema, schema_registry_host_and_port);
+    		int status_code = SchemaRegisterForward.forwardGetAllSchemas(routingContext, rc_schema, schema_registry_host_and_port);
     		LOG.debug("Step 11:  status_code: " + status_code);
+    		
+    		if (status_code != ConstantApp.STATUS_CODE_OK) {
+	    		routingContext.response().setStatusCode(status_code)
+	            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+	            .end();
+    		}
+    		
     		future.complete(status_code);
         }, res -> {
         	LOG.debug("Step 12:  BLOCKING CODE IS TERMINATE?FINISHED: " + res.cause());
         	executor.close();
-        	
-        	if (routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_OK) {
-	        	routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-	            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-	            .end();
-        	}
         });
 	}
     
@@ -921,18 +888,19 @@ public class DFDataProcessor extends AbstractVerticle {
     	
     	executor.executeBlocking(future -> {
     		// Call some blocking API that takes a significant amount of time to return
-    		int status_code = KafkaConnectProcessor.forwardGetOneSchema(routingContext, rc_schema, subject, schema_registry_host_and_port);
+    		int status_code = SchemaRegisterForward.forwardGetOneSchema(routingContext, rc_schema, subject, schema_registry_host_and_port);
     		LOG.debug("Step 11:  status_code: " + status_code);
+    		
+    		if (status_code != ConstantApp.STATUS_CODE_OK) {
+	    		routingContext.response().setStatusCode(status_code)
+	            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+	            .end();
+    		}
+    		
     		future.complete(status_code);
         }, res -> {
         	LOG.debug("Step 12:  BLOCKING CODE IS TERMINATE?FINISHED: " + res.cause());
         	executor.close();
-        	
-        	if (routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_OK) {
-	        	routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-	            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-	            .end();
-        	}
         });
     }
     
