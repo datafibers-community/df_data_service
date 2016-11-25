@@ -285,6 +285,7 @@ public class DFDataProcessor extends AbstractVerticle {
     public void stop() throws Exception {
         this.mongo.close();
         this.rc.close();
+        this.rc_schema.close();
     }
 
     /**
