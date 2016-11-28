@@ -95,7 +95,7 @@ public final class ConstantApp {
     public static final String COMPATIBILITY = "compatibility";
     public static final String SUBJECT = "subject";
     public static final String COMPATIBILITYLEVEL = "compatibilityLevel";
-    public static final int WORKER_POOL_SIZE = 50;
+    public static final int WORKER_POOL_SIZE = 20;
     
     
 }

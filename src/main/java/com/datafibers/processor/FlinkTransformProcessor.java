@@ -96,7 +96,7 @@ public class FlinkTransformProcessor {
         String uuid = dfJob.hashCode() + "_";
 
         // Submit Flink through client in vertx worker thread and terminate it once the job is launched.
-        WorkerExecutor exec_flink = vertx.createSharedWorkerExecutor(dfJob.getName() + dfJob.hashCode(),5, maxRunTime);
+        WorkerExecutor exec_flink = vertx.createSharedWorkerExecutor(dfJob.getName() + dfJob.hashCode(),ConstantApp.WORKER_POOL_SIZE, maxRunTime);
         // Submit Flink job in separate thread
         exec_flink.executeBlocking(future -> {
 
@@ -241,7 +241,7 @@ public class FlinkTransformProcessor {
 
         String uuid = dfJob.hashCode() + "_";
 
-        WorkerExecutor exec_flink = vertx.createSharedWorkerExecutor(dfJob.getName() + dfJob.hashCode(),5, maxRunTime);
+        WorkerExecutor exec_flink = vertx.createSharedWorkerExecutor(dfJob.getName() + dfJob.hashCode(),ConstantApp.WORKER_POOL_SIZE, maxRunTime);
 
         exec_flink.executeBlocking(future -> {
 
@@ -343,7 +343,7 @@ public class FlinkTransformProcessor {
 
         LOG.info(HelpFunc.getPropertyAsString(properties));
 
-        WorkerExecutor exec_flink = vertx.createSharedWorkerExecutor(dfJob.getName() + dfJob.hashCode(),5, maxRunTime);
+        WorkerExecutor exec_flink = vertx.createSharedWorkerExecutor(dfJob.getName() + dfJob.hashCode(),ConstantApp.WORKER_POOL_SIZE, maxRunTime);
 
         exec_flink.executeBlocking(future -> {
 

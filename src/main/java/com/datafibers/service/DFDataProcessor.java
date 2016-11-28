@@ -846,28 +846,7 @@ public class DFDataProcessor extends AbstractVerticle {
         postRestClientRequest.end();
     }
     public void getAllSchemas(RoutingContext routingContext) {
-    	LOG.debug("==================================================");
-    	LOG.debug("=== getAllSchemas === ");
-    	
-    	int maxRunTime = 1200;
-    	WorkerExecutor executor = vertx.createSharedWorkerExecutor("getAllSchemas_pool", ConstantApp.WORKER_POOL_SIZE, maxRunTime);
-    	
-    	executor.executeBlocking(future -> {
-    		// Call some blocking API that takes a significant amount of time to return
-    		int status_code = SchemaRegisterForward.forwardGetAllSchemas(routingContext, rc_schema, schema_registry_host_and_port);
-    		LOG.debug("Step 11:  status_code: " + status_code);
-    		
-    		if (status_code != ConstantApp.STATUS_CODE_OK) {
-	    		routingContext.response().setStatusCode(status_code)
-	            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-	            .end();
-    		}
-    		
-    		future.complete(status_code);
-        }, res -> {
-        	LOG.debug("Step 12:  BLOCKING CODE IS TERMINATE?FINISHED: " + res.cause());
-        	executor.close();
-        });
+    	SchemaRegisterForward.forwardGetAllSchemas(vertx, routingContext, rc_schema, schema_registry_host_and_port);
 	}
     
     /*
@@ -878,31 +857,7 @@ public class DFDataProcessor extends AbstractVerticle {
      * curl -X GET -i http://localhost:8081/config/finance-value
      */
     private void getOneSchema(RoutingContext routingContext) {
-    	LOG.debug("==================================================");
-    	LOG.debug("=== getOneSchema === ");
-    	
-        final String subject = routingContext.request().getParam("id");
-    	LOG.debug("=== id:" + subject);
-    	
-    	int maxRunTime = 1200;
-    	WorkerExecutor executor = vertx.createSharedWorkerExecutor("getOneSchema_pool" + subject.hashCode(), ConstantApp.WORKER_POOL_SIZE, maxRunTime);
-    	
-    	executor.executeBlocking(future -> {
-    		// Call some blocking API that takes a significant amount of time to return
-    		int status_code = SchemaRegisterForward.forwardGetOneSchema(routingContext, rc_schema, subject, schema_registry_host_and_port);
-    		LOG.debug("Step 11:  status_code: " + status_code);
-    		
-    		if (status_code != ConstantApp.STATUS_CODE_OK) {
-	    		routingContext.response().setStatusCode(status_code)
-	            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-	            .end();
-    		}
-    		
-    		future.complete(status_code);
-        }, res -> {
-        	LOG.debug("Step 12:  BLOCKING CODE IS TERMINATE?FINISHED: " + res.cause());
-        	executor.close();
-        });
+    	SchemaRegisterForward.forwardGetOneSchema(vertx, routingContext, rc_schema, schema_registry_host_and_port);
     }
     
     /*
@@ -1028,7 +983,6 @@ public class DFDataProcessor extends AbstractVerticle {
      *    Form input data example: "{\"type\":\"record\",\"name\":\"test2\",\"fields\":[{\"name\":\"symbol\",\"type\":\"string\"},{\"name\":\"field1\",\"type\":\"double\"}, {\"name\":\"field2\",\"type\":\"double\"}]}"
      */
     private void updateOneSchema(RoutingContext routingContext) {
-    	LOG.debug("==================================================");
     	LOG.debug("=== updateOneSchema === ");
     	
     	JSONObject schema = null;
