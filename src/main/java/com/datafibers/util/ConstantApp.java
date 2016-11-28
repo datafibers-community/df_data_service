@@ -96,6 +96,7 @@ public final class ConstantApp {
     public static final String SUBJECT = "subject";
     public static final String COMPATIBILITYLEVEL = "compatibilityLevel";
     public static final int WORKER_POOL_SIZE = 20;
+    public static final int MAX_RUNTIME = 6000;  // 5 minutes of waiting for response
     
     
 }

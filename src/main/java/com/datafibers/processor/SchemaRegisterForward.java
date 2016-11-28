@@ -32,11 +32,10 @@ public class SchemaRegisterForward {
     public static void forwardGetAllSchemas(Vertx vertx, RoutingContext routingContext, RestClient rc_schema, String schema_registry_host_and_port) {
     	LOG.debug("=== forwardGetAllSchemas === ");
     	
-    	int maxRunTime = 6000;  // 5 minutes of waiting for response
     	StringBuffer returnString = new StringBuffer();
     	UUID uuid = UUID.randomUUID();
     	
-    	WorkerExecutor executor = vertx.createSharedWorkerExecutor("forwardGetAllSchemas_pool_" + uuid, ConstantApp.WORKER_POOL_SIZE, maxRunTime);
+    	WorkerExecutor executor = vertx.createSharedWorkerExecutor("forwardGetAllSchemas_pool_" + uuid, ConstantApp.WORKER_POOL_SIZE, ConstantApp.MAX_RUNTIME);
     	
     	executor.executeBlocking(future -> {
     		// Call some blocking API that takes a significant amount of time to return
@@ -145,10 +144,9 @@ public class SchemaRegisterForward {
     	
         final String subject = routingContext.request().getParam("id");
     	LOG.debug("=== id:" + subject);
-    	int maxRunTime = 6000;
     	StringBuffer returnString = new StringBuffer();
     	
-    	WorkerExecutor executor = vertx.createSharedWorkerExecutor("getOneSchema_pool_" + subject, ConstantApp.WORKER_POOL_SIZE, maxRunTime);
+    	WorkerExecutor executor = vertx.createSharedWorkerExecutor("getOneSchema_pool_" + subject, ConstantApp.WORKER_POOL_SIZE, ConstantApp.MAX_RUNTIME);
     	
     	executor.executeBlocking(future -> {
     		// Call some blocking API that takes a significant amount of time to return
