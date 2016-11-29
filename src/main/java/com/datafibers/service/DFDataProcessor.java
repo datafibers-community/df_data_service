@@ -1,10 +1,41 @@
 package com.datafibers.service;
 
-import com.datafibers.flinknext.Kafka09JsonTableSink;
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.WorkerExecutor;
+import io.vertx.core.http.HttpServer;
+import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.mongo.MongoClient;
+import io.vertx.ext.web.FileUpload;
+import io.vertx.ext.web.Router;
+import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.handler.BodyHandler;
+
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.datafibers.flinknext.DFRemoteStreamEnvironment;
 import com.datafibers.model.DFJobPOPJ;
 import com.datafibers.processor.FlinkTransformProcessor;
 import com.datafibers.processor.KafkaConnectProcessor;
+import com.datafibers.processor.SchemaRegisterForward;
 import com.datafibers.util.ConstantApp;
+import com.datafibers.util.DFMediaType;
 import com.datafibers.util.HelpFunc;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -21,35 +52,6 @@ import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
-import io.vertx.core.*;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.http.HttpServer;
-import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.mongo.MongoClient;
-import io.vertx.ext.web.FileUpload;
-import io.vertx.ext.web.Router;
-import io.vertx.ext.web.RoutingContext;
-import io.vertx.ext.web.handler.BodyHandler;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.flink.api.common.JobExecutionResult;
-import org.apache.flink.api.java.table.StreamTableEnvironment;
-import org.apache.flink.api.table.Table;
-import org.apache.flink.api.table.TableEnvironment;
-import org.apache.flink.api.table.sinks.CsvTableSink;
-import org.apache.flink.api.table.sinks.TableSink;
-import org.apache.flink.runtime.client.JobExecutionException;
-import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.connectors.kafka.Kafka09JsonTableSource;
-import org.apache.flink.streaming.connectors.kafka.KafkaJsonTableSource;
-import org.apache.flink.streaming.connectors.kafka.partitioner.FixedPartitioner;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import java.io.*;
-import java.net.URLDecoder;
-import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * DF Producer is used to route producer service to kafka connect rest or lunch locally
@@ -62,6 +64,7 @@ public class DFDataProcessor extends AbstractVerticle {
     public static String COLLECTION;
     private MongoClient mongo;
     private RestClient rc;
+    private RestClient rc_schema;
 
     // Connects attributes
     private static Boolean kafka_connect_enabled;
@@ -69,6 +72,9 @@ public class DFDataProcessor extends AbstractVerticle {
     private static Integer kafka_connect_rest_port;
     private static Boolean kafka_connect_import_start;
 
+    // SZ:
+    private static Integer kafka_registry_rest_port;
+    
     // Transforms attributes
     public static Boolean transform_engine_flink_enabled;
     private static String flink_server_host;
@@ -79,7 +85,8 @@ public class DFDataProcessor extends AbstractVerticle {
     private static String kafka_server_host;
     private static Integer kafka_server_port;
     public static String kafka_server_host_and_port;
-    public static StreamExecutionEnvironment env;
+    private static String schema_registry_host_and_port;
+    public static DFRemoteStreamEnvironment env;
 
     private static final Logger LOG = LoggerFactory.getLogger(DFDataProcessor.class);
 
@@ -96,6 +103,9 @@ public class DFDataProcessor extends AbstractVerticle {
         this.kafka_connect_rest_host = config().getString("kafka.connect.rest.host", "localhost");
         this.kafka_connect_rest_port = config().getInteger("kafka.connect.rest.port", 8083);
         this.kafka_connect_import_start = config().getBoolean("kafka.connect.import.start", Boolean.TRUE);
+        // SZ:
+        this.kafka_registry_rest_port = config().getInteger("kafka.registry.rest.port", 8081);
+        
         // Check Transforms config
         this.transform_engine_flink_enabled = config().getBoolean("transform.engine.flink.enable", Boolean.TRUE);
         this.flink_server_host = config().getString("flink.servers.host", "localhost");
@@ -106,6 +116,8 @@ public class DFDataProcessor extends AbstractVerticle {
         this.kafka_server_host = this.kafka_connect_rest_host;
         this.kafka_server_port = config().getInteger("kafka.server.port", 9092);
         this.kafka_server_host_and_port = this.kafka_server_host + ":" + this.kafka_server_port.toString();
+        this.schema_registry_host_and_port = this.kafka_server_host + ":" +
+                config().getInteger("kafka.schema.registry.rest.port", 8081);
 
         /**
          * Create all application client
@@ -129,19 +141,38 @@ public class DFDataProcessor extends AbstractVerticle {
                     .setMaxPoolSize(ConstantApp.REST_CLIENT_MAX_POOL_SIZE);
 
             this.rc = RestClient.create(vertx, restClientOptions, httpMessageConverters);
+            // ---- SZ
+            final ObjectMapper objectMapper2 = new ObjectMapper();
+            final List<HttpMessageConverter> httpMessageConverters2 = ImmutableList.of(
+                    new FormHttpMessageConverter(),
+                    new StringHttpMessageConverter(),
+                    new JacksonJsonHttpMessageConverter(objectMapper2)
+            );
+            final RestClientOptions restClientOptions2 = new RestClientOptions()
+                    .setConnectTimeout(ConstantApp.REST_CLIENT_CONNECT_TIMEOUT)
+                    .setGlobalRequestTimeout(ConstantApp.REST_CLIENT_GLOBAL_REQUEST_TIMEOUT)
+                    .setDefaultHost(this.kafka_connect_rest_host)
+                    .setDefaultPort(this.kafka_registry_rest_port)
+                    .setKeepAlive(ConstantApp.REST_CLIENT_KEEP_LIVE)
+                    .setMaxPoolSize(ConstantApp.REST_CLIENT_MAX_POOL_SIZE);
+            
+            rc_schema = RestClient.create(vertx, restClientOptions2, httpMessageConverters2);   // TODO: SZ
         }
         // Flink stream environment for data transformation
         if(transform_engine_flink_enabled) {
             if (config().getBoolean("debug.mode", Boolean.FALSE)) {
-                env = StreamExecutionEnvironment.getExecutionEnvironment()
-                        .setParallelism(config().getInteger("flink.job.parallelism", 1));
+                // TODO Add DF LocalExecutionEnvironment Spport
+//                env = StreamExecutionEnvironment.getExecutionEnvironment()
+//                        .setParallelism(config().getInteger("flink.job.parallelism", 1));
             } else {
                 String jarPath = getClass().getProtectionDomain().getCodeSource().getLocation().getPath();
                 LOG.debug("Distribute " + jarPath + " to Apache Flink cluster at " +
                         this.flink_server_host + ":" + this.flink_server_port);
-                env = StreamExecutionEnvironment.createRemoteEnvironment(this.flink_server_host,
-                        this.flink_server_port, jarPath)
+                env = new DFRemoteStreamEnvironment(this.flink_server_host, this.flink_server_port, jarPath)
                         .setParallelism(config().getInteger("flink.job.parallelism", 1));
+//                env = StreamExecutionEnvironment.createRemoteEnvironment(this.flink_server_host,
+//                        this.flink_server_port, jarPath)
+//                        .setParallelism(config().getInteger("flink.job.parallelism", 1));
             }
         }
 
@@ -199,6 +230,17 @@ public class DFDataProcessor extends AbstractVerticle {
         router.put(ConstantApp.DF_TRANSFORMS_REST_URL_WITH_ID).handler(this::updateOneTransforms); // Flink Forward
         router.delete(ConstantApp.DF_TRANSFORMS_REST_URL_WITH_ID).handler(this::deleteOneTransforms); // Flink Forward
 
+        // SZ:
+        router.options(ConstantApp.DF_SCHEMA_REST_URL_WITH_ID).handler(this::corsHandle);
+        router.options(ConstantApp.DF_SCHEMA_REST_URL).handler(this::corsHandle);
+        router.get(ConstantApp.DF_SCHEMA_REST_URL).handler(this::getAllSchemas); // Schema Registry Forward
+        router.get(ConstantApp.DF_SCHEMA_REST_URL_WITH_ID).handler(this::getOneSchema); // Schema Registry Forward
+        router.route(ConstantApp.DF_SCHEMA_REST_URL_WILD).handler(BodyHandler.create()); // Schema Registry Forward
+        
+        router.post(ConstantApp.DF_SCHEMA_REST_URL).handler(this::addOneSchema); // Schema Registry Forward
+        router.put(ConstantApp.DF_SCHEMA_REST_URL_WITH_ID).handler(this::updateOneSchema); // Schema Registry Forward
+        router.delete(ConstantApp.DF_SCHEMA_REST_URL_WITH_ID).handler(this::deleteOneConnects); // Schema Registry Forward
+        
         // Create the HTTP server and pass the "accept" method to the request handler.
         vertx.createHttpServer().requestHandler(router::accept)
                                 .listen(config().getInteger("rest.port.df.processor", 8080), next::handle);
@@ -216,6 +258,7 @@ public class DFDataProcessor extends AbstractVerticle {
     public void stop() throws Exception {
         this.mongo.close();
         this.rc.close();
+        this.rc_schema.close();
     }
 
     /**
@@ -339,8 +382,11 @@ public class DFDataProcessor extends AbstractVerticle {
      * @param routingContext
      */
     private void addOneConnects(RoutingContext routingContext) {
+        LOG.info("received the body is:" + routingContext.getBodyAsString());
+        LOG.info("clean uo connectConfig to: " + HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()));
         // Get request as object
-        final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(), DFJobPOPJ.class);
+        final DFJobPOPJ dfJob = Json.decodeValue(
+                HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()), DFJobPOPJ.class);
         // Set initial status for the job
         dfJob.setStatus(ConstantApp.DF_STATUS.UNASSIGNED.name());
         LOG.info("received the body is:" + routingContext.getBodyAsString());
@@ -367,36 +413,70 @@ public class DFDataProcessor extends AbstractVerticle {
      * @param routingContext
      */
     private void addOneTransforms(RoutingContext routingContext) {
-        // Get request as object
-        LOG.info("received the body is:" + routingContext.getBodyAsString());
-        final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(), DFJobPOPJ.class);
-        // Set initial status for the job
-        LOG.info("rebuilt object as:" + dfJob.toJson());
+        final DFJobPOPJ dfJob = Json.decodeValue(
+                HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()), DFJobPOPJ.class);
         dfJob.setStatus(ConstantApp.DF_STATUS.RUNNING.name());
 
-        // Start Flink job Forward only if it is enabled and Connector type is FLINK_TRANS
-        if (this.transform_engine_flink_enabled && dfJob.getConnectorType().contains("FLINK_TRANS")) {
-            // Submit flink sql
-            FlinkTransformProcessor.submitFlinkSQL(dfJob, vertx,
-                    config().getInteger("flink.trans.client.timeout", 8000), env,
-                    this.zookeeper_server_host_and_port,
-                    this.kafka_server_host_and_port,
-                    HelpFunc.coalesce(dfJob.getConnectorConfig().get("group.id"),
-                            ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
-                    dfJob.getConnectorConfig().get("column.name.list"),
-                    dfJob.getConnectorConfig().get("column.schema.list"),
-                    dfJob.getConnectorConfig().get("topic.for.query"),
-                    dfJob.getConnectorConfig().get("topic.for.result"),
-                    dfJob.getConnectorConfig().get("trans.sql"),
-                    mongo, COLLECTION);
-        } // Mongo updated is delayed inside of above block
+        LOG.info("received from UI form - " + HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()));
 
-        if (this.transform_engine_flink_enabled && dfJob.getConnectorType().contains("FLINK_UDF")) {
-            // Submit flink sql
-            FlinkTransformProcessor.runFlinkJar(dfJob.getUdfUpload(),
-                    this.flink_server_host + ":" + this.flink_server_port);
+        if (this.transform_engine_flink_enabled) {
+            // Submit Flink SQL General Transformation
+            if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.FLINK_TRANS.name()) {
+                FlinkTransformProcessor.submitFlinkSQL(dfJob, vertx,
+                        config().getInteger("flink.trans.client.timeout", 8000), env,
+                        this.zookeeper_server_host_and_port,
+                        this.kafka_server_host_and_port,
+                        HelpFunc.coalesce(dfJob.getConnectorConfig().get("group.id"),
+                                ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
+                        dfJob.getConnectorConfig().get("column.name.list"),
+                        dfJob.getConnectorConfig().get("column.schema.list"),
+                        dfJob.getConnectorConfig().get("topic.for.query"),
+                        dfJob.getConnectorConfig().get("topic.for.result"),
+                        dfJob.getConnectorConfig().get("trans.sql"),
+                        mongo, COLLECTION);
+            }
+
+            // Submit Flink UDF
+            if(dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.FLINK_UDF.name()) {
+                FlinkTransformProcessor.runFlinkJar(dfJob.getUdfUpload(),
+                        this.flink_server_host + ":" + this.flink_server_port);
+            }
+
+            // Submit Flink SQL Avro to Json
+            if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.FLINK_SQL_A2J.name()) {
+                FlinkTransformProcessor.submitFlinkSQLA2J(dfJob, vertx,
+                        config().getInteger("flink.trans.client.timeout", 8000), env,
+                        this.zookeeper_server_host_and_port,
+                        this.kafka_server_host_and_port,
+                        this.schema_registry_host_and_port,
+                        HelpFunc.coalesce(dfJob.getConnectorConfig().get("group.id"),
+                                ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
+                        dfJob.getConnectorConfig().get("topic.for.query"),
+                        dfJob.getConnectorConfig().get("topic.for.result"),
+                        dfJob.getConnectorConfig().get("trans.sql"),
+                        dfJob.getConnectorConfig().get("schema.subject"),
+                        HelpFunc.coalesce(dfJob.getConnectorConfig().get("static.avro.schema"),"empty_schema"),
+                        mongo, COLLECTION);
+            }
+
+            // Submit Flink SQL Json to Json
+            if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.FLINK_SQL_J2J.name()) {
+                FlinkTransformProcessor.submitFlinkSQLJ2J(dfJob, vertx,
+                        config().getInteger("flink.trans.client.timeout", 8000), env,
+                        this.zookeeper_server_host_and_port,
+                        this.kafka_server_host_and_port,
+                        HelpFunc.coalesce(dfJob.getConnectorConfig().get("group.id"),
+                                ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
+                        dfJob.getConnectorConfig().get("column.name.list"),
+                        dfJob.getConnectorConfig().get("column.schema.list"),
+                        dfJob.getConnectorConfig().get("topic.for.query"),
+                        dfJob.getConnectorConfig().get("topic.for.result"),
+                        dfJob.getConnectorConfig().get("trans.sql"),
+                        mongo, COLLECTION);
+            }
         }
-            mongo.insert(COLLECTION, dfJob.toJson(), r -> routingContext
+
+        mongo.insert(COLLECTION, dfJob.toJson(), r -> routingContext
                 .response().setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
                 .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
                 .end(Json.encodePrettily(dfJob.setId(r.result()))));
@@ -454,6 +534,7 @@ public class DFDataProcessor extends AbstractVerticle {
      */
     private void updateOneTransforms(RoutingContext routingContext) {
         final String id = routingContext.request().getParam("id");
+        LOG.debug("Body received:" + routingContext.getBodyAsString());
         final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(), DFJobPOPJ.class);
         LOG.debug("received the body is from updateOne:" + routingContext.getBodyAsString());
         String connectorConfigString = dfJob.mapToJsonString(dfJob.getConnectorConfig());
@@ -484,7 +565,10 @@ public class DFDataProcessor extends AbstractVerticle {
                                         dfJob.getConnectorConfig().get("topic.for.result"),
                                         dfJob.getConnectorConfig().get("trans.sql"),
                                         mongo, COLLECTION, this.flink_server_host + ":" + this.flink_server_port,
-                                        routingContext);
+                                        routingContext, this.schema_registry_host_and_port,
+                                        dfJob.getConnectorConfig().get("schema.subject"),
+                                        HelpFunc.coalesce(dfJob.getConnectorConfig().get("static.avro.schema"),"empty_schema")
+                                        );
 
                             } else { // Where there is no change detected
                                 LOG.info("connectorConfig has NO change. Update in local repository only.");
@@ -672,7 +756,7 @@ public class DFDataProcessor extends AbstractVerticle {
      */
     private void updateKafkaConnectorStatus() {
         // Loop existing KAFKA connectors in repository and fetch their latest status from Kafka Server
-        LOG.info("Refreshing Connects status from Kafka Connect REST Server - Start.");
+        // LOG.info("Refreshing Connects status from Kafka Connect REST Server - Start.");
         List<String> list = new ArrayList<String>();
         list.add(ConstantApp.DF_CONNECT_TYPE.KAFKA_SINK.name());
         list.add(ConstantApp.DF_CONNECT_TYPE.KAFKA_SOURCE.name());
@@ -716,7 +800,7 @@ public class DFDataProcessor extends AbstractVerticle {
                                             }
                                     );
                                 } else {
-                                    LOG.info("Refreshing Connects status from Kafka Connect REST Server - No Changes.");
+                                    // LOG.info("Refreshing Connects status from Kafka Connect REST Server - No Changes.");
                                 }
                             } catch (UnirestException ue) {
                                 LOG.error("Refreshing status REST client exception", ue.getCause());
@@ -726,7 +810,7 @@ public class DFDataProcessor extends AbstractVerticle {
                         LOG.error("Refreshing status Mongo client find active connectors exception", result.cause());
                     }
         });
-        LOG.info("Refreshing Connects status from Kafka Connect REST Server - Complete.");
+        // LOG.info("Refreshing Connects status from Kafka Connect REST Server - Complete.");
     }
 
     /**
@@ -760,6 +844,258 @@ public class DFDataProcessor extends AbstractVerticle {
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
         postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
         postRestClientRequest.end();
+    }
+    public void getAllSchemas(RoutingContext routingContext) {
+    	SchemaRegisterForward.forwardGetAllSchemas(vertx, routingContext, rc_schema, schema_registry_host_and_port);
+	}
+    
+    /*
+     * 1) Retrieve a specific subject latest information:
+     * curl -X GET -i http://localhost:8081/subjects/Kafka-value/versions/latest
+     * 
+     * 2) Retrieve a specific subject compatibility:
+     * curl -X GET -i http://localhost:8081/config/finance-value
+     */
+    private void getOneSchema(RoutingContext routingContext) {
+    	SchemaRegisterForward.forwardGetOneSchema(vertx, routingContext, rc_schema, schema_registry_host_and_port);
+    }
+    
+    /*
+     * 1) Add schema syntax:
+     *   curl -X POST -i -H "Content-Type: application/vnd.schemaregistry.v1+json" \
+        --data '{"schema": "{ \"type\": \"record\",\"name\": \"test\",\"fields\":[{\"name\": \"symbol\", \"type\": \"string\"},{\"name\": \"name\", 
+        \"type\": \"string\"}, {\"name\": \"exchange\", \"type\": \"string\"}]}"}' http://localhost:8081/subjects/test-value/versions
+
+       Form schema input format example: 
+        1) { "type": "record", "name": "test2", "fields":[{"name": "symbol", "type": "string"}, {"name": "field1", "type": "double" }]}
+        2) {"type": "string"}
+        
+      2) Update the subject's compatibility syntax:
+       curl -X PUT -i -H "Content-Type: application/vnd.schemaregistry.v1+json" --data '{"compatibility": "FORWARD"}' http://localhost:8081/config/SZ01
+    */
+    private void addOneSchema(RoutingContext routingContext) {
+    	JSONObject schema = null;
+    	String subject = "";
+    	String compatibility = null;
+    	String restURI = "";
+    	
+    	String formInfo = routingContext.getBodyAsString();
+    	LOG.debug("received the body is:" + formInfo);
+        
+    	JSONObject jsonObj = new JSONObject(formInfo);
+    	schema = jsonObj.getJSONObject(ConstantApp.SCHEMA);
+    	LOG.debug("==== Schema1 ==> " + schema.toString());
+    	
+    	subject = jsonObj.getString(ConstantApp.SUBJECT);
+    	LOG.debug("=== subject: " + subject);
+	
+	    compatibility = jsonObj.optString(ConstantApp.COMPATIBILITY);
+		LOG.debug("=== compatibility: " + compatibility);
+
+	    // restURI = "http://localhost:8081/subjects/Kafka-key/versions";
+    	restURI = "http://" + this.kafka_connect_rest_host + ":" + this.kafka_registry_rest_port + "/subjects/" + subject + "/versions";
+        LOG.debug("=== restURI: " + restURI);
+        
+        // 1). Add the new schema
+        final RestClientRequest postRestClientRequest = rc_schema.post(restURI, String.class,
+                portRestResponse -> {
+                    String rs = portRestResponse.getBody();
+                    
+                    if (rs != null) {
+	                    LOG.info("== Add schema sucefully. Response respond: " + rs);
+	                    LOG.info("== Add schema sucefully. Received response from schema registry server: " + portRestResponse.statusMessage());
+	                    LOG.info("== Add schema sucefully. Received response from schema registry server: " + portRestResponse.statusCode());
+	                    
+	                    routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_OK)
+	    	            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+	    	            .end();
+                    }
+                });
+
+        postRestClientRequest.exceptionHandler(exception -> {
+        	LOG.debug("== exception: " + exception.toString());
+        	
+            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                    .putHeader(ConstantApp.CONTENT_TYPE, "application/vnd.schemaregistry.v1+json")
+                    .end();
+        });
+
+        postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
+        // postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
+        postRestClientRequest.setAcceptHeader(Arrays.asList(DFMediaType.APPLICATION_SCHEMAREGISTRY_JSON));
+        
+        JSONObject object = new JSONObject().put("schema", schema.toString());
+        // JSONObject object = new JSONObject().put("schema", "{ \"type\": \"record\", \"name\": \"test2\", \"fields\":[{\"name\": \"symbol\", \"type\": \"string\"}, {\"name\": \"field1\", \"type\": \"double\" }]}");
+        
+        LOG.debug("==== Schema object.toString(): " + object.toString());
+        
+        postRestClientRequest.end(object.toString());
+        
+        // 2) Set compatibility to the subject
+        LOG.debug("============ 2. set compatibility to the subject ============");
+        if (compatibility != null && compatibility.trim().length() > 0) {
+	        restURI = "http://" + this.kafka_connect_rest_host + ":" + this.kafka_registry_rest_port + "/config/" + subject;
+	        final RestClientRequest postRestClientRequest2 = rc_schema.put(restURI, portRestResponse -> {
+	            LOG.info("== Update Config Compatibility sucefully. Received response from schema registry server: " + portRestResponse.statusMessage());
+	            LOG.info("== Update Config Compatibility sucefully. Received response from schema registry server: " + portRestResponse.statusCode());
+	            
+	            if (routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_OK) {
+		            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_OK)
+		            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+		            .end();
+	            }
+	        });
+	        
+	        postRestClientRequest2.exceptionHandler(exception -> {
+	        	LOG.debug("== exception: " + exception.toString());
+	        	
+	        	if (routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_CONFLICT && routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_OK) {
+		            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+		                    .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
+		                    .end();
+	        	}
+	        });
+	
+	        postRestClientRequest2.setContentType(MediaType.APPLICATION_JSON);
+	        // postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
+	        postRestClientRequest2.setAcceptHeader(Arrays.asList(DFMediaType.APPLICATION_SCHEMAREGISTRY_JSON));
+        
+            JSONObject jsonToBeSubmitted = new JSONObject().put(ConstantApp.COMPATIBILITY, compatibility);
+            LOG.debug("==== Compatibility object2.toString() === : " + jsonToBeSubmitted.toString());
+            
+            postRestClientRequest2.end(jsonToBeSubmitted.toString());
+        }
+    }
+    
+    /*
+     * Existing subject SZ02 schema definition:
+     * 1) {\"type\":\"record\",\"name\":\"test2\",\"fields\":[{\"name\":\"symbol\",\"type\":\"string\"},{\"name\":\"field1\",\"type\":\"double\"}]}
+     * 2) {"schema": "{\"type\": \"string\"}"}
+     * 
+     * FORWARD compatible example:
+     * 1) Set the subject SZ02 to be FORWARD compatible: 
+     *    curl -X PUT -i -H "Content-Type: application/vnd.schemaregistry.v1+json" \
+        --data '{"compatibility": "FORWARD"}' http://localhost:8081/config/SZ02
+        { "type": "record", "name": "test2", "fields":[{"name": "symbol", "type": "string"}, {"name": "field1", "type": "double" }]}
+        
+        
+       2) Add a new column to the existing subject SZ02
+     *    Form input data example: "{\"type\":\"record\",\"name\":\"test2\",\"fields\":[{\"name\":\"symbol\",\"type\":\"string\"},{\"name\":\"field1\",\"type\":\"double\"}, {\"name\":\"field2\",\"type\":\"double\"}]}"
+     */
+    private void updateOneSchema(RoutingContext routingContext) {
+    	LOG.debug("=== updateOneSchema === ");
+    	
+    	JSONObject schema = null;
+    	String subject = "";
+    	String compatibility = null;
+    	String restURI = "";
+    	JSONObject schema1 = null;
+    	JSONObject jsonForSubmit = null;
+    	
+    	LOG.debug("== Update schema ...");
+    	String formInfo = routingContext.getBodyAsString();
+    	LOG.debug("received the body is:" + formInfo);
+    	
+    	JSONObject jsonObj = new JSONObject(formInfo);
+    	
+    	try {
+    		schema = jsonObj.getJSONObject(ConstantApp.SCHEMA);
+    		LOG.debug("=== schema: " + schema.toString());
+    		schema1 = new JSONObject(schema.toString());
+    		LOG.debug("=== schema1 array: " + schema1.toString());
+    	} catch (Exception ex) {
+    		LOG.debug("=== schema no element ");
+    		schema1 = new JSONObject();
+    		String tt = jsonObj.getString(ConstantApp.SCHEMA);
+    		LOG.debug("=== Schema extracted from body: " + tt);
+    		
+    		schema1.put("type", tt);
+    		LOG.debug("=== schema1 with no key: " + schema1.toString());
+    	}
+    	
+    	subject = jsonObj.getString(ConstantApp.SUBJECT);
+    	LOG.debug("=== subject: " + subject);
+    	
+    	compatibility = jsonObj.optString(ConstantApp.COMPATIBILITY);
+ 		LOG.debug("=== compatibility: " + compatibility);
+ 		
+    	restURI = "http://" + this.kafka_connect_rest_host + ":" + this.kafka_registry_rest_port + "/subjects/" + subject + "/versions";
+
+        LOG.debug("=== restURI: " + restURI);
+        
+        final RestClientRequest postRestClientRequest = rc_schema.post(restURI, String.class,
+                portRestResponse -> {
+                    String rs = portRestResponse.getBody();
+                    
+                    if (rs != null) {
+	                    LOG.info("== Update schema successfully. Response rs: " + rs);
+	                    LOG.info("== Update schema successfully. received response from schema registry server for updating schema: " + portRestResponse.statusMessage());
+	                    LOG.info("== Update schema successfully. Received response from schema registry server for updating schema: " + portRestResponse.statusCode());
+
+                        routingContext
+                                .response().setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+                                .end();
+                    }
+                });
+
+        postRestClientRequest.exceptionHandler(exception -> {
+        	LOG.info("== exception: " + exception.toString());
+        	
+            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                    .putHeader(ConstantApp.CONTENT_TYPE, "application/vnd.schemaregistry.v1+json")
+                    .end("== POST Request exception - " + exception.toString());
+        });
+
+        postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
+        // postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
+        postRestClientRequest.setAcceptHeader(Arrays.asList(DFMediaType.APPLICATION_SCHEMAREGISTRY_JSON));
+        
+        jsonForSubmit = new JSONObject().put("schema", schema1.toString());
+        // JSONObject object = new JSONObject().put("schema", "{ \"type\": \"record\", \"name\": \"test2\", \"fields\":[{\"name\": \"symbol\", \"type\": \"string\"}, {\"name\": \"field1\", \"type\": \"double\" }]}");
+        
+        LOG.debug("==== Schema send to server jsonForSubmit.toString(): " + jsonForSubmit.toString());
+        
+        postRestClientRequest.end(jsonForSubmit.toString());
+        
+        // 2) Set compatibility to the subject
+        LOG.debug("============ 2. set compatibility to the subject ============");
+        
+        if (compatibility != null && compatibility.trim().length() > 0) {
+	        // Set compatibility
+	        // curl -X PUT -i -H "Content-Type: application/vnd.schemaregistry.v1+json" --data '{"compatibility": "FORWARD"}' http://localhost:8081/config/SZ01
+	        restURI = "http://" + this.kafka_connect_rest_host + ":" + this.kafka_registry_rest_port + "/config/" + subject;
+	        final RestClientRequest postRestClientRequest2 = rc_schema.put(restURI, portRestResponse -> {
+	            // String rs = portRestResponse.getBody().toString();
+	            // LOG.info("== Response rs - compatibility: " + rs);
+	            LOG.info("== Update Config Compatibility sucefully. Received response from schema registry server - compatibility: " + portRestResponse.statusMessage());
+	            LOG.info("== Update Config Compatibility sucefully. Received response from schema registry server - compatibility: " + portRestResponse.statusCode());
+	            
+	            if (routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_OK) {
+		            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_OK)
+		            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+		            .end(portRestResponse.statusMessage());
+	            }
+	        });
+	        
+	        postRestClientRequest2.exceptionHandler(exception -> {
+	        	LOG.info("== exception: " + exception.toString());
+	        	if (routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_CONFLICT && routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_OK) {
+		            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+		                    .putHeader(ConstantApp.CONTENT_TYPE, "application/vnd.schemaregistry.v1+json")
+		                    .end("== POST Request exception updating compatibility - " + exception.toString());
+	        	}
+	        });
+	        
+	        postRestClientRequest2.setContentType(MediaType.APPLICATION_JSON);
+	        // postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
+	        postRestClientRequest2.setAcceptHeader(Arrays.asList(DFMediaType.APPLICATION_SCHEMAREGISTRY_JSON));
+	        
+	        JSONObject jsonToBeSubmitted = new JSONObject().put(ConstantApp.COMPATIBILITY, compatibility);
+	        LOG.debug("==== Compatibility object2.toString() === : " + jsonToBeSubmitted.toString());
+	        
+	        postRestClientRequest2.end(jsonToBeSubmitted.toString());
+        }
     }
 }
 
