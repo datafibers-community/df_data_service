@@ -4,6 +4,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.WorkerExecutor;
 import io.vertx.ext.web.RoutingContext;
 
+import java.net.ConnectException;
 import java.util.UUID;
 
 import org.json.JSONException;
@@ -216,5 +217,39 @@ public class SchemaRegisterForward {
         	executor.close();
         });
     }
+    
+    /**
+	 * curl -X GET -i http://localhost:8081/config/finance-value
+	 * 
+	 * @param schemaUri
+	 * @param schemaSubject
+	 * @return
+	 * @throws ConnectException
+	 */
+    public static String getCompatibilityOfSubject(String schemaUri, String schemaSubject) {
+		String compatibility = null;
+		
+		String fullUrl = String.format("http://%s/config/%s", schemaUri, schemaSubject);
+		HttpResponse<String> res = null;
+		
+		try {
+			res = Unirest.get(fullUrl).header("accept", "application/vnd.schemaregistry.v1+json").asString();
+			//  {"error_code":40401,"message":"Subject not found."}
+			LOG.debug("===== res.getBody(): " + res.getBody());
+			
+			if (res.getBody() != null) {
+				if (res.getBody().indexOf("40401") > 0) {
+				} else {
+					JSONObject jason = new JSONObject(res.getBody().toString());
+					compatibility = jason.getString(ConstantApp.COMPATIBILITYLEVEL);
+				}
+			}
+		} catch (UnirestException e) {
+			LOG.debug("===== DF DataProcessor, getCompatibilityOfSubject(), error message: " + e.getCause());
+			e.printStackTrace();
+		}
+		
+		return compatibility;
+	}
     
 }
