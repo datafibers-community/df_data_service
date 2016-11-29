@@ -30,19 +30,10 @@ Once packaged, just launch the _fat jar_ as follows ways
 java -jar df-data-service-1.0-SNAPSHOT-fat.jar
 ```
 
-* Full parameters mode.
+* For more running features checking help option
 ```
-java -jar df-data-service-1.0-SNAPSHOT-fat.jar <DEPLOY_OPTION> <WEB_UI_OPTION>
+java -jar df-data-service-1.0-SNAPSHOT-fat.jar -h
 ```
-
-**<DEPLOY_OPTION>** values are as follows
-* **"c"**: Deploy as cluster mode.
-* **"s"**: Deploy as standalone mode.
-
-**<WEB_UI_OPTION>** values are as follows
-* **"ui"**: Deploy with web ui.
-* **"no-ui"**: Deploy without web ui.
-
 
 ## Web UI
 http://localhost:8000/admin/

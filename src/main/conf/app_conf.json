@@ -8,8 +8,10 @@
   "repo.connection.string":"mongodb://localhost:27017",
 
   "kafka.server.port":9092,
-  "kafka.connect.rest.host":"localhost",
+  "kafka.schema.registry.rest.port":8081,
+  "kafka.server.rest.port":8082,
   "kafka.connect.rest.port":8083,
+  "kafka.connect.rest.host":"localhost",
   "kafka.connect.enable":"true",
   "kafka.connect.import.start":"true",
 

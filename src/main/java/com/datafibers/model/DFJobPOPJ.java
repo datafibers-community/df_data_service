@@ -1,6 +1,7 @@
 package com.datafibers.model;
 
 import com.datafibers.util.ConstantApp;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.json.JsonObject;
@@ -172,7 +173,7 @@ public class DFJobPOPJ {
     }
 
     public String findConnectorCategory(String ct) {
-        if(StringUtils.indexOfAny(ct, new String[]{"TRANS", "JOINS"}) == -1) {
+        if(StringUtils.indexOfAny(ct, new String[]{"SOURCE", "SINK"}) > 0) {
             return "CONNECT";
         }
         return "TRANSFORM";
@@ -256,6 +257,13 @@ public class DFJobPOPJ {
     public DFJobPOPJ setFlinkIDToJobConfig(String jobID) {
         this.jobConfig.put("flink.submit.job.id", jobID);
         return this;
+    }
+
+    @JsonIgnore
+    public String getFlinkIDFromJobConfig() {
+        if(this.jobConfig != null)
+            return this.jobConfig.get("flink.submit.job.id");
+        return "flink.submit.job.id is null";
     }
 
     public String mapToJsonString(HashMap<String, String> hm) {

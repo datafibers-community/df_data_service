@@ -1,18 +1,28 @@
 package com.datafibers.processor;
 
-import com.datafibers.model.DFJobPOPJ;
-import com.datafibers.util.ConstantApp;
-import com.hubrick.vertx.rest.MediaType;
-import com.hubrick.vertx.rest.RestClient;
-import com.hubrick.vertx.rest.RestClientRequest;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.RoutingContext;
+
+import java.net.ConnectException;
+import java.util.Arrays;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
+import com.datafibers.model.DFJobPOPJ;
+import com.datafibers.util.ConstantApp;
+import com.datafibers.util.HelpFunc;
+import com.hubrick.vertx.rest.MediaType;
+import com.hubrick.vertx.rest.RestClient;
+import com.hubrick.vertx.rest.RestClientRequest;
+import com.mashape.unirest.http.HttpResponse;
+import com.mashape.unirest.http.JsonNode;
+import com.mashape.unirest.http.Unirest;
+import com.mashape.unirest.http.exceptions.UnirestException;
 
 public class KafkaConnectProcessor {
 
@@ -157,7 +167,8 @@ public class KafkaConnectProcessor {
         postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
         postRestClientRequest.end("");
     }
-
+    
+    
     /**
      * Print error message in better JSON format
      *

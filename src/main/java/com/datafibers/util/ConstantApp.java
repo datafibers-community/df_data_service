@@ -27,6 +27,10 @@ public final class ConstantApp {
     public static final String DF_TRANSFORMS_REST_URL_WITH_ID = DF_TRANSFORMS_REST_URL + "/:id";
     public static final String DF_TRANSFORMS_UPLOAD_FILE_REST_URL_WILD = "/api/df/uploaded_files*";
     public static final String DF_TRANSFORMS_UPLOAD_FILE_REST_URL = "/api/df/uploaded_files";
+    // DF REST endpoint URLs for all registries: SZ
+    public static final String DF_SCHEMA_REST_URL = "/api/df/schema";
+    public static final String DF_SCHEMA_REST_URL_WILD = "/api/df/schema*";
+    public static final String DF_SCHEMA_REST_URL_WITH_ID = DF_SCHEMA_REST_URL + "/:id";
 
     // Kafka CONNECT endpoint URLs
     public static final String KAFKA_CONNECT_REST_URL = "/connectors";
@@ -41,6 +45,9 @@ public final class ConstantApp {
     public static final String APPLICATION_JSON_CHARSET_UTF_8 = "application/json; charset=utf-8";
     public static final String TEXT_HTML = "text/html";
 
+    public static final String AVRO_REGISTRY_CONTENT_TYPE = "application/vnd.schemaregistry.v1+json";
+    
+    
     // HTTP status codes
     public static final int STATUS_CODE_OK = 200;
     public static final int STATUS_CODE_OK_CREATED = 201;
@@ -48,6 +55,10 @@ public final class ConstantApp {
     public static final int STATUS_CODE_BAD_REQUEST = 400;
     public static final int STATUS_CODE_NOT_FOUND = 404;
     public static final int STATUS_CODE_CONFLICT = 409;
+
+    // Kafka Confluent Protocol
+    public static final byte MAGIC_BYTE = 0x0;
+    public static final int idSize = 4;
 
     public enum DF_STATUS {
         UNASSIGNED,         // The Kafka connector/task has not yet been assigned to a worker.
@@ -68,6 +79,8 @@ public final class ConstantApp {
         HIVE_SOURCE,        // The plugin import data into Hive
         HIVE_SINK,          // The plugin export data out of Hive
         FLINK_TRANS,        // Flink streaming SQL
+        FLINK_SQL_A2J,      // Flink streaming SQL from Avro to Json
+        FLINK_SQL_J2J,      // Flink streaming SQL from Json to Json
         FLINK_JOINS,        // Flink streaming of Data Join
         FLINK_UDF,          // Flink user defined jar/program
         SPARK_TRANS,        // Spark streaming SQL
@@ -78,4 +91,12 @@ public final class ConstantApp {
         NONE
     }
 
+    public static final String SCHEMA = "schema";
+    public static final String COMPATIBILITY = "compatibility";
+    public static final String SUBJECT = "subject";
+    public static final String COMPATIBILITYLEVEL = "compatibilityLevel";
+    public static final int WORKER_POOL_SIZE = 20;
+    public static final int MAX_RUNTIME = 6000;  // 5 minutes of waiting for response
+    
+    
 }
