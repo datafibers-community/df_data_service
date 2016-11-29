@@ -79,7 +79,7 @@ public class SchemaRegisterForward {
 		    					String schema = resSchema.toString().replace("\\\"", "");
 		    					LOG.debug("==== Step 42: schema - remove \": " + schema);
 		    					
-		    					String compatibility = HelpFunc.getCompatibilityOfSubject(schema_registry_host_and_port, subject);
+		    					String compatibility = getCompatibilityOfSubject(schema_registry_host_and_port, subject);
 		    					LOG.debug("==== Step 51: compatibility: " + compatibility);
 		    					
 		    					if (compatibility != null && !compatibility.isEmpty()) {
@@ -184,7 +184,7 @@ public class SchemaRegisterForward {
 	        			JSONObject json = new JSONObject(schema2);
 	        			
 	        			// Get the subject's compatibility
-	    				String compatibility = HelpFunc.getCompatibilityOfSubject(schema_registry_host_and_port, subject);
+	    				String compatibility = getCompatibilityOfSubject(schema_registry_host_and_port, subject);
 	    				LOG.debug("==== Step 51: compatibility: " + compatibility);
 	    				
 	    				if (compatibility != null && !compatibility.isEmpty()) {
