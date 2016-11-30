@@ -17,7 +17,7 @@ public class FlinkUDF {
         return DFDataProcessor.transform_engine_flink_enabled;
     }
 
-    public DataStream<String> getFlinkStreamFromKafkaTopic (String inputTopic) {
+    public DataStream<String> getFlinkStreamFromKafkaTopic(String inputTopic) {
 
         Properties properties = new Properties();
         properties.setProperty("bootstrap.servers", DFDataProcessor.kafka_server_host_and_port);

@@ -42,6 +42,7 @@ public class AvroDeserializationSchema implements DeserializationSchema<GenericR
         this.schemaUri = schemaUri;
         this.schemaSubject = schemaSubject;
     }
+
     public AvroDeserializationSchema(String schemaUri, String schemaSubject) {
         //get latest schema once for all records
         this.avroSchema = SchemaRegistryClient.getSchemaFromRegistry(schemaUri, schemaSubject, "latest");
@@ -50,7 +51,7 @@ public class AvroDeserializationSchema implements DeserializationSchema<GenericR
     }
 
     @Override
-    public GenericRecord  deserialize(byte[] message) {
+    public GenericRecord deserialize(byte[] message) {
         ByteBuffer buffer = ByteBuffer.wrap(message);
 
         if (buffer.get() != ConstantApp.MAGIC_BYTE) {
@@ -67,15 +68,14 @@ public class AvroDeserializationSchema implements DeserializationSchema<GenericR
             BinaryDecoder decoder = DecoderFactory.get().binaryDecoder(buffer.array(), start, length, null);
             GenericRecord gr = reader.read(null, decoder);
             return gr;
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
         return null;
     }
 
     @Override
-    public boolean isEndOfStream(GenericRecord  nextElement) {
+    public boolean isEndOfStream(GenericRecord nextElement) {
         return false;
     }
 
