@@ -16,8 +16,8 @@ import java.util.HashMap;
 public class DFJobPOPJ {
 
     private String id; // id as pk, which is also used as job id
-    private String taskId; // Identify each task in a job
-    private String name; // Name of the job
+    private String taskId; // Identify each task order in a job
+    private String name; // Name of the task
     private String connector; // Name of the connector used. This will maps to Kafka Connect name attribute.
     private ConstantApp.DF_CONNECT_TYPE connectorType; // Identify proper connector type from enum
     private String connectorCategory;
@@ -98,7 +98,7 @@ public class DFJobPOPJ {
             }
 
             String connectorConfig = json.getString("connectorConfig");
-            if (jobConfig == null) {
+            if (connectorConfig == null) {
                 this.connectorConfig = null;
             } else {
                 this.connectorConfig = new ObjectMapper().readValue(connectorConfig,

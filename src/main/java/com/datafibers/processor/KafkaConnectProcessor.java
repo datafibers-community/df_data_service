@@ -60,7 +60,7 @@ public class KafkaConnectProcessor {
                     mongoClient.insert(mongoCOLLECTION, dfJobResponsed.toJson(), r -> routingContext
                             .response().setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
                             .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                            .end(Json.encodePrettily(dfJobResponsed.setId(r.result()))));
+                            .end(Json.encodePrettily(dfJobResponsed)));
                 });
 
         postRestClientRequest.exceptionHandler(exception -> {

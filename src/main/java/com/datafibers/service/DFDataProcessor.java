@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.bson.types.ObjectId;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -389,7 +390,11 @@ public class DFDataProcessor extends AbstractVerticle {
                 HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()), DFJobPOPJ.class);
         // Set initial status for the job
         dfJob.setStatus(ConstantApp.DF_STATUS.UNASSIGNED.name());
-        LOG.info("received the body is:" + routingContext.getBodyAsString());
+
+        // Set mongoid to _id, connect, cid in connectConfig
+        String mongoId = new ObjectId().toString();
+        dfJob.setConnector(mongoId).setId(mongoId).getConnectorConfig().put("cid", mongoId);
+
         LOG.info("repack for kafka is:" + dfJob.toKafkaConnectJson().toString());
 
         // Start Kafka Connect REST API Forward only if Kafka is enabled and Connector type is Kafka Connect
@@ -404,7 +409,7 @@ public class DFDataProcessor extends AbstractVerticle {
             mongo.insert(COLLECTION, dfJob.toJson(), r -> routingContext
                     .response().setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
                     .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                    .end(Json.encodePrettily(dfJob.setId(r.result()))));
+                    .end(Json.encodePrettily(dfJob)));
         }
     }
 
@@ -416,6 +421,9 @@ public class DFDataProcessor extends AbstractVerticle {
         final DFJobPOPJ dfJob = Json.decodeValue(
                 HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()), DFJobPOPJ.class);
         dfJob.setStatus(ConstantApp.DF_STATUS.RUNNING.name());
+        // Set mongoid to _id, connect, cid in connectConfig
+        String mongoId = new ObjectId().toString();
+        dfJob.setConnector(mongoId).setId(mongoId).getConnectorConfig().put("cid", mongoId);
 
         LOG.info("received from UI form - " + HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()));
 
@@ -479,7 +487,7 @@ public class DFDataProcessor extends AbstractVerticle {
         mongo.insert(COLLECTION, dfJob.toJson(), r -> routingContext
                 .response().setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
                 .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                .end(Json.encodePrettily(dfJob.setId(r.result()))));
+                .end(Json.encodePrettily(dfJob)));
     }
 
     /**
@@ -665,8 +673,10 @@ public class DFDataProcessor extends AbstractVerticle {
                     .header("accept", "application/json")
                     .asString();
             String resStr = res.getBody();
-            if (resStr.compareToIgnoreCase("[]") != 0) { //Has active connectors
+            LOG.debug("Import All get: " + resStr);
+            if (resStr.compareToIgnoreCase("[]") != 0 && !resStr.equalsIgnoreCase("[null]")) { //Has active connectors
                 for (String connectName: resStr.substring(2,resStr.length()-2).split("\",\"")) {
+                    if (connectName.equalsIgnoreCase("null")) continue;
                     // Get connector config
                     HttpResponse<JsonNode> resConnector = Unirest.get(restURI + "/" + connectName + "/config")
                             .header("accept", "application/json").asJson();

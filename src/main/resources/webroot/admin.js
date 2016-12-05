@@ -32,20 +32,20 @@ customHeaderTemplate =
 
     // set the fields of the producer entity list view
     producer.listView().sortField('name').fields([
-        nga.field('id').label('Job ID').isDetailLink(true),
-        nga.field('taskId', 'number').format('0o').label('Task ID'),
-        nga.field('name').label('Job Name'),
-        nga.field('connector').label('Processor'),
+        nga.field('id').label('Task ID').isDetailLink(true),
+        nga.field('taskId', 'number').format('0o').label('Task Order'),
+        nga.field('name').label('Task Name'),
+        nga.field('connector').label('Processor ID'),
         nga.field('connectorType').label('Type'),
         nga.field('status').label('Job Status')
     ]);
 
     // set the fields of the transformer entity list view
     transformer.listView().sortField('name').fields([
-        nga.field('id').label('Job ID').isDetailLink(true),
-        nga.field('taskId', 'number').format('0o').label('Task ID'),
-        nga.field('name').label('Job Name'),
-        nga.field('connector').label('Processor'),
+        nga.field('id').label('Task ID').isDetailLink(true),
+        nga.field('taskId', 'number').format('0o').label('Task Order'),
+        nga.field('name').label('Task Name'),
+        nga.field('connector').label('Processor ID'),
         nga.field('connectorType').label('Type'),
         nga.field('status').label('Job Status')
     ]);
@@ -63,9 +63,9 @@ customHeaderTemplate =
     schema.listView().batchActions([]);
 
     producer.creationView().fields([
-        nga.field('taskId', 'number').format('0o').label('Task ID'),
-        nga.field('name').label('Job Name'),
-        nga.field('connector').attributes({placeholder:'No space allowed and 5 chars min.'}).validation({ required: true, pattern: '[A-Za-z0-9\-]{5,20}' }).label('Connects'),
+        nga.field('taskId', 'number').format('0o').label('Task Order'),
+        nga.field('name').label('Task Name'),
+        //nga.field('connector').attributes({placeholder:'No space allowed and 5 chars min.'}).validation({ required: true, pattern: '[A-Za-z0-9\-]{5,20}' }).label('Connects'),
         nga.field('connectorType', 'choice')
                 .choices([
                                 {value:'KAFKA_SOURCE', label:'Kafka Connect Source'},
@@ -96,9 +96,9 @@ customHeaderTemplate =
     ]);
 
     producer.editionView().fields([
-        nga.field('taskId', 'number').label('Task ID').editable(false),
-        nga.field('name').label('Job Name').editable(false),
-        nga.field('connector').attributes({placeholder:'No space allowed and 5 chars min.'}).validation({ required: true, pattern: '[A-Za-z0-9\-]{5,20}' }).label('Connects'),
+        nga.field('taskId', 'number').label('Task Order').editable(false),
+        nga.field('name').label('Task Name').editable(false),
+        nga.field('connector').label('Connect ID').editable(false),
         nga.field('connectorType').editable(false),
         nga.field('status').editable(false).label('Job Status'),
         nga.field('description', 'text'),
@@ -107,9 +107,9 @@ customHeaderTemplate =
     ]);
 
 	transformer.creationView().fields([
-        nga.field('taskId', 'number').label('Task ID'),
-        nga.field('name').label('Job Name'),
-        nga.field('connector').attributes({placeholder:'No space allowed and 5 chars min.'}).validation({ required: true, pattern: '[A-Za-z0-9\-]{5,20}' }).label('Transforms'),
+        nga.field('taskId', 'number').label('Task Order'),
+        nga.field('name').label('Task Name'),
+        //nga.field('connector').attributes({placeholder:'No space allowed and 5 chars min.'}).validation({ required: true, pattern: '[A-Za-z0-9\-]{5,20}' }).label('Transforms'),
         nga.field('connectorType', 'choice')
                 .choices([
                                 {value:'FLINK_TRANS', label:'Flink Streaming SQL (Json|Json String)'},
@@ -180,7 +180,7 @@ customHeaderTemplate =
 	transformer.editionView().fields([
         nga.field('taskId', 'number').label('Task ID').editable(false),
         nga.field('name').label('Job Name').editable(false),
-        nga.field('connector').attributes({placeholder:'No space allowed and 5 chars min.'}).validation({ required: true, pattern: '[A-Za-z0-9\-]{5,20}' }).label('Transforms'),
+        nga.field('connector').label('Transform ID').editable(false),
         nga.field('connectorType').editable(false),
         nga.field('udfUpload', 'file').label('Upload Jar').uploadInformation({ 'url': 'http://localhost:8080/api/df/uploaded_files', 'method': 'POST', 'apifilename': 'uploaded_file_name' })
         .defaultValue('empty.jar')
