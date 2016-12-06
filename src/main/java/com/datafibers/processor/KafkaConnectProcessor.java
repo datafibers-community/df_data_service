@@ -94,7 +94,7 @@ public class KafkaConnectProcessor {
         final RestClientRequest postRestClientRequest =
                 restClient.put(
                         ConstantApp.KAFKA_CONNECT_PLUGIN_CONFIG.
-                                replace("CONNECTOR_NAME_PLACEHOLDER", dfJobResponsed.getConnector()),
+                                replace("CONNECTOR_NAME_PLACEHOLDER", dfJobResponsed.getConnectUid()),
                         String.class, portRestResponse -> {
                             LOG.info("received response from Kafka server: " + portRestResponse.statusMessage());
                             LOG.info("received response from Kafka server: " + portRestResponse.statusCode());
@@ -139,7 +139,7 @@ public class KafkaConnectProcessor {
         String id = routingContext.request().getParam("id");
         // Create REST Client for Kafka Connect REST Forward
         final RestClientRequest postRestClientRequest = restClient.delete(ConstantApp.KAFKA_CONNECT_REST_URL + "/" +
-                        dfJobResponsed.getConnector(), String.class,
+                        dfJobResponsed.getConnectUid(), String.class,
                 portRestResponse -> {
                     LOG.info("received response from Kafka server: " + portRestResponse.statusMessage());
                     LOG.info("received response from Kafka server: " + portRestResponse.statusCode());

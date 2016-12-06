@@ -393,16 +393,16 @@ public class DFDataProcessor extends AbstractVerticle {
 
         // Set mongoid to _id, connect, cid in connectConfig
         String mongoId = new ObjectId().toString();
-        dfJob.setConnector(mongoId).setId(mongoId).getConnectorConfig().put("cid", mongoId);
+        dfJob.setConnectUid(mongoId).setId(mongoId).getConnectorConfig().put("cuid", mongoId);
 
         LOG.info("repack for kafka is:" + dfJob.toKafkaConnectJson().toString());
 
         // Start Kafka Connect REST API Forward only if Kafka is enabled and Connector type is Kafka Connect
         if (this.kafka_connect_enabled && dfJob.getConnectorType().contains("KAFKA")) {
             // Auto fix "name" in Connect Config when mismatch with Connector Name
-            if (!dfJob.getConnector().equalsIgnoreCase(dfJob.getConnectorConfig().get("name")) &&
+            if (!dfJob.getConnectUid().equalsIgnoreCase(dfJob.getConnectorConfig().get("name")) &&
                     dfJob.getConnectorConfig().get("name") != null) {
-                dfJob.getConnectorConfig().put("name", dfJob.getConnector());
+                dfJob.getConnectorConfig().put("name", dfJob.getConnectUid());
             }
             KafkaConnectProcessor.forwardPOSTAsAddOne(routingContext, rc, mongo, COLLECTION, dfJob);
         } else {
@@ -423,7 +423,7 @@ public class DFDataProcessor extends AbstractVerticle {
         dfJob.setStatus(ConstantApp.DF_STATUS.RUNNING.name());
         // Set mongoid to _id, connect, cid in connectConfig
         String mongoId = new ObjectId().toString();
-        dfJob.setConnector(mongoId).setId(mongoId).getConnectorConfig().put("cid", mongoId);
+        dfJob.setConnectUid(mongoId).setId(mongoId).getConnectorConfig().put("cuid", mongoId);
 
         LOG.info("received from UI form - " + HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()));
 
@@ -695,14 +695,14 @@ public class DFDataProcessor extends AbstractVerticle {
                             .header("accept", "application/json").asJson();
                     String resStatus = resConnectorStatus.getBody().getObject().getJSONObject("connector").getString("state");
 
-                    mongo.count(COLLECTION, new JsonObject().put("connector", connectName), count -> {
+                    mongo.count(COLLECTION, new JsonObject().put("connectUid", connectName), count -> {
                         if (count.succeeded()) {
                             if (count.result() == 0) {
                                 // No jobs found, then insert json data
                                 DFJobPOPJ insertJob = new DFJobPOPJ (
                                         new JsonObject().put("name", "imported " + connectName)
-                                                .put("taskId", "0")
-                                                .put("connector", connectName)
+                                                .put("taskSeq", "0")
+                                                .put("connectUid", connectName)
                                                 .put("connectorType", resConnectType)
                                                 .put("connectorCategory", "CONNECT")
                                                 .put("status", resStatus)
@@ -717,7 +717,7 @@ public class DFDataProcessor extends AbstractVerticle {
                                     }
                                 });
                             } else { // Update the connectConfig portion from Kafka import
-                                mongo.findOne(COLLECTION, new JsonObject().put("connector", connectName), null, findidRes -> {
+                                mongo.findOne(COLLECTION, new JsonObject().put("connectUid", connectName), null, findidRes -> {
                                     if (findidRes.succeeded()) {
                                         DFJobPOPJ updateJob = new DFJobPOPJ(findidRes.result());
                                         try {
@@ -778,7 +778,7 @@ public class DFDataProcessor extends AbstractVerticle {
         mongo.find(COLLECTION, new JsonObject().put("connectorType", new JsonObject().put("$in", list)), result -> {
                     if (result.succeeded()) {
                         for (JsonObject json : result.result()) {
-                            String connectName = json.getString("connector");
+                            String connectName = json.getString("connectUid");
                             String statusRepo = json.getString("status");
                             // Get task status
                             try {

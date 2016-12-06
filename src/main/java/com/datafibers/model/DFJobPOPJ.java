@@ -15,16 +15,17 @@ import java.util.HashMap;
  */
 public class DFJobPOPJ {
 
-    private String id; // id as pk, which is also used as job id
-    private String taskId; // Identify each task order in a job
+    private String id; // id as pk, which is also used as task id
+    private String taskSeq; // Identify each task order in a job
     private String name; // Name of the task
-    private String connector; // Name of the connector used. This will maps to Kafka Connect name attribute.
-    private ConstantApp.DF_CONNECT_TYPE connectorType; // Identify proper connector type from enum
+    private String connectUid; // Generate UID using Mongo API to identify connect name for Kafka connect = id
+    private String jobUid; // UID for the Job for future usage.
+    private ConstantApp.DF_CONNECT_TYPE connectorType; // Identify proper connectUid type from enum
     private String connectorCategory;
-    private String description; // Description about job and connector
+    private String description; // Description about job and connectUid
     private String status; // Job/Connector status
     private String udfUpload;
-    
+
     /*
      * The reason we keep them as HashMap is because we do not want to SerDe all field (in that case, we have to define all attribute in
      * configuration file we may use. By using hashmap, we have such flexibility to have one attribute packs all possible configurations.
@@ -33,13 +34,14 @@ public class DFJobPOPJ {
      * our code.
      */
     private HashMap<String, String> jobConfig; //configuration or metadata for the job
-    private HashMap<String, String> connectorConfig; //configuration for the connector used. This will maps to Kafka Connect config attribute
+    private HashMap<String, String> connectorConfig; //configuration for the connectUid used. This will maps to Kafka Connect config attribute
 
-    public DFJobPOPJ(String task_id, String name, String connector, String connector_type, String description,
+    public DFJobPOPJ(String task_seq, String name, String connector_uid, String connector_type, String description,
                      String status, HashMap<String, String> job_config, HashMap<String, String> connector_config) {
-        this.taskId = task_id;
+        this.taskSeq = task_seq;
         this.name = name;
-        this.connector = connector;
+        this.connectUid = connector_uid;
+        this.jobUid = "NOT_ASSIGNED";
         this.connectorType = ConstantApp.DF_CONNECT_TYPE.valueOf(connector_type);
         this.connectorCategory = findConnectorCategory(connector_type);
         this.description = description;
@@ -49,11 +51,12 @@ public class DFJobPOPJ {
         this.connectorConfig = connector_config;
     }
 
-    public DFJobPOPJ(String name, String connector, String status,
+    public DFJobPOPJ(String name, String connector_uid, String status,
                      HashMap<String, String> job_config, HashMap<String, String> connector_config) {
-        this.taskId = "0";
+        this.taskSeq = "0";
         this.name = name;
-        this.connector = connector;
+        this.connectUid = connector_uid;
+        this.jobUid = "NOT_ASSIGNED";
         this.connectorType = ConstantApp.DF_CONNECT_TYPE.NONE;
         this.connectorCategory = findConnectorCategory("");
         this.description = "";
@@ -63,30 +66,32 @@ public class DFJobPOPJ {
         this.connectorConfig = connector_config;
     }
 
-    public DFJobPOPJ(String name, String connector, String status) {
+    public DFJobPOPJ(String name, String connector_uid, String status) {
         this.name = name;
-        this.connector = connector;
+        this.connectUid = connector_uid;
+        this.jobUid = "NOT_ASSIGNED";
         this.connectorType = ConstantApp.DF_CONNECT_TYPE.NONE;
         this.connectorCategory = findConnectorCategory("");
         this.description = "";
         this.status = status;
         this.id = "";
-        this.taskId = "0";
+        this.taskSeq = "0";
         this.jobConfig = null;
         this.connectorConfig = null;
     }
 
     public DFJobPOPJ(JsonObject json) {
-        this.taskId = json.getString("taskId");
+        this.taskSeq = json.getString("taskSeq");
         this.name = json.getString("name");
-        this.connector = json.getString("connector");
+        this.connectUid = json.getString("connectUid");
+        this.jobUid = json.getString("jobUid");
         this.connectorType = ConstantApp.DF_CONNECT_TYPE.valueOf(json.getString("connectorType"));
         this.connectorCategory = findConnectorCategory(json.getString("connectorType"));
         this.description = json.getString("description");
         this.status = json.getString("status");
         this.id = json.getString("_id");
         this.udfUpload = json.getString("udfUpload");
-        
+
         try {
 
             String jobConfig = json.getString("jobConfig");
@@ -115,10 +120,10 @@ public class DFJobPOPJ {
         this.id = "";
     }
 
-    public DFJobPOPJ(String id, String name, String connector, String status) {
+    public DFJobPOPJ(String id, String name, String connector_uid, String status) {
         this.id = id;
         this.name = name;
-        this.connector = connector;
+        this.connectUid = connector_uid;
         this.status = status;
     }
 
@@ -126,8 +131,9 @@ public class DFJobPOPJ {
 
         JsonObject json = new JsonObject()
                 .put("name", name)
-                .put("taskId", taskId)
-                .put("connector", connector)
+                .put("taskSeq", taskSeq)
+                .put("connectUid", connectUid)
+                .put("jobUid", jobUid)
                 .put("connectorType", connectorType)
                 .put("connectorCategory", connectorCategory)
                 .put("description", description)
@@ -143,14 +149,15 @@ public class DFJobPOPJ {
     }
 
     /**
-     * Kafka connector use name and config as json attribute name. Which maps to connect and connectConfig
+     * Kafka connectUid use name and config as json attribute name. Which maps to connect and connectConfig
+     *
      * @return a json object
      */
     public JsonObject toKafkaConnectJson() {
         JsonObject json = new JsonObject()
-                .put("name", connector)
-                    .put("config", mapToJsonObj(connectorConfig));
-            return json;
+                .put("name", connectUid)
+                .put("config", mapToJsonObj(connectorConfig));
+        return json;
     }
 
     /*
@@ -160,8 +167,12 @@ public class DFJobPOPJ {
         return name;
     }
 
-    public String getConnector() {
-        return connector;
+    public String getConnectUid() {
+        return connectUid;
+    }
+
+    public String getJobUid() {
+        return jobUid;
     }
 
     public String getConnectorCategory() {
@@ -173,7 +184,7 @@ public class DFJobPOPJ {
     }
 
     public String findConnectorCategory(String ct) {
-        if(StringUtils.indexOfAny(ct, new String[]{"SOURCE", "SINK"}) > 0) {
+        if (StringUtils.indexOfAny(ct, new String[]{"SOURCE", "SINK"}) > 0) {
             return "CONNECT";
         }
         return "TRANSFORM";
@@ -187,8 +198,8 @@ public class DFJobPOPJ {
         return status;
     }
 
-    public String getTaskId() {
-        return taskId;
+    public String getTaskSeq() {
+        return taskSeq;
     }
 
     public String getId() {
@@ -208,8 +219,13 @@ public class DFJobPOPJ {
         return this;
     }
 
-    public DFJobPOPJ setConnector(String connector) {
-        this.connector = connector;
+    public DFJobPOPJ setConnectUid(String connectUid) {
+        this.connectUid = connectUid;
+        return this;
+    }
+
+    public DFJobPOPJ setJobUid(String jobUid) {
+        this.jobUid = jobUid;
         return this;
     }
 
@@ -239,8 +255,8 @@ public class DFJobPOPJ {
         return this;
     }
 
-    public DFJobPOPJ setTaskId(String task_id) {
-        this.taskId = task_id;
+    public DFJobPOPJ setTaskSeq(String task_id) {
+        this.taskSeq = task_id;
         return this;
     }
 
@@ -261,7 +277,7 @@ public class DFJobPOPJ {
 
     @JsonIgnore
     public String getFlinkIDFromJobConfig() {
-        if(this.jobConfig != null)
+        if (this.jobConfig != null)
             return this.jobConfig.get("flink.submit.job.id");
         return "flink.submit.job.id is null";
     }
@@ -285,12 +301,12 @@ public class DFJobPOPJ {
     }
 
     public void setUdfUpload(String tmpUDFUpload) {
-    	udfUpload = tmpUDFUpload;
+        udfUpload = tmpUDFUpload;
     }
-    
+
     public String getUdfUpload() {
-    	return udfUpload;
+        return udfUpload;
     }
-    
-    
+
+
 }

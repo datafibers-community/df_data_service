@@ -138,7 +138,7 @@ public class MyFirstVerticleTest {
           response.bodyHandler(body -> {
             final DFJobPOPJ DFJob = Json.decodeValue(body.toString(), DFJobPOPJ.class);
             context.assertEquals(DFJob.getName(), "Jameson");
-            context.assertEquals(DFJob.getConnector(), "Ireland");
+            context.assertEquals(DFJob.getConnectUid(), "Ireland");
             context.assertNotNull(DFJob.getId());
             async.complete();
           });

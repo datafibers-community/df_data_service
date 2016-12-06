@@ -25,29 +25,29 @@ customHeaderTemplate =
     var admin = nga.application().title('DataFibers Admin Console').baseApiUrl('http://localhost:8080/api/df/');
     admin.header(customHeaderTemplate);
 	var processor = nga.entity('processor').label('ALL');
-    var producer = nga.entity('ps').label('CONNECTS');
-	var transformer = nga.entity('tr').label('TRANSFORMS');
+    var connect = nga.entity('ps').label('CONNECTS');
+	var transform = nga.entity('tr').label('TRANSFORMS');
 	var schema = nga.entity('schema').identifier(nga.field('subject')).label('SCHEMA');
     var installed_connects = nga.entity('installed_connects').identifier(nga.field('class')).label('INSTALLED').readOnly();
 
-    // set the fields of the producer entity list view
-    producer.listView().sortField('name').fields([
+    // set the fields of the connect entity list view
+    connect.listView().sortField('name').fields([
         nga.field('id').label('Task ID').isDetailLink(true),
-        nga.field('taskId', 'number').format('0o').label('Task Order'),
+        nga.field('taskId', 'number').format('0o').label('Task Seq'),
         nga.field('name').label('Task Name'),
-        nga.field('connector').label('Processor ID'),
+        nga.field('connectUid').label('Connect UID'),
         nga.field('connectorType').label('Type'),
-        nga.field('status').label('Job Status')
+        nga.field('status').label('Task Status')
     ]);
 
-    // set the fields of the transformer entity list view
-    transformer.listView().sortField('name').fields([
+    // set the fields of the transform entity list view
+    transform.listView().sortField('name').fields([
         nga.field('id').label('Task ID').isDetailLink(true),
-        nga.field('taskId', 'number').format('0o').label('Task Order'),
+        nga.field('taskSeq', 'number').format('0o').label('Task Seq'),
         nga.field('name').label('Task Name'),
-        nga.field('connector').label('Processor ID'),
+        nga.field('connectUid').label('Transform UID'),
         nga.field('connectorType').label('Type'),
-        nga.field('status').label('Job Status')
+        nga.field('status').label('Task Status')
     ]);
   	schema.listView().sortField('name').fields([
   	    nga.field('subject').label('Subject Name').isDetailLink(true),
@@ -57,23 +57,23 @@ customHeaderTemplate =
         nga.field('compatibility').label('Compatibility')
     ]);
 
-    producer.listView().title('Connects Dashboard');
-    transformer.listView().title('Transforms Dashboard');
+    connect.listView().title('Connects Dashboard');
+    transform.listView().title('Transforms Dashboard');
     schema.listView().title('Schema Dashboard');
     schema.listView().batchActions([]);
 
-    producer.creationView().fields([
-        nga.field('taskId', 'number').format('0o').label('Task Order'),
+    connect.creationView().fields([
+        nga.field('taskSeq', 'number').format('0o').label('Task Seq'),
         nga.field('name').label('Task Name'),
-        //nga.field('connector').attributes({placeholder:'No space allowed and 5 chars min.'}).validation({ required: true, pattern: '[A-Za-z0-9\-]{5,20}' }).label('Connects'),
+        //nga.field('connectUid').attributes({placeholder:'No space allowed and 5 chars min.'}).validation({ required: true, pattern: '[A-Za-z0-9\-]{5,20}' }).label('Connects'),
         nga.field('connectorType', 'choice')
                 .choices([
                                 {value:'KAFKA_SOURCE', label:'Kafka Connect Source'},
                                 {value:'KAFKA_SINK', label:'Kafka Connect Sink'}]).label('Connector Type'),
-        nga.field('status').editable(false).label('Job Status'),
+        nga.field('status').editable(false).label('Task Status'),
         nga.field('description', 'text'),
-        nga.field('jobConfig','json').defaultValue({}).label('Job Config'),
-        nga.field('connectorConfig','json').label('Connects Config')
+        //nga.field('jobConfig','json').defaultValue({}).label('Job Config'),
+        nga.field('connectorConfig','json').label('Connect Config')
 		.defaultValue({
 		"config_ignored":"template marker, remove it to make config effective",
 		"connector.class": "org.apache.kafka.connect.file.FileStreamSourceConnector",
@@ -95,21 +95,21 @@ customHeaderTemplate =
 		.template('<ma-field ng-if="entry.values.connectorType == \'KAFKA_SINK\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true)
     ]);
 
-    producer.editionView().fields([
-        nga.field('taskId', 'number').label('Task Order').editable(false),
+    connect.editionView().fields([
+        nga.field('taskSeq', 'number').label('Task Seq').editable(false),
         nga.field('name').label('Task Name').editable(false),
-        nga.field('connector').label('Connect ID').editable(false),
+        nga.field('connectUid').label('Connect UID').editable(false),
         nga.field('connectorType').editable(false),
-        nga.field('status').editable(false).label('Job Status'),
+        nga.field('status').editable(false).label('Task Status'),
         nga.field('description', 'text'),
-        nga.field('jobConfig','json').defaultValue({}).label('Job Config'),
-        nga.field('connectorConfig','json').label('Connects Config')
+        //nga.field('jobConfig','json').defaultValue({}).label('Job Config'),
+        nga.field('connectorConfig','json').label('Connect Config')
     ]);
 
-	transformer.creationView().fields([
-        nga.field('taskId', 'number').label('Task Order'),
+	transform.creationView().fields([
+        nga.field('taskSeq', 'number').label('Task Seq'),
         nga.field('name').label('Task Name'),
-        //nga.field('connector').attributes({placeholder:'No space allowed and 5 chars min.'}).validation({ required: true, pattern: '[A-Za-z0-9\-]{5,20}' }).label('Transforms'),
+        //nga.field('connectUid').attributes({placeholder:'No space allowed and 5 chars min.'}).validation({ required: true, pattern: '[A-Za-z0-9\-]{5,20}' }).label('Transforms'),
         nga.field('connectorType', 'choice')
                 .choices([
                                 {value:'FLINK_TRANS', label:'Flink Streaming SQL (Json|Json String)'},
@@ -122,10 +122,10 @@ customHeaderTemplate =
                 if (value.indexOf('.jar') == -1) throw new Error ('Invalid .jar file!');
         } })
         .template('<ma-field ng-if="entry.values.connectorType == \'FLINK_UDF\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true),
-        nga.field('status').editable(false).label('Job Status'),
+        nga.field('status').editable(false).label('Task Status'),
         nga.field('description', 'text'),
-        nga.field('jobConfig','json').defaultValue({}).label('Job Config'),
-        nga.field('connectorConfig_1','json').label('Transforms Config')
+        //nga.field('jobConfig','json').defaultValue({}).label('Job Config'),
+        nga.field('connectorConfig_1','json').label('Transform Config')
         .defaultValue({
         "config_ignored":"template marker, remove it to make config effective",
         "group.id":"Kafka consumer id.",
@@ -177,10 +177,10 @@ customHeaderTemplate =
 
     ]);
 
-	transformer.editionView().fields([
-        nga.field('taskId', 'number').label('Task ID').editable(false),
+	transform.editionView().fields([
+        nga.field('taskSeq', 'number').label('Task ID').editable(false),
         nga.field('name').label('Job Name').editable(false),
-        nga.field('connector').label('Transform ID').editable(false),
+        nga.field('connectUid').label('Transform ID').editable(false),
         nga.field('connectorType').editable(false),
         nga.field('udfUpload', 'file').label('Upload Jar').uploadInformation({ 'url': 'http://localhost:8080/api/df/uploaded_files', 'method': 'POST', 'apifilename': 'uploaded_file_name' })
         .defaultValue('empty.jar')
@@ -188,10 +188,10 @@ customHeaderTemplate =
                 if (value.indexOf('.jar') == -1) throw new Error ('Invalid .jar file!');
         } })
         .template('<ma-field ng-if="entry.values.connectorType == \'FLINK_UDF\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true),
-        nga.field('status').editable(false).label('Job Status'),
+        nga.field('status').editable(false).label('Task Status'),
         nga.field('description', 'text'),
-        nga.field('jobConfig','json').defaultValue({}).label('Job Config'),
-        nga.field('connectorConfig','json').label('Transforms Config')
+        //nga.field('jobConfig','json').defaultValue({}).label('Job Config'),
+        nga.field('connectorConfig','json').label('Transform Config')
     ]);
 
     schema.creationView().fields([
@@ -226,32 +226,32 @@ customHeaderTemplate =
 
 	// set the fields of the processor entity list view
     processor.listView().sortField('name').fields([
-        nga.field('id').label('Job ID').isDetailLink(true),
-        nga.field('taskId', 'number').format('0o').label('Task ID'),
-        nga.field('name').label('Job Name'),
-        nga.field('connector').label('Processor'),
+        nga.field('id').label('Task ID').isDetailLink(true),
+        nga.field('taskSeq', 'number').format('0o').label('Task Seq'),
+        nga.field('name').label('Task Name'),
+        nga.field('connectUid').label('Connect or Transform UID'),
         nga.field('connectorType').label('Type'),
 		nga.field('connectorCategory').label('Category'),
-        nga.field('status').label('Job Status')
+        nga.field('status').label('Task Status')
     ]);
     processor.listView().title('All Connects and Transforms');
     processor.listView().batchActions([]);
 
-    // set the fields of the producer entity list view
+    // set the fields of the connect entity list view
     installed_connects.listView().sortField('class').fields([
         nga.field('class').label('Connects')
     ]);
     installed_connects.listView().title('Connects Installed');
     installed_connects.listView().batchActions([]);
 
-    // add the producer entity to the admin application
-    admin.addEntity(processor).addEntity(producer).addEntity(transformer).addEntity(installed_connects).addEntity(schema);
+    // add the connect entity to the admin application
+    admin.addEntity(processor).addEntity(connect).addEntity(transform).addEntity(installed_connects).addEntity(schema);
 
 	// customize menubar
 	admin.menu(nga.menu()
   .addChild(nga.menu(processor).icon('<span class="fa fa-globe fa-fw"></span>'))
-  .addChild(nga.menu(producer).icon('<span class="fa fa-plug fa-fw"></span>'))
-  .addChild(nga.menu(transformer).icon('<span class="fa fa-flask fa-fw"></span>'))
+  .addChild(nga.menu(connect).icon('<span class="fa fa-plug fa-fw"></span>'))
+  .addChild(nga.menu(transform).icon('<span class="fa fa-flask fa-fw"></span>'))
   .addChild(nga.menu(schema).icon('<span class="fa fa-scribd fa-fw"></span>'))
   .addChild(nga.menu(installed_connects).icon('<span class="fa fa-cog fa-fw"></span>'))
 );

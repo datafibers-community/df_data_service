@@ -50,7 +50,7 @@ public class MyRestIT {
     DFJobPOPJ DFJob = given()
         .body("{\"name\":\"Jameson\", \"origin\":\"Ireland\"}").request().post("/api/whiskies").thenReturn().as(DFJobPOPJ.class);
     assertThat(DFJob.getName()).isEqualToIgnoringCase("Jameson");
-    assertThat(DFJob.getConnector()).isEqualToIgnoringCase("Ireland");
+    assertThat(DFJob.getConnectUid()).isEqualToIgnoringCase("Ireland");
     assertThat(DFJob.getId()).isNotEmpty();
 
 
