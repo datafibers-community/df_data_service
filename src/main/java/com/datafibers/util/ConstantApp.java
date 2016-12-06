@@ -69,25 +69,32 @@ public final class ConstantApp {
         NONE
     }
 
+    /**
+     * IF contains SOURCE or SINK, it is CONNECT, else TRANSFORM
+     * Convention: CATEGORY_TYPE
+     */
     public enum DF_CONNECT_TYPE {
-        KAFKA_SOURCE,       // Kafka Connector import data into Kafka
-        KAFKA_SINK,         // Kafka Connector export data out of Kafka
-        EVENTBUS_SOURCE,    // The plugin import data into Vertx Event Bus
-        EVENTBUS_SINK,      // The plugin export data out of Vertx Event Bus
-        HDFS_SOURCE,        // The plugin import data into HDFS
-        HDFS_SINK,          // The plugin export data out of HDFS
-        HIVE_SOURCE,        // The plugin import data into Hive
-        HIVE_SINK,          // The plugin export data out of Hive
-        FLINK_TRANS,        // Flink streaming SQL
-        FLINK_SQL_A2J,      // Flink streaming SQL from Avro to Json
-        FLINK_SQL_J2J,      // Flink streaming SQL from Json to Json
-        FLINK_JOINS,        // Flink streaming of Data Join
-        FLINK_UDF,          // Flink user defined jar/program
-        SPARK_TRANS,        // Spark streaming SQL
-        SPARK_JOINS,        // Spark streaming of Data Join
-        SPARK_UDF,          // Spark user defined jar/program
-        HIVE_TRANS,         // Hive batch SQL
-        HIVE_JOINS,         // Hive batch join
+        CONNECT_KAFKA_SOURCE,       // Kafka Connector import data into Kafka
+        CONNECT_KAFKA_SOURCE_AVRO,  // DF Generic Avro source
+        CONNECT_KAFKA_SINK,         // Kafka Connector export data out of Kafka
+        CONNECT_EVENTBUS_SOURCE,    // The plugin import data into Vertx Event Bus
+        CONNECT_EVENTBUS_SINK,      // The plugin export data out of Vertx Event Bus
+        CONNECT_HDFS_SOURCE,        // The plugin import data into HDFS
+        CONNECT_HDFS_SINK,          // The plugin export data out of HDFS
+        CONNECT_HIVE_SOURCE,        // The plugin import data into Hive
+        CONNECT_HIVE_SINK,          // The plugin export data out of Hive
+        TRANSFORM_FLINK_SQL_GENE,     // Flink streaming SQL
+        TRANSFORM_FLINK_SQL_A2J,      // Flink streaming SQL from Avro to Json
+        TRANSFORM_FLINK_SQL_J2J,      // Flink streaming SQL from Json to Json
+        TRANSFORM_FLINK_JOINS,        // Flink streaming of Data Join
+        TRANSFORM_FLINK_UDF,          // Flink user defined jar/program
+        TRANSFORM_SPARK_SQL,          // Spark streaming SQL
+        TRANSFORM_SPARK_BATCH_SQL,    // Spark streaming SQL
+        TRANSFORM_SPARK_JOINS,        // Spark streaming of Data Join
+        TRANSFORM_SPARK_UDF,          // Spark user defined jar/program
+        TRANSFORM_HIVE_TRANS,         // Hive batch SQL
+        TRANSFORM_HIVE_JOINS,         // Hive batch join
+        DEMO_000_0001,                // Reserved for future demo purpose
         NONE
     }
 

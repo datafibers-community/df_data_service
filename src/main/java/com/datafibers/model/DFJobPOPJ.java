@@ -176,7 +176,7 @@ public class DFJobPOPJ {
     }
 
     public String getConnectorCategory() {
-        return findConnectorCategory(getConnectorType());
+        return connectorCategory;
     }
 
     public String getConnectorType() {
@@ -184,10 +184,8 @@ public class DFJobPOPJ {
     }
 
     public String findConnectorCategory(String ct) {
-        if (StringUtils.indexOfAny(ct, new String[]{"SOURCE", "SINK"}) > 0) {
-            return "CONNECT";
-        }
-        return "TRANSFORM";
+        System.out.println("called findConnectorCategory");
+        return ct.split("_")[0];
     }
 
     public String getDescription() {

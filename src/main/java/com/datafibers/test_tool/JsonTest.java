@@ -13,7 +13,7 @@ public class JsonTest {
     public static void main(String[] args) throws IOException, DecoderException {
         System.out.println("TestCase_Simple Avro Producer");
 
-        String JSON_STRING = "{\"taskId\":1,\"name\":\"testtest\",\"connector\":\"testtest\",\"connectorType\":\"KAFKA_SOURCE\",\"status\":null,\"description\":null,\"jobConfig\":null,\"connectorConfig\":{\"connector.class\":\"org.apache.kafka.connect.file.FileStreamSourceConnector\",\"file\":\"a.dat\",\"tasks.max\":\"1\",\"name\":\"testtest\",\"topic\":\"testtest\"},\"connectorConfig_1\":{\"config_ignored\":\"template marker, remove it to make config effective\",\"connector.class\":\"org.apache.kafka.connect.file.FileStreamSinkConnector\",\"file\":\"File name to keep the data exported from Kafka.\",\"tasks.max\":\"Number of tasks in parallel.\",\"name\":\"Kafka Connect name.\",\"topics\":\"List of Kafka topics having data streamed out\"}}";
+        String JSON_STRING = "{\"taskId\":1,\"name\":\"testtest\",\"connector\":\"testtest\",\"connectorType\":\"CONNECT_KAFKA_SOURCE\",\"status\":null,\"description\":null,\"jobConfig\":null,\"connectorConfig\":{\"connector.class\":\"org.apache.kafka.connect.file.FileStreamSourceConnector\",\"file\":\"a.dat\",\"tasks.max\":\"1\",\"name\":\"testtest\",\"topic\":\"testtest\"},\"connectorConfig_1\":{\"config_ignored\":\"template marker, remove it to make config effective\",\"connector.class\":\"org.apache.kafka.connect.file.FileStreamSinkConnector\",\"file\":\"File name to keep the data exported from Kafka.\",\"tasks.max\":\"Number of tasks in parallel.\",\"name\":\"Kafka Connect name.\",\"topics\":\"List of Kafka topics having data streamed out\"}}";
 
         JSONObject json = new JSONObject(JSON_STRING);
         int index = 0;

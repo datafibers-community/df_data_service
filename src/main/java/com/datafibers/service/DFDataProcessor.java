@@ -4,7 +4,6 @@ import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
-import io.vertx.core.WorkerExecutor;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
@@ -391,6 +390,8 @@ public class DFDataProcessor extends AbstractVerticle {
         // Set initial status for the job
         dfJob.setStatus(ConstantApp.DF_STATUS.UNASSIGNED.name());
 
+        // TODO Set default registry url for DF Generic connect for Avro
+
         // Set mongoid to _id, connect, cid in connectConfig
         String mongoId = new ObjectId().toString();
         dfJob.setConnectUid(mongoId).setId(mongoId).getConnectorConfig().put("cuid", mongoId);
@@ -398,7 +399,7 @@ public class DFDataProcessor extends AbstractVerticle {
         LOG.info("repack for kafka is:" + dfJob.toKafkaConnectJson().toString());
 
         // Start Kafka Connect REST API Forward only if Kafka is enabled and Connector type is Kafka Connect
-        if (this.kafka_connect_enabled && dfJob.getConnectorType().contains("KAFKA")) {
+        if (this.kafka_connect_enabled && dfJob.getConnectorType().contains("CONNECT")) {
             // Auto fix "name" in Connect Config when mismatch with Connector Name
             if (!dfJob.getConnectUid().equalsIgnoreCase(dfJob.getConnectorConfig().get("name")) &&
                     dfJob.getConnectorConfig().get("name") != null) {
@@ -429,7 +430,7 @@ public class DFDataProcessor extends AbstractVerticle {
 
         if (this.transform_engine_flink_enabled) {
             // Submit Flink SQL General Transformation
-            if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.FLINK_TRANS.name()) {
+            if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_FLINK_SQL_GENE.name()) {
                 FlinkTransformProcessor.submitFlinkSQL(dfJob, vertx,
                         config().getInteger("flink.trans.client.timeout", 8000), env,
                         this.zookeeper_server_host_and_port,
@@ -445,13 +446,13 @@ public class DFDataProcessor extends AbstractVerticle {
             }
 
             // Submit Flink UDF
-            if(dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.FLINK_UDF.name()) {
+            if(dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_FLINK_SQL_GENE.name()) {
                 FlinkTransformProcessor.runFlinkJar(dfJob.getUdfUpload(),
                         this.flink_server_host + ":" + this.flink_server_port);
             }
 
             // Submit Flink SQL Avro to Json
-            if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.FLINK_SQL_A2J.name()) {
+            if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_FLINK_SQL_A2J.name()) {
                 FlinkTransformProcessor.submitFlinkSQLA2J(dfJob, vertx,
                         config().getInteger("flink.trans.client.timeout", 8000), env,
                         this.zookeeper_server_host_and_port,
@@ -468,7 +469,7 @@ public class DFDataProcessor extends AbstractVerticle {
             }
 
             // Submit Flink SQL Json to Json
-            if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.FLINK_SQL_J2J.name()) {
+            if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_FLINK_SQL_J2J.name()) {
                 FlinkTransformProcessor.submitFlinkSQLJ2J(dfJob, vertx,
                         config().getInteger("flink.trans.client.timeout", 8000), env,
                         this.zookeeper_server_host_and_port,
@@ -511,7 +512,7 @@ public class DFDataProcessor extends AbstractVerticle {
                 if (res.succeeded()) {
                     String before_update_connectorConfigString = res.result().getString("connectorConfig");
                     // Detect changes in connectConfig
-                    if (this.kafka_connect_enabled && dfJob.getConnectorType().contains("KAFKA") &&
+                    if (this.kafka_connect_enabled && dfJob.getConnectorType().contains("CONNECT") &&
                             connectorConfigString.compareTo(before_update_connectorConfigString) != 0) {
                        KafkaConnectProcessor.forwardPUTAsUpdateOne(routingContext, rc, mongo, COLLECTION, dfJob);
                     } else { // Where there is no change detected
@@ -619,7 +620,8 @@ public class DFDataProcessor extends AbstractVerticle {
                     }
                     DFJobPOPJ dfJob = new DFJobPOPJ(ar.result());
                     System.out.println("DELETE OBJ" + dfJob.toJson());
-                    if (this.kafka_connect_enabled && dfJob.getConnectorType().contains("KAFKA")) {
+                    if (this.kafka_connect_enabled &&
+                            (dfJob.getConnectorType().contains("CONNECT"))){
                         KafkaConnectProcessor.forwardDELETEAsDeleteOne(routingContext, rc, mongo, COLLECTION, dfJob);
                     } else {
                         mongo.removeDocument(COLLECTION, new JsonObject().put("_id", id),
@@ -684,9 +686,9 @@ public class DFDataProcessor extends AbstractVerticle {
                     String resConnectTypeTmp = resConfig.getObject().getString("connector.class");
                     String resConnectType;
                     if (resConnectTypeTmp.toUpperCase().contains("SOURCE")) {
-                        resConnectType = ConstantApp.DF_CONNECT_TYPE.KAFKA_SOURCE.name();
+                        resConnectType = ConstantApp.DF_CONNECT_TYPE.CONNECT_KAFKA_SOURCE.name();
                     } else if (resConnectTypeTmp.toUpperCase().contains("SINK")) {
-                        resConnectType = ConstantApp.DF_CONNECT_TYPE.KAFKA_SINK.name();
+                        resConnectType = ConstantApp.DF_CONNECT_TYPE.CONNECT_KAFKA_SINK.name();
                     } else {
                         resConnectType = ConstantApp.DF_CONNECT_TYPE.NONE.name();
                     }
@@ -768,8 +770,8 @@ public class DFDataProcessor extends AbstractVerticle {
         // Loop existing KAFKA connectors in repository and fetch their latest status from Kafka Server
         // LOG.info("Refreshing Connects status from Kafka Connect REST Server - Start.");
         List<String> list = new ArrayList<String>();
-        list.add(ConstantApp.DF_CONNECT_TYPE.KAFKA_SINK.name());
-        list.add(ConstantApp.DF_CONNECT_TYPE.KAFKA_SOURCE.name());
+        list.add(ConstantApp.DF_CONNECT_TYPE.CONNECT_KAFKA_SINK.name());
+        list.add(ConstantApp.DF_CONNECT_TYPE.CONNECT_KAFKA_SOURCE.name());
 
         String restURI = "http://" + this.kafka_connect_rest_host+ ":" + this.kafka_connect_rest_port +
                 ConstantApp.KAFKA_CONNECT_REST_URL;
