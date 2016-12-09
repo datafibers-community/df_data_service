@@ -1,5 +1,6 @@
 package com.datafibers.service;
 
+import com.datafibers.processor.SchemaRegisterProcessor;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -33,7 +34,6 @@ import com.datafibers.flinknext.DFRemoteStreamEnvironment;
 import com.datafibers.model.DFJobPOPJ;
 import com.datafibers.processor.FlinkTransformProcessor;
 import com.datafibers.processor.KafkaConnectProcessor;
-import com.datafibers.processor.SchemaRegisterForward;
 import com.datafibers.util.ConstantApp;
 import com.datafibers.util.DFMediaType;
 import com.datafibers.util.HelpFunc;
@@ -858,7 +858,7 @@ public class DFDataProcessor extends AbstractVerticle {
         postRestClientRequest.end();
     }
     public void getAllSchemas(RoutingContext routingContext) {
-    	SchemaRegisterForward.forwardGetAllSchemas(vertx, routingContext, rc_schema, schema_registry_host_and_port);
+    	SchemaRegisterProcessor.forwardGetAllSchemas(vertx, routingContext, rc_schema, schema_registry_host_and_port);
 	}
     
     /*
@@ -869,7 +869,7 @@ public class DFDataProcessor extends AbstractVerticle {
      * curl -X GET -i http://localhost:8081/config/finance-value
      */
     private void getOneSchema(RoutingContext routingContext) {
-    	SchemaRegisterForward.forwardGetOneSchema(vertx, routingContext, rc_schema, schema_registry_host_and_port);
+    	SchemaRegisterProcessor.forwardGetOneSchema(vertx, routingContext, rc_schema, schema_registry_host_and_port);
     }
     
     /*
