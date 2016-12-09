@@ -27,7 +27,10 @@ import com.mashape.unirest.http.exceptions.UnirestException;
 public class KafkaConnectProcessor {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaConnectProcessor.class);
-
+    
+    /**
+     * 
+     */
     public KafkaConnectProcessor(){
 
     }
