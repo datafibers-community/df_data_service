@@ -95,6 +95,9 @@ public final class ConstantApp {
         TRANSFORM_HIVE_TRANS,         // Hive batch SQL
         TRANSFORM_HIVE_JOINS,         // Hive batch join
         DEMO_000_0001,                // Reserved for future demo purpose
+        FLINK_TRANS,					//Used in UI 
+        KAFKA_SINK,						//Used in UI
+        KAFKA_SOURCE,					//Used in UI
         NONE
     }
 
