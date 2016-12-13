@@ -184,7 +184,6 @@ public class DFJobPOPJ {
     }
 
     public String findConnectorCategory(String ct) {
-        System.out.println("called findConnectorCategory");
         return ct.split("_")[0];
     }
 

@@ -72,21 +72,24 @@ public class DFDataProcessor extends AbstractVerticle {
     private static Integer kafka_connect_rest_port;
     private static Boolean kafka_connect_import_start;
 
-    // SZ:
-    private static Integer kafka_registry_rest_port;
-    
     // Transforms attributes
     public static Boolean transform_engine_flink_enabled;
     private static String flink_server_host;
     private static Integer flink_server_port;
+    public static DFRemoteStreamEnvironment env;
+
+    // Kafka attributes
     private static String zookeeper_server_host;
     private static Integer zookeeper_server_port;
     private static String zookeeper_server_host_and_port;
     private static String kafka_server_host;
     private static Integer kafka_server_port;
     public static String kafka_server_host_and_port;
+
+    // Schema Registry attributes
     private static String schema_registry_host_and_port;
-    public static DFRemoteStreamEnvironment env;
+    private static Integer schema_registry_rest_port;
+
 
     private static final Logger LOG = LoggerFactory.getLogger(DFDataProcessor.class);
 
@@ -103,21 +106,23 @@ public class DFDataProcessor extends AbstractVerticle {
         this.kafka_connect_rest_host = config().getString("kafka.connect.rest.host", "localhost");
         this.kafka_connect_rest_port = config().getInteger("kafka.connect.rest.port", 8083);
         this.kafka_connect_import_start = config().getBoolean("kafka.connect.import.start", Boolean.TRUE);
-        // SZ:
-        this.kafka_registry_rest_port = config().getInteger("kafka.registry.rest.port", 8081);
-        
+
         // Check Transforms config
         this.transform_engine_flink_enabled = config().getBoolean("transform.engine.flink.enable", Boolean.TRUE);
         this.flink_server_host = config().getString("flink.servers.host", "localhost");
         this.flink_server_port = config().getInteger("flink.servers.port", 6123);
+
+        // Kafka config
         this.zookeeper_server_host = config().getString("zookeeper.server.host", "localhost");
         this.zookeeper_server_port = config().getInteger("zookeeper.server.port", 2181);
         this.zookeeper_server_host_and_port = this.zookeeper_server_host + ":" + this.zookeeper_server_port.toString();
         this.kafka_server_host = this.kafka_connect_rest_host;
         this.kafka_server_port = config().getInteger("kafka.server.port", 9092);
         this.kafka_server_host_and_port = this.kafka_server_host + ":" + this.kafka_server_port.toString();
-        this.schema_registry_host_and_port = this.kafka_server_host + ":" +
-                config().getInteger("kafka.schema.registry.rest.port", 8081);
+
+        // Schema Registry
+        this.schema_registry_rest_port = config().getInteger("kafka.schema.registry.rest.port", 8081);
+        this.schema_registry_host_and_port = this.kafka_server_host + ":" + this.schema_registry_rest_port;
 
         /**
          * Create all application client
@@ -152,7 +157,7 @@ public class DFDataProcessor extends AbstractVerticle {
                     .setConnectTimeout(ConstantApp.REST_CLIENT_CONNECT_TIMEOUT)
                     .setGlobalRequestTimeout(ConstantApp.REST_CLIENT_GLOBAL_REQUEST_TIMEOUT)
                     .setDefaultHost(this.kafka_connect_rest_host)
-                    .setDefaultPort(this.kafka_registry_rest_port)
+                    .setDefaultPort(this.schema_registry_rest_port)
                     .setKeepAlive(ConstantApp.REST_CLIENT_KEEP_LIVE)
                     .setMaxPoolSize(ConstantApp.REST_CLIENT_MAX_POOL_SIZE);
             
@@ -230,7 +235,7 @@ public class DFDataProcessor extends AbstractVerticle {
         router.put(ConstantApp.DF_TRANSFORMS_REST_URL_WITH_ID).handler(this::updateOneTransforms); // Flink Forward
         router.delete(ConstantApp.DF_TRANSFORMS_REST_URL_WITH_ID).handler(this::deleteOneTransforms); // Flink Forward
 
-        // SZ:
+        // Schema Registry
         router.options(ConstantApp.DF_SCHEMA_REST_URL_WITH_ID).handler(this::corsHandle);
         router.options(ConstantApp.DF_SCHEMA_REST_URL).handler(this::corsHandle);
         router.get(ConstantApp.DF_SCHEMA_REST_URL).handler(this::getAllSchemas); // Schema Registry Forward
@@ -300,8 +305,10 @@ public class DFDataProcessor extends AbstractVerticle {
         }
     }
 
-   
-    
+    /**
+     * Handle upload UDF Jar form for Flink UDF Transformation
+     * @param routingContext
+     */
     private void uploadFiles (RoutingContext routingContext) {
         Set<FileUpload> fileUploadSet = routingContext.fileUploads();
 
@@ -770,13 +777,12 @@ public class DFDataProcessor extends AbstractVerticle {
         // Loop existing KAFKA connectors in repository and fetch their latest status from Kafka Server
         // LOG.info("Refreshing Connects status from Kafka Connect REST Server - Start.");
         List<String> list = new ArrayList<String>();
-        list.add(ConstantApp.DF_CONNECT_TYPE.CONNECT_KAFKA_SINK.name());
-        list.add(ConstantApp.DF_CONNECT_TYPE.CONNECT_KAFKA_SOURCE.name());
+        // Add all Kafka connect TODO add a function to add all connects to List
+        HelpFunc.addSpecifiedConnectTypetoList(list, "connect");
 
         String restURI = "http://" + this.kafka_connect_rest_host+ ":" + this.kafka_connect_rest_port +
                 ConstantApp.KAFKA_CONNECT_REST_URL;
-        // Container reused for keeping refreshing list of active Kafka jobs
-        ArrayList<String> activeKafkaConnector = new ArrayList<String>();
+
         mongo.find(COLLECTION, new JsonObject().put("connectorType", new JsonObject().put("$in", list)), result -> {
                     if (result.succeeded()) {
                         for (JsonObject json : result.result()) {
@@ -905,7 +911,7 @@ public class DFDataProcessor extends AbstractVerticle {
 		LOG.debug("=== compatibility: " + compatibility);
 
 	    // restURI = "http://localhost:8081/subjects/Kafka-key/versions";
-    	restURI = "http://" + this.kafka_connect_rest_host + ":" + this.kafka_registry_rest_port + "/subjects/" + subject + "/versions";
+    	restURI = "http://" + this.schema_registry_host_and_port + "/subjects/" + subject + "/versions";
         LOG.debug("=== restURI: " + restURI);
         
         // 1). Add the new schema
@@ -946,7 +952,7 @@ public class DFDataProcessor extends AbstractVerticle {
         // 2) Set compatibility to the subject
         LOG.debug("============ 2. set compatibility to the subject ============");
         if (compatibility != null && compatibility.trim().length() > 0) {
-	        restURI = "http://" + this.kafka_connect_rest_host + ":" + this.kafka_registry_rest_port + "/config/" + subject;
+	        restURI = "http://" + this.schema_registry_host_and_port + "/config/" + subject;
 	        final RestClientRequest postRestClientRequest2 = rc_schema.put(restURI, portRestResponse -> {
 	            LOG.info("== Update Config Compatibility sucefully. Received response from schema registry server: " + portRestResponse.statusMessage());
 	            LOG.info("== Update Config Compatibility sucefully. Received response from schema registry server: " + portRestResponse.statusCode());
@@ -1031,7 +1037,7 @@ public class DFDataProcessor extends AbstractVerticle {
     	compatibility = jsonObj.optString(ConstantApp.COMPATIBILITY);
  		LOG.debug("=== compatibility: " + compatibility);
  		
-    	restURI = "http://" + this.kafka_connect_rest_host + ":" + this.kafka_registry_rest_port + "/subjects/" + subject + "/versions";
+    	restURI = "http://" + this.schema_registry_host_and_port + "/subjects/" + subject + "/versions";
 
         LOG.debug("=== restURI: " + restURI);
         
@@ -1076,7 +1082,7 @@ public class DFDataProcessor extends AbstractVerticle {
         if (compatibility != null && compatibility.trim().length() > 0) {
 	        // Set compatibility
 	        // curl -X PUT -i -H "Content-Type: application/vnd.schemaregistry.v1+json" --data '{"compatibility": "FORWARD"}' http://localhost:8081/config/SZ01
-	        restURI = "http://" + this.kafka_connect_rest_host + ":" + this.kafka_registry_rest_port + "/config/" + subject;
+	        restURI = "http://" + this.schema_registry_host_and_port + "/config/" + subject;
 	        final RestClientRequest postRestClientRequest2 = rc_schema.put(restURI, portRestResponse -> {
 	            // String rs = portRestResponse.getBody().toString();
 	            // LOG.info("== Response rs - compatibility: " + rs);

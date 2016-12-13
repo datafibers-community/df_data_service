@@ -125,10 +125,10 @@ customHeaderTemplate =
         //nga.field('connectUid').attributes({placeholder:'No space allowed and 5 chars min.'}).validation({ required: true, pattern: '[A-Za-z0-9\-]{5,20}' }).label('Transforms'),
         nga.field('connectorType', 'choice')
                 .choices([
-                                {value:'FLINK_TRANS', label:'Flink Streaming SQL (Json|Json String)'},
-                                {value:'FLINK_SQL_A2J', label:'Flink Streaming SQL (Avro to Json)'},
-                                {value:'FLINK_SQL_J2J', label:'Flink Streaming SQL (Json to Json)'},
-                                {value:'FLINK_UDF', label:'Flink User Defined Function'}]).label('Transforms Type'),
+                                {value:'TRANSFORM_FLINK_SQL_GENE', label:'Flink Streaming SQL (Json|Json String)'},
+                                {value:'TRANSFORM_FLINK_SQL_A2J', label:'Flink Streaming SQL (Avro to Json)'},
+                                {value:'TRANSFORM_FLINK_SQL_J2J', label:'Flink Streaming SQL (Json to Json)'},
+                                {value:'TRANSFORM_FLINK_UDF', label:'Flink User Defined Function'}]).label('Transforms Type'),
         nga.field('udfUpload', 'file').label('Upload Jar').uploadInformation({ 'url': 'http://localhost:8080/api/df/uploaded_files', 'method': 'POST', 'apifilename': 'uploaded_file_name' })
         .defaultValue('empty.jar')
         .validation({ validator: function(value) {

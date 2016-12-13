@@ -7,6 +7,7 @@ import io.vertx.ext.web.RoutingContext;
 import java.net.ConnectException;
 import java.util.UUID;
 
+import org.bson.types.ObjectId;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -32,15 +33,11 @@ public class SchemaRegisterProcessor {
      */
     public static void forwardGetAllSchemas(Vertx vertx, RoutingContext routingContext, RestClient rc_schema, String schema_registry_host_and_port) {
         LOG.debug("=== forwardGetAllSchemas === ");
-
         StringBuffer returnString = new StringBuffer();
-        UUID uuid = UUID.randomUUID();
-
-        WorkerExecutor executor = vertx.createSharedWorkerExecutor("forwardGetAllSchemas_pool_" + uuid, ConstantApp.WORKER_POOL_SIZE, ConstantApp.MAX_RUNTIME);
-
+        WorkerExecutor executor = vertx.createSharedWorkerExecutor("forwardGetAllSchemas_pool_" + new ObjectId(),
+                ConstantApp.WORKER_POOL_SIZE, ConstantApp.MAX_RUNTIME);
         executor.executeBlocking(future -> {
             // Call some blocking API that takes a significant amount of time to return
-            // curl -X GET -i http://localhost:8081/subjects
             String restURI = "http://" + schema_registry_host_and_port + "/subjects";
             int status_code = ConstantApp.STATUS_CODE_OK;
 
@@ -119,14 +116,9 @@ public class SchemaRegisterProcessor {
             future.complete(status_code);
         }, res -> {
             Object result = HelpFunc.coalesce(res.result(), ConstantApp.STATUS_CODE_BAD_REQUEST);
-
-            LOG.debug("==== Step 9: returnString: " + returnString.toString() + ", result = " + result.toString());
-
             routingContext.response().setStatusCode(Integer.parseInt(result.toString()))
                     .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
                     .end(returnString.toString());
-
-            LOG.debug("Step 10:  BLOCKING CODE IS TERMINATE?FINISHED: " + res.cause());
             executor.close();
         });
 
@@ -144,18 +136,12 @@ public class SchemaRegisterProcessor {
         LOG.debug("=== forwardGetOneSchema === ");
 
         final String subject = routingContext.request().getParam("id");
-        LOG.debug("=== id:" + subject);
         StringBuffer returnString = new StringBuffer();
 
         WorkerExecutor executor = vertx.createSharedWorkerExecutor("getOneSchema_pool_" + subject, ConstantApp.WORKER_POOL_SIZE, ConstantApp.MAX_RUNTIME);
-
         executor.executeBlocking(future -> {
-            // Call some blocking API that takes a significant amount of time to return
-            // String restURI = "http://" + this.kafka_connect_rest_host + ":" + this.kafka_registry_rest_port + "/subjects/" + subject + "/versions/latest";
             String restURI = "http://" + schema_registry_host_and_port + "/subjects/" + subject + "/versions/latest";
             int status_code = ConstantApp.STATUS_CODE_OK;
-
-            LOG.debug("=== restURI:" + restURI);
 
             if (subject == null) {
                 status_code = ConstantApp.STATUS_CODE_BAD_REQUEST;
@@ -168,52 +154,29 @@ public class SchemaRegisterProcessor {
                     } else if (res.getStatus() != ConstantApp.STATUS_CODE_OK) {
                         status_code = res.getStatus();
                     } else {
-                        String schema1 = res.getBody();
-                        LOG.debug("==== restURI ==>" + restURI);
-                        LOG.debug("==== schema1 ==>" + schema1);
-
-                        String schema2 = schema1.replace(":\"{", ":{");
-                        LOG.debug("==== schema21 remove first quotation ==>" + schema2);
-
-                        schema2 = schema2.replace("}]}\"", "}]}");
-                        LOG.debug("==== schema22 remove second quotation ==>" + schema2);
-
-                        schema2 = schema2.replace("\\\"", "");
-                        LOG.debug("==== schema23: remove slash quotation ==>" + schema2);
-
-                        JSONObject json = new JSONObject(schema2);
+                        JSONObject json = new JSONObject(res.getBody());
 
                         // Get the subject's compatibility
                         String compatibility = getCompatibilityOfSubject(schema_registry_host_and_port, subject);
-                        LOG.debug("==== Step 51: compatibility: " + compatibility);
-
                         if (compatibility != null && !compatibility.isEmpty()) {
                             json.put(ConstantApp.COMPATIBILITY, compatibility);
                         }
 
-                        LOG.debug("==== json.toString(): ==> : " + json.toString());
                         returnString.append(json.toString());
-
                         status_code = ConstantApp.STATUS_CODE_OK;
                     }
                 } catch (JSONException | UnirestException e) {
-                    LOG.error("SchemaRegisterProcessor - forwardGetAllSchemas() - Exception message: " + e.getCause());
+                    LOG.error("SchemaRegisterProcessor - forwardGetOneSchema() - Exception message: " + e.getCause());
                     status_code = ConstantApp.STATUS_CODE_BAD_REQUEST;
                 }
             }
-
             LOG.debug("Step 11:  status_code: " + status_code);
             future.complete(status_code);
         }, res -> {
             Object result = HelpFunc.coalesce(res.result(), ConstantApp.STATUS_CODE_BAD_REQUEST);
-            LOG.debug("Step 12:  status_code: " + result.toString());
-            LOG.debug("Step 13:  returnString.toString(): " + returnString.toString());
-
             routingContext.response().setStatusCode(Integer.parseInt(result.toString()))
                     .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                    .end(returnString.toString());
-
-            LOG.debug("Step 14:  BLOCKING CODE IS TERMINATE?FINISHED: " + res.cause());
+                    .end(HelpFunc.stringToJsonFormat(returnString.toString()));
             executor.close();
         });
     }
@@ -234,9 +197,7 @@ public class SchemaRegisterProcessor {
 
         try {
             res = Unirest.get(fullUrl).header("accept", "application/vnd.schemaregistry.v1+json").asString();
-            //  {"error_code":40401,"message":"Subject not found."}
             LOG.debug("===== res.getBody(): " + res.getBody());
-
             if (res.getBody() != null) {
                 if (res.getBody().indexOf("40401") > 0) {
                 } else {
@@ -245,8 +206,7 @@ public class SchemaRegisterProcessor {
                 }
             }
         } catch (UnirestException e) {
-            LOG.debug("===== DF DataProcessor, getCompatibilityOfSubject(), error message: " + e.getCause());
-            e.printStackTrace();
+            LOG.error("===== DF DataProcessor, getCompatibilityOfSubject(), error message: " + e.getCause());
         }
 
         return compatibility;
