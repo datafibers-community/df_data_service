@@ -96,7 +96,7 @@ public class HelpFunc {
      */
     public static String errorMsg(int error_code, String msg) {
         return Json.encodePrettily(new JsonObject()
-                .put("code", String.format("%6d", error_code))
+                .put("code", String.format("%06d", error_code))
                 .put("message", msg));
     }
 
@@ -165,9 +165,10 @@ public class HelpFunc {
     /**
      * Convert string to Json format by remove first " and end " and replace \" to "
      * @param srcStr String to format
-     * @return String formated
+     * @return String formatted
      */
     public static String stringToJsonFormat(String srcStr) {
+        if (srcStr.isEmpty()) return "{}";
         return srcStr.replace("\"{", "{").replace("}\"", "}").replace("\\\"", "\"");
     }
 }

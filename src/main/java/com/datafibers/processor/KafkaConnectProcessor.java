@@ -180,8 +180,6 @@ public class KafkaConnectProcessor {
      * @return
      */
     public static String errorMsg(int error_code, String msg) {
-        return Json.encodePrettily(new JsonObject()
-                .put("code", String.format("%6d", error_code))
-                .put("message", msg));
+        return HelpFunc.errorMsg(error_code, msg);
     }
 }

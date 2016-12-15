@@ -279,6 +279,27 @@ public class DFDataProcessor extends AbstractVerticle {
     /**
      * Generic getOne method for REST API End Point
      * @param routingContext
+     *
+     * @api {get} /ps/:id    3.Get a connect task
+     * @apiVersion 0.1.1
+     * @apiName getOne
+     * @apiGroup Connect
+     * @apiPermission none
+     * @apiDescription This is where we get data for one task with specified id.
+     * @apiParam {String}   id      task Id (_id in mongodb).
+     * @apiSuccess	{JsonObject[]}	connects    One connect task profiles.
+     * @apiSampleRequest http://localhost:8080/api/df/ps/:id
+     */
+    /**
+     * @api {get} /tr/:id    3. Get a transform task
+     * @apiVersion 0.1.1
+     * @apiName getOne
+     * @apiGroup Transform
+     * @apiPermission none
+     * @apiDescription This is where we get data for one task with specified id.
+     * @apiParam {String}   id      task Id (_id in mongodb).
+     * @apiSuccess	{JsonObject[]}	transforms    One transform task profiles.
+     * @apiSampleRequest http://localhost:8080/api/df/tr/:id
      */
     private void getOne(RoutingContext routingContext) {
         final String id = routingContext.request().getParam("id");
@@ -308,6 +329,30 @@ public class DFDataProcessor extends AbstractVerticle {
     /**
      * Handle upload UDF Jar form for Flink UDF Transformation
      * @param routingContext
+     *
+     * @api {post} /uploaded_files 7.Upload file
+     * @apiVersion 0.1.1
+     * @apiName uploadFiles
+     * @apiGroup Transform
+     * @apiPermission none
+     * @apiDescription This is triggered through "ADD File" in the create transform view of Web Admin Console.
+     * @apiParam	{binary}	None        Binary String of file content.
+     * @apiSuccess {JsonObject[]} uploaded_file_name     The name of the file uploaded.
+     * @apiSuccessExample {json} Success-Response:
+     *     HTTP/1.1 200 OK
+     *     {
+     *       "code" : "200",
+     *       "uploaded_file_name": "/home/vagrant/flink_word_count.jar",
+     *     }
+     * @apiError    code        The error code.
+     * @apiError    message     The error message.
+     * @apiErrorExample {json} Error-Response:
+     *     HTTP/1.1 400 Bad Request
+     *     {
+     *       "code" : "400",
+     *       "uploaded_file_name" : "failed"
+     *     }
+     *
      */
     private void uploadFiles (RoutingContext routingContext) {
         Set<FileUpload> fileUploadSet = routingContext.fileUploads();
@@ -365,6 +410,15 @@ public class DFDataProcessor extends AbstractVerticle {
     /**
      * This is for fetch both connects and transforms
      * @param routingContext
+     *
+     * @api {get} /processor 1.List all tasks
+     * @apiVersion 0.1.1
+     * @apiName getAll
+     * @apiGroup All
+     * @apiPermission none
+     * @apiDescription This is where we get list of all connects and transforms.
+     * @apiSuccess	{JsonObject[]}	connects    List of connect and transform task profiles.
+     * @apiSampleRequest http://localhost:8080/api/df/processor
      */
     private void getAllProcessor(RoutingContext routingContext) {
         mongo.find(COLLECTION, new JsonObject(), results -> {
@@ -376,10 +430,91 @@ public class DFDataProcessor extends AbstractVerticle {
         });
     }
 
+    /**
+     * Get all DF connects
+     *
+     * @param routingContext
+     *
+     * @api {get} /ps 1.List all connects task
+     * @apiVersion 0.1.1
+     * @apiName getAllConnects
+     * @apiGroup Connect
+     * @apiPermission none
+     * @apiDescription This is where we get data for all active connects.
+     * @apiSuccess	{JsonObject[]}	connects    List of connect task profiles.
+     *
+     * @apiSuccessExample {json} Success-Response:
+     *     HTTP/1.1 200 OK
+     *     [ {
+     *          "id" : "58471d13bba4a429f8a272b6",
+     *          "taskSeq" : "1",
+     *          "name" : "tesavro",
+     *          "connectUid" : "58471d13bba4a429f8a272b6",
+     *          "jobUid" : "reserved for job level tracking",
+     *          "connectorType" : "CONNECT_KAFKA_SOURCE_AVRO",
+     *          "connectorCategory" : "CONNECT",
+     *          "description" : "task description",
+     *          "status" : "LOST",
+     *          "udfUpload" : null,
+     *          "jobConfig" : null,
+     *          "connectorConfig" : {
+     *              "connector.class" : "com.datafibers.kafka.connect.FileGenericSourceConnector",
+     *              "schema.registry.uri" : "http://localhost:8081",
+     *              "cuid" : "58471d13bba4a429f8a272b6",
+     *              "file.location" : "/home/vagrant/df_data/",
+     *              "tasks.max" : "1",
+     *              "file.glob" : "*.{json,csv}",
+     *              "file.overwrite" : "true",
+     *              "schema.subject" : "test-value",
+     *              "topic" : "testavro"
+     *          }
+     *       }
+     *     ]
+     * @apiSampleRequest http://localhost:8080/api/df/ps
+     */
     private void getAllConnects(RoutingContext routingContext) {
         this.getAll(routingContext, "CONNECT");
     }
 
+    /**
+     * Get all DF transforms
+     *
+     * @param routingContext
+     *
+     * @api {get} /tr 1.List all transforms task
+     * @apiVersion 0.1.1
+     * @apiName getAllConnects
+     * @apiGroup Transform
+     * @apiPermission none
+     * @apiDescription This is where get data for all active transforms.
+     * @apiSuccess	{JsonObject[]}	connects    List of transform task profiles.
+     *
+     * @apiSuccessExample {json} Success-Response:
+     *     HTTP/1.1 200 OK
+     *     [ {
+     *          "id" : "58471d13bba4a429f8a272b6",
+     *          "taskSeq" : "1",
+     *          "name" : "tesavro",
+     *          "connectUid" : "58471d13bba4a429f8a272b6",
+     *          "jobUid" : "reserved for job level tracking",
+     *          "connectorType" : "TRANSFORM_FLINK_SQL_A2J",
+     *          "connectorCategory" : "TRANSFORM",
+     *          "description" : "task description",
+     *          "status" : "LOST",
+     *          "udfUpload" : null,
+     *          "jobConfig" : null,
+     *          "connectorConfig" : {
+     *              "cuid" : "58471d13bba4a429f8a272b0",
+     *              "trans.sql":"SELECT STREAM symbol, name FROM finance"
+     *              "group.id":"consumer3",
+     *              "topic.for.query":"finance",
+     *              "topic.for.result":"stock",
+     *              "schema.subject" : "test-value"
+     *          }
+     *       }
+     *     ]
+     * @apiSampleRequest http://localhost:8080/api/df/tr
+     */
     private void getAllTransforms(RoutingContext routingContext) {
         this.getAll(routingContext, "TRANSFORM");
     }
@@ -387,6 +522,23 @@ public class DFDataProcessor extends AbstractVerticle {
     /**
      * Connects specific addOne End Point for Rest API
      * @param routingContext
+     *
+     * @api {post} /ps 4.Add a connect task
+     * @apiVersion 0.1.1
+     * @apiName addOneConnects
+     * @apiGroup Connect
+     * @apiPermission none
+     * @apiDescription This is how we add or submit a connect to DataFibers.
+     * @apiParam    {String}  None        Json String of task as message body.
+     * @apiSuccess (201) {JsonObject[]} connect     The newly added connect task.
+     * @apiError    code        The error code.
+     * @apiError    message     The error message.
+     * @apiErrorExample {json} Error-Response:
+     *     HTTP/1.1 409 Conflict
+     *     {
+     *       "code" : "409",
+     *       "message" : "POST Request exception - Conflict"
+     *     }
      */
     private void addOneConnects(RoutingContext routingContext) {
         LOG.info("received the body is:" + routingContext.getBodyAsString());
@@ -424,6 +576,23 @@ public class DFDataProcessor extends AbstractVerticle {
     /**
      * Transforms specific addOne End Point for Rest API
      * @param routingContext
+     *
+     * @api {post} /tr 4.Add a transform task
+     * @apiVersion 0.1.1
+     * @apiName addOneTransforms
+     * @apiGroup Transform
+     * @apiPermission none
+     * @apiDescription This is how we submit or add a transform task to DataFibers.
+     * @apiParam   {String}	 None        Json String of task as message body.
+     * @apiSuccess (201) {JsonObject[]} connect     The newly added connect task.
+     * @apiError    code        The error code.
+     * @apiError    message     The error message.
+     * @apiErrorExample {json} Error-Response:
+     *     HTTP/1.1 409 Conflict
+     *     {
+     *       "code" : "409",
+     *       "message" : "POST Request exception - Conflict."
+     *     }
      */
     private void addOneTransforms(RoutingContext routingContext) {
         final DFJobPOPJ dfJob = Json.decodeValue(
@@ -501,6 +670,23 @@ public class DFDataProcessor extends AbstractVerticle {
     /**
      * Connects specific updateOne End Point for Rest API
      * @param routingContext
+     *
+     * @api {put} /ps/:id   5.Update a connect task
+     * @apiVersion 0.1.1
+     * @apiName updateOneConnects
+     * @apiGroup Connect
+     * @apiPermission none
+     * @apiDescription This is how we update the connect configuration to DataFibers.
+     * @apiParam    {String}    id  task Id (_id in mongodb).
+     * @apiSuccess  {String}    message     OK.
+     * @apiError    code        The error code.
+     * @apiError    message     The error message.
+     * @apiErrorExample {json} Error-Response:
+     *     HTTP/1.1 404 Not Found
+     *     {
+     *       "code" : "409",
+     *       "message" : "PUT Request exception - Not Found."
+     *     }
      */
     private void updateOneConnects(RoutingContext routingContext) {
         final String id = routingContext.request().getParam("id");
@@ -547,6 +733,23 @@ public class DFDataProcessor extends AbstractVerticle {
     /**
      * Transforms specific updateOne End Point for Rest API
      * @param routingContext
+     *
+     * @api {put} /tr/:id   5.Update a transform task
+     * @apiVersion 0.1.1
+     * @apiName updateOneConnects
+     * @apiGroup Transform
+     * @apiPermission none
+     * @apiDescription This is how we update the transform configuration to DataFibers.
+     * @apiParam    {String}    id  task Id (_id in mongodb).
+     * @apiSuccess  {String}    message     OK.
+     * @apiError    code        The error code.
+     * @apiError    message     The error message.
+     * @apiErrorExample {json} Error-Response:
+     *     HTTP/1.1 404 Not Found
+     *     {
+     *       "code" : "409",
+     *       "message" : "PUT Request exception - Not Found."
+     *     }
      */
     private void updateOneTransforms(RoutingContext routingContext) {
         final String id = routingContext.request().getParam("id");
@@ -611,6 +814,23 @@ public class DFDataProcessor extends AbstractVerticle {
     /**
      * Connects specific deleteOne End Point for Rest API
      * @param routingContext
+     *
+     * @api {delete} /ps/:id   6.Delete a connect task
+     * @apiVersion 0.1.1
+     * @apiName deleteOneConnects
+     * @apiGroup Connect
+     * @apiPermission none
+     * @apiDescription This is how to delete a specific connect.
+     * @apiParam    {String}    id  task Id (_id in mongodb).
+     * @apiSuccess  {String}    message     OK.
+     * @apiError    code        The error code.
+     * @apiError    message     The error message.
+     * @apiErrorExample {json} Error-Response:
+     *     HTTP/1.1 400 Bad Request
+     *     {
+     *       "code" : "400",
+     *       "message" : "Delete Request exception - Bad Request."
+     *     }
      */
     private void deleteOneConnects(RoutingContext routingContext) {
         String id = routingContext.request().getParam("id");
@@ -642,6 +862,23 @@ public class DFDataProcessor extends AbstractVerticle {
     /**
      * Transforms specific deleteOne End Point for Rest API
      * @param routingContext
+     *
+     * @api {delete} /tr/:id   6.Delete a transform task
+     * @apiVersion 0.1.1
+     * @apiName deleteOneTransforms
+     * @apiGroup Transform
+     * @apiPermission none
+     * @apiDescription This is how to delete a specific transform.
+     * @apiParam    {String}    id  task Id (_id in mongodb).
+     * @apiSuccess  {String}    message     OK.
+     * @apiError    code        The error code.
+     * @apiError    message     The error message.
+     * @apiErrorExample {json} Error-Response:
+     *     HTTP/1.1 400 Bad Request
+     *     {
+     *       "code" : "400",
+     *       "message" : "Delete Request exception - Bad Request."
+     *     }
      */
     private void deleteOneTransforms(RoutingContext routingContext) {
         String id = routingContext.request().getParam("id");
@@ -841,6 +1078,29 @@ public class DFDataProcessor extends AbstractVerticle {
     /**
      * List all installed Connects
      * @param routingContext
+     *
+     * @api {get} /installed_connects 2.List installed connect lib
+     * @apiVersion 0.1.1
+     * @apiName getAllInstalledConnects
+     * @apiGroup Connect
+     * @apiPermission none
+     * @apiDescription This is where get list of launched or installed connect jar or libraries.
+     * @apiSuccess	{JsonObject[]}	connects    List of connects installed and launched by DataFibers.
+     * @apiSampleRequest http://localhost:8080/api/df/installed_connects
+     */
+
+    /**
+     * List all installed Transforms
+     * @param routingContext
+     *
+     * @api {get} /installed_transforms 2.List installed transform lib
+     * @apiVersion 0.1.1
+     * @apiName getAllInstalledTransforms
+     * @apiGroup Transform
+     * @apiPermission none
+     * @apiDescription This is where get list of launched or installed transform jar or libraries.
+     * @apiSuccess	{JsonObject[]}	transforms    List of transforms installed and launched by DataFibers.
+     * @apiSampleRequest http://localhost:8080/api/df/installed_transforms
      */
     private void getAllInstalledConnects(RoutingContext routingContext) {
         // TODO get all installed transforms as well
@@ -863,34 +1123,65 @@ public class DFDataProcessor extends AbstractVerticle {
         postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
         postRestClientRequest.end();
     }
+
+    /**
+     * Get all schema from schema registry
+     * @param routingContext
+     *
+     * @api {get} /schema 1.List all schema
+     * @apiVersion 0.1.1
+     * @apiName getAllSchemas
+     * @apiGroup Schema
+     * @apiPermission none
+     * @apiDescription This is where we get list of available schema data from schema registry.
+     * @apiSuccess	{JsonObject[]}	connects    List of schemas added in schema registry.
+     * @apiSampleRequest http://localhost:8080/api/df/schema
+     */
     public void getAllSchemas(RoutingContext routingContext) {
     	SchemaRegisterProcessor.forwardGetAllSchemas(vertx, routingContext, rc_schema, schema_registry_host_and_port);
 	}
     
-    /*
+    /**
+     * Get one schema with schema subject specified
      * 1) Retrieve a specific subject latest information:
      * curl -X GET -i http://localhost:8081/subjects/Kafka-value/versions/latest
      * 
      * 2) Retrieve a specific subject compatibility:
      * curl -X GET -i http://localhost:8081/config/finance-value
+     *
+     * @api {get} /schema/:subject   2.Get a schema
+     * @apiVersion 0.1.1
+     * @apiName getOneSchema
+     * @apiGroup Schema
+     * @apiPermission none
+     * @apiDescription This is where we get schema with specified schema subject.
+     * @apiParam {String}   subject      schema subject name in schema registry.
+     * @apiSuccess	{JsonObject[]}	schema    One schema object.
+     * @apiSampleRequest http://localhost:8080/api/df/schema/:subject
      */
     private void getOneSchema(RoutingContext routingContext) {
     	SchemaRegisterProcessor.forwardGetOneSchema(vertx, routingContext, rc_schema, schema_registry_host_and_port);
     }
     
-    /*
-     * 1) Add schema syntax:
-     *   curl -X POST -i -H "Content-Type: application/vnd.schemaregistry.v1+json" \
-        --data '{"schema": "{ \"type\": \"record\",\"name\": \"test\",\"fields\":[{\"name\": \"symbol\", \"type\": \"string\"},{\"name\": \"name\", 
-        \"type\": \"string\"}, {\"name\": \"exchange\", \"type\": \"string\"}]}"}' http://localhost:8081/subjects/test-value/versions
-
-       Form schema input format example: 
-        1) { "type": "record", "name": "test2", "fields":[{"name": "symbol", "type": "string"}, {"name": "field1", "type": "double" }]}
-        2) {"type": "string"}
-        
-      2) Update the subject's compatibility syntax:
-       curl -X PUT -i -H "Content-Type: application/vnd.schemaregistry.v1+json" --data '{"compatibility": "FORWARD"}' http://localhost:8081/config/SZ01
-    */
+    /** Add one schema to schema registry
+     *
+     * @api {post} /schema 3.Add a Schema
+     * @apiVersion 0.1.1
+     * @apiName addOneSchema
+     * @apiGroup Schema
+     * @apiPermission none
+     * @apiDescription This is how we add a new schema to schema registry service
+     * @apiParam   {String}  None        Json String of Schema as message body.
+     * @apiSuccess (201) {JsonObject[]} connect     The newly added connect task.
+     * @apiError    code        The error code.
+     * @apiError    message     The error message.
+     * @apiErrorExample {json} Error-Response:
+     *     HTTP/1.1 409 Conflict
+     *     {
+     *       "code" : "409",
+     *       "message" : "POST Request exception - Conflict"
+     *     }
+     */
     private void addOneSchema(RoutingContext routingContext) {
     	JSONObject schema = null;
     	String subject = "";
@@ -985,20 +1276,24 @@ public class DFDataProcessor extends AbstractVerticle {
         }
     }
     
-    /*
-     * Existing subject SZ02 schema definition:
-     * 1) {\"type\":\"record\",\"name\":\"test2\",\"fields\":[{\"name\":\"symbol\",\"type\":\"string\"},{\"name\":\"field1\",\"type\":\"double\"}]}
-     * 2) {"schema": "{\"type\": \"string\"}"}
-     * 
-     * FORWARD compatible example:
-     * 1) Set the subject SZ02 to be FORWARD compatible: 
-     *    curl -X PUT -i -H "Content-Type: application/vnd.schemaregistry.v1+json" \
-        --data '{"compatibility": "FORWARD"}' http://localhost:8081/config/SZ02
-        { "type": "record", "name": "test2", "fields":[{"name": "symbol", "type": "string"}, {"name": "field1", "type": "double" }]}
-        
-        
-       2) Add a new column to the existing subject SZ02
-     *    Form input data example: "{\"type\":\"record\",\"name\":\"test2\",\"fields\":[{\"name\":\"symbol\",\"type\":\"string\"},{\"name\":\"field1\",\"type\":\"double\"}, {\"name\":\"field2\",\"type\":\"double\"}]}"
+    /**
+     * Update specified schmea in schema registry
+     * @api {put} /schema/:id   4.Update a schema
+     * @apiVersion 0.1.1
+     * @apiName updateOneSchema
+     * @apiGroup Schema
+     * @apiPermission none
+     * @apiDescription This is how we update specified schema information in schema registry.
+     * @apiParam    {String}    subject  schema subject in schema registry.
+     * @apiSuccess  {String}    message     OK.
+     * @apiError    code        The error code.
+     * @apiError    message     The error message.
+     * @apiErrorExample {json} Error-Response:
+     *     HTTP/1.1 404 Not Found
+     *     {
+     *       "code" : "409",
+     *       "message" : "PUT Request exception - Not Found."
+     *     }
      */
     private void updateOneSchema(RoutingContext routingContext) {
     	LOG.debug("=== updateOneSchema === ");

@@ -21,6 +21,8 @@ public class DFWebUI extends AbstractVerticle {
 
         // Bind web ui
         routerWeb.route("/admin/*").handler(StaticHandler.create("webroot").setCachingEnabled(true));
+        // Bind api doc
+        routerWeb.route("/api/*").handler(StaticHandler.create("apidoc").setCachingEnabled(true));
 
         // Create the HTTP server to serve the web ui
         vertx.createHttpServer().requestHandler(routerWeb::accept)
