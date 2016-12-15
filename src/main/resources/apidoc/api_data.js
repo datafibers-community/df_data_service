@@ -30,7 +30,7 @@ define({ "api": [
         "url": "http://localhost:8080/api/df/processor"
       }
     ],
-    "filename": "df_data_service/src/main/java/com/datafibers/service/DFDataProcessor.java",
+    "filename": "stage/DFDataProcessor.java",
     "groupTitle": "All"
   },
   {
@@ -97,7 +97,7 @@ define({ "api": [
         }
       ]
     },
-    "filename": "df_data_service/src/main/java/com/datafibers/service/DFDataProcessor.java",
+    "filename": "stage/DFDataProcessor.java",
     "groupTitle": "Connect"
   },
   {
@@ -164,7 +164,7 @@ define({ "api": [
         }
       ]
     },
-    "filename": "df_data_service/src/main/java/com/datafibers/service/DFDataProcessor.java",
+    "filename": "stage/DFDataProcessor.java",
     "groupTitle": "Connect"
   },
   {
@@ -205,7 +205,7 @@ define({ "api": [
         "url": "http://localhost:8080/api/df/ps"
       }
     ],
-    "filename": "df_data_service/src/main/java/com/datafibers/service/DFDataProcessor.java",
+    "filename": "stage/DFDataProcessor.java",
     "groupTitle": "Connect"
   },
   {
@@ -239,7 +239,7 @@ define({ "api": [
         "url": "http://localhost:8080/api/df/installed_connects"
       }
     ],
-    "filename": "df_data_service/src/main/java/com/datafibers/service/DFDataProcessor.java",
+    "filename": "stage/DFDataProcessor.java",
     "groupTitle": "Connect"
   },
   {
@@ -281,7 +281,12 @@ define({ "api": [
         ]
       }
     },
-    "filename": "df_data_service/src/main/java/com/datafibers/service/DFDataProcessor.java",
+    "sampleRequest": [
+      {
+        "url": "http://localhost:8080/api/df/ps/:id"
+      }
+    ],
+    "filename": "stage/DFDataProcessor.java",
     "groupTitle": "Connect"
   },
   {
@@ -348,7 +353,7 @@ define({ "api": [
         }
       ]
     },
-    "filename": "df_data_service/src/main/java/com/datafibers/service/DFDataProcessor.java",
+    "filename": "stage/DFDataProcessor.java",
     "groupTitle": "Connect"
   },
   {
@@ -415,7 +420,7 @@ define({ "api": [
         }
       ]
     },
-    "filename": "df_data_service/src/main/java/com/datafibers/service/DFDataProcessor.java",
+    "filename": "stage/DFDataProcessor.java",
     "groupTitle": "Schema"
   },
   {
@@ -449,7 +454,7 @@ define({ "api": [
         "url": "http://localhost:8080/api/df/schema"
       }
     ],
-    "filename": "df_data_service/src/main/java/com/datafibers/service/DFDataProcessor.java",
+    "filename": "stage/DFDataProcessor.java",
     "groupTitle": "Schema"
   },
   {
@@ -473,7 +478,7 @@ define({ "api": [
             "type": "String",
             "optional": false,
             "field": "subject",
-            "description": "<p>schema subject name.</p>"
+            "description": "<p>schema subject name in schema registry.</p>"
           }
         ]
       }
@@ -491,7 +496,12 @@ define({ "api": [
         ]
       }
     },
-    "filename": "df_data_service/src/main/java/com/datafibers/service/DFDataProcessor.java",
+    "sampleRequest": [
+      {
+        "url": "http://localhost:8080/api/df/schema/:subject"
+      }
+    ],
+    "filename": "stage/DFDataProcessor.java",
     "groupTitle": "Schema"
   },
   {
@@ -558,7 +568,7 @@ define({ "api": [
         }
       ]
     },
-    "filename": "df_data_service/src/main/java/com/datafibers/service/DFDataProcessor.java",
+    "filename": "stage/DFDataProcessor.java",
     "groupTitle": "Schema"
   },
   {
@@ -625,7 +635,7 @@ define({ "api": [
         }
       ]
     },
-    "filename": "df_data_service/src/main/java/com/datafibers/service/DFDataProcessor.java",
+    "filename": "stage/DFDataProcessor.java",
     "groupTitle": "Transform"
   },
   {
@@ -692,7 +702,7 @@ define({ "api": [
         }
       ]
     },
-    "filename": "df_data_service/src/main/java/com/datafibers/service/DFDataProcessor.java",
+    "filename": "stage/DFDataProcessor.java",
     "groupTitle": "Transform"
   },
   {
@@ -733,7 +743,7 @@ define({ "api": [
         "url": "http://localhost:8080/api/df/tr"
       }
     ],
-    "filename": "df_data_service/src/main/java/com/datafibers/service/DFDataProcessor.java",
+    "filename": "stage/DFDataProcessor.java",
     "groupTitle": "Transform"
   },
   {
@@ -767,7 +777,7 @@ define({ "api": [
         "url": "http://localhost:8080/api/df/installed_transforms"
       }
     ],
-    "filename": "df_data_service/src/main/java/com/datafibers/service/DFDataProcessor.java",
+    "filename": "stage/DFDataProcessor.java",
     "groupTitle": "Transform"
   },
   {
@@ -809,7 +819,12 @@ define({ "api": [
         ]
       }
     },
-    "filename": "df_data_service/src/main/java/com/datafibers/service/DFDataProcessor.java",
+    "sampleRequest": [
+      {
+        "url": "http://localhost:8080/api/df/tr/:id"
+      }
+    ],
+    "filename": "stage/DFDataProcessor.java",
     "groupTitle": "Transform"
   },
   {
@@ -876,7 +891,7 @@ define({ "api": [
         }
       ]
     },
-    "filename": "df_data_service/src/main/java/com/datafibers/service/DFDataProcessor.java",
+    "filename": "stage/DFDataProcessor.java",
     "groupTitle": "Transform"
   },
   {
@@ -950,7 +965,7 @@ define({ "api": [
         }
       ]
     },
-    "filename": "df_data_service/src/main/java/com/datafibers/service/DFDataProcessor.java",
+    "filename": "stage/DFDataProcessor.java",
     "groupTitle": "Transform"
   }
 ] });
