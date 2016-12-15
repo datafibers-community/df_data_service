@@ -168,7 +168,7 @@ public class HelpFunc {
      * @return String formatted
      */
     public static String stringToJsonFormat(String srcStr) {
-        if (srcStr.isEmpty()) return "{}";
+        if (srcStr.isEmpty()) return "[]";
         return srcStr.replace("\"{", "{").replace("}\"", "}").replace("\\\"", "\"");
     }
 }
