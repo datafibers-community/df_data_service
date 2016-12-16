@@ -1108,6 +1108,8 @@ public class DFDataProcessor extends AbstractVerticle {
                 rc.get(
                         ConstantApp.KAFKA_CONNECT_PLUGIN_REST_URL,
                         List.class, portRestResponse -> {
+                            LOG.info("portRestResponse.getBody() - " + portRestResponse.getBody());
+
                             routingContext
                                     .response().setStatusCode(ConstantApp.STATUS_CODE_OK)
                                     .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
