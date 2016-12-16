@@ -7,7 +7,9 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.mongo.FindOptions;
 import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.FileUpload;
 import io.vertx.ext.web.Router;
@@ -62,6 +64,7 @@ public class DFDataProcessor extends AbstractVerticle {
 
     // Generic attributes
     public static String COLLECTION;
+    public static String COLLECTION_INSTALLED;
     private MongoClient mongo;
     private RestClient rc;
     private RestClient rc_schema;
@@ -101,6 +104,8 @@ public class DFDataProcessor extends AbstractVerticle {
          **/
         // Get generic variables
         this.COLLECTION = config().getString("db.collection.name", "df_processor");
+        this.COLLECTION_INSTALLED = config().getString("db.collection_installed.name", "df_installed");
+
         // Get Connects config
         this.kafka_connect_enabled = config().getBoolean("kafka.connect.enable", Boolean.TRUE);
         this.kafka_connect_rest_host = config().getString("kafka.connect.rest.host", "localhost");
@@ -146,13 +151,14 @@ public class DFDataProcessor extends AbstractVerticle {
                     .setMaxPoolSize(ConstantApp.REST_CLIENT_MAX_POOL_SIZE);
 
             this.rc = RestClient.create(vertx, restClientOptions, httpMessageConverters);
-            // ---- SZ
+            // For query schema registry
             final ObjectMapper objectMapper2 = new ObjectMapper();
             final List<HttpMessageConverter> httpMessageConverters2 = ImmutableList.of(
                     new FormHttpMessageConverter(),
                     new StringHttpMessageConverter(),
                     new JacksonJsonHttpMessageConverter(objectMapper2)
             );
+
             final RestClientOptions restClientOptions2 = new RestClientOptions()
                     .setConnectTimeout(ConstantApp.REST_CLIENT_CONNECT_TIMEOUT)
                     .setGlobalRequestTimeout(ConstantApp.REST_CLIENT_GLOBAL_REQUEST_TIMEOUT)
@@ -1108,12 +1114,19 @@ public class DFDataProcessor extends AbstractVerticle {
                 rc.get(
                         ConstantApp.KAFKA_CONNECT_PLUGIN_REST_URL,
                         List.class, portRestResponse -> {
-                            LOG.info("portRestResponse.getBody() - " + portRestResponse.getBody());
-
-                            routingContext
-                                    .response().setStatusCode(ConstantApp.STATUS_CODE_OK)
-                                    .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                                    .end(Json.encodePrettily(portRestResponse.getBody()));
+                            String search = portRestResponse.getBody().toString().replace("{", "\"").
+                                    replace("}", "\"").replace("class=", "");
+                            JsonObject query = new JsonObject().put("class",
+                                    new JsonObject().put("$in", new JsonArray(search)));
+                            mongo.find(COLLECTION_INSTALLED, query, res -> {
+                                if (res.succeeded()) {
+                                    LOG.info("smongo response result - " + res.result());
+                                    routingContext
+                                            .response().setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+                                            .end(Json.encodePrettily(res.result()));
+                                }
+                            });
                         });
         postRestClientRequest.exceptionHandler(exception -> {
             routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
@@ -1381,11 +1394,7 @@ public class DFDataProcessor extends AbstractVerticle {
 	        // curl -X PUT -i -H "Content-Type: application/vnd.schemaregistry.v1+json" --data '{"compatibility": "FORWARD"}' http://localhost:8081/config/SZ01
 	        restURI = "http://" + this.schema_registry_host_and_port + "/config/" + subject;
 	        final RestClientRequest postRestClientRequest2 = rc_schema.put(restURI, portRestResponse -> {
-	            // String rs = portRestResponse.getBody().toString();
-	            // LOG.info("== Response rs - compatibility: " + rs);
-	            LOG.info("== Update Config Compatibility sucefully. Received response from schema registry server - compatibility: " + portRestResponse.statusMessage());
-	            LOG.info("== Update Config Compatibility sucefully. Received response from schema registry server - compatibility: " + portRestResponse.statusCode());
-	            
+
 	            if (routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_OK) {
 		            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_OK)
 		            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)

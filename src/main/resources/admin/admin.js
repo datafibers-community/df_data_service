@@ -250,11 +250,15 @@ customHeaderTemplate =
     processor.listView().title('All Connects and Transforms');
     processor.listView().batchActions([]);
 
-    // set the fields of the connect entity list view
-    installed_connects.listView().sortField('class').fields([
-        nga.field('class').label('Connects')
+    // set the fields of the connect entity list view // TODO make sort work
+    installed_connects.listView().sortField('name').fields([
+        nga.field('name'),
+        nga.field('type'),
+        nga.field('subtype'),
+        nga.field('certified'),
+        nga.field('class')
     ]);
-    installed_connects.listView().title('Connects Installed');
+    installed_connects.listView().title('Installed');
     installed_connects.listView().batchActions([]);
 
     // add the connect entity to the admin application
