@@ -12,6 +12,7 @@ import java.net.ConnectException;
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 import java.util.Properties;
 import java.util.Random;
 
@@ -95,7 +96,7 @@ public class HelpFunc {
      */
     public static String errorMsg(int error_code, String msg) {
         return Json.encodePrettily(new JsonObject()
-                .put("code", String.format("%6d", error_code))
+                .put("code", String.format("%06d", error_code))
                 .put("message", msg));
     }
 
@@ -148,5 +149,26 @@ public class HelpFunc {
         StringWriter writer = new StringWriter();
         prop.list(new PrintWriter(writer));
         return writer.getBuffer().toString();
+    }
+
+    /**
+     * Loop the enum of ConnectType to add all connects to the list by l
+     */
+    public static void addSpecifiedConnectTypetoList(List<String> list, String type) {
+
+        for (ConstantApp.DF_CONNECT_TYPE item : ConstantApp.DF_CONNECT_TYPE.values()) {
+            if(item.name().contains(type.toUpperCase())) list.add(item.name());
+        }
+
+    }
+
+    /**
+     * Convert string to Json format by remove first " and end " and replace \" to "
+     * @param srcStr String to format
+     * @return String formatted
+     */
+    public static String stringToJsonFormat(String srcStr) {
+        if (srcStr.isEmpty()) return "[]";
+        return srcStr.replace("\"{", "{").replace("}\"", "}").replace("\\\"", "\"");
     }
 }
