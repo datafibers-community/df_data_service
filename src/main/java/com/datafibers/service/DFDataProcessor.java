@@ -1475,7 +1475,7 @@ public class DFDataProcessor extends AbstractVerticle {
                         .header("accept", "application/json").header("Content-Type", "application/json")
                         .body(metaSinkConnect).asString();
             }
-            LOG.info("The metadata sink connect is started with status: "
+            LOG.info("The metadata sink @topic:df_meta is started with status: "
                     + new JSONObject(res.getBody()).getJSONObject("connector").get("state"));
 
         } catch (UnirestException ue) {
