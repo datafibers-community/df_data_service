@@ -94,7 +94,7 @@ public final class ConstantApp {
         TRANSFORM_SPARK_UDF,          // Spark user defined jar/program
         TRANSFORM_HIVE_TRANS,         // Hive batch SQL
         TRANSFORM_HIVE_JOINS,         // Hive batch join
-        DEMO_000_0001,                // Reserved for future demo purpose
+        INTERNAL_METADATA_COLLECT,                // Reserved metadata sinl
         NONE
     }
 

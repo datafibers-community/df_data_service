@@ -133,7 +133,11 @@ public class DFDataProcessor extends AbstractVerticle {
          * Create all application client
          **/
         // Mongo client for metadata repository
-        mongo = MongoClient.createShared(vertx, config());
+        JsonObject mongoConfig = new JsonObject()
+                .put("connection_string", config().getString("repo.connection.string", "mongodb://localhost:27017"))
+                .put("db_name", config().getString("db.name", "DEFAULT_DB"));
+        mongo = MongoClient.createShared(vertx, mongoConfig);
+
         // Non-blocking Vertx Rest API Client to talk to Kafka Connect when needed
         if (this.kafka_connect_enabled) {
             final ObjectMapper objectMapper = new ObjectMapper();
@@ -192,11 +196,14 @@ public class DFDataProcessor extends AbstractVerticle {
          **/
         // Import from remote server. It is blocking at this point.
         if (this.kafka_connect_enabled && this.kafka_connect_import_start) {
-           importAllFromKafkaConnect();
+            importAllFromKafkaConnect();
+            startMetadataSink();
         }
 
         // Start Core application
         startWebApp((http) -> completeStartup(http, fut));
+
+        LOG.info("********* DataFibers Services is started :)");
 
         // Regular update Kafka connects status
         if(this.kafka_connect_enabled) {
@@ -918,7 +925,7 @@ public class DFDataProcessor extends AbstractVerticle {
      * Get initial method to import all available|paused|running connectors from Kafka connect.
      */
     private void importAllFromKafkaConnect() {
-        LOG.info("Starting initial import data from Kafka Connect REST Server.");
+        LOG.debug("Starting initial import data from Kafka Connect REST Server.");
         String restURI = "http://" + this.kafka_connect_rest_host+ ":" + this.kafka_connect_rest_port +
                 ConstantApp.KAFKA_CONNECT_REST_URL;
         try {
@@ -935,14 +942,19 @@ public class DFDataProcessor extends AbstractVerticle {
                             .header("accept", "application/json").asJson();
                     JsonNode resConfig = resConnector.getBody();
                     String resConnectTypeTmp = resConfig.getObject().getString("connector.class");
+                    String resConnectName = resConfig.getObject().getString("name");
                     String resConnectType;
-                    if (resConnectTypeTmp.toUpperCase().contains("SOURCE")) {
+
+                    if (resConnectName.equalsIgnoreCase("metadata_sink_connect")) {
+                        resConnectType = ConstantApp.DF_CONNECT_TYPE.INTERNAL_METADATA_COLLECT.name();
+                    } else if (resConnectTypeTmp.toUpperCase().contains("SOURCE")) {
                         resConnectType = ConstantApp.DF_CONNECT_TYPE.CONNECT_KAFKA_SOURCE.name();
                     } else if (resConnectTypeTmp.toUpperCase().contains("SINK")) {
                         resConnectType = ConstantApp.DF_CONNECT_TYPE.CONNECT_KAFKA_SINK.name();
                     } else {
                         resConnectType = ConstantApp.DF_CONNECT_TYPE.NONE.name();
                     }
+
                     // Get task status
                     HttpResponse<JsonNode> resConnectorStatus = Unirest.get(restURI + "/" + connectName + "/status")
                             .header("accept", "application/json").asJson();
@@ -1432,5 +1444,44 @@ public class DFDataProcessor extends AbstractVerticle {
 	        postRestClientRequest2.end(jsonToBeSubmitted.toString());
         }
     }
+
+    /**
+     * Start a Kafka connect in background to keep sinking meta data to mongodb
+     * This is blocking process since it is a part of application initialization.
+     */
+    private void startMetadataSink() {
+        // Check if the sink is already started. If yes, do not start
+        String restURI = "http://" + this.kafka_connect_rest_host + ":" + this.kafka_connect_rest_port +
+                ConstantApp.KAFKA_CONNECT_REST_URL;
+        String metaDBHost = config().getString("repo.connection.string", "mongodb://localhost:27017")
+                .replace("//", "").split(":")[1];
+        String metaDBPort = config().getString("repo.connection.string", "mongodb://localhost:27017")
+                .replace("//", "").split(":")[2];
+
+        String metaSinkConnect = new JSONObject().put("name", "metadata_sink_connect").put("config",
+                new JSONObject().put("connector.class", "org.apache.kafka.connect.mongodb.MongodbSinkConnector")
+                        .put("tasks.max", "1").put("host", metaDBHost)
+                        .put("port", metaDBPort).put("bulk.size", "1")
+                        .put("mongodb.database", config().getString("db.name", "DEFAULT_DB"))
+                        .put("mongodb.collections", config().getString("db.metadata.collection.name", "df_meta"))
+                        .put("topics", "metadata")).toString();
+        try {
+            HttpResponse<String> res = Unirest.get(restURI + "/metadata_sink_connect/status")
+                    .header("accept", "application/json")
+                    .asString();
+
+            if(res.getStatus() == 404) { // Add the meta sink
+                HttpResponse<String> metaSink = Unirest.post(restURI)
+                        .header("accept", "application/json").header("Content-Type", "application/json")
+                        .body(metaSinkConnect).asString();
+            }
+            LOG.info("The metadata sink connect is started with status: "
+                    + new JSONObject(res.getBody()).getJSONObject("connector").get("state"));
+
+        } catch (UnirestException ue) {
+        LOG.error("Starting adding MetadataSink connector exception", ue);
+    }
+    }
+
 }
 
