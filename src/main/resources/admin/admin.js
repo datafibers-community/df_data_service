@@ -251,13 +251,13 @@ customHeaderTemplate =
     processor.listView().batchActions([]);
 
     // set the fields of the connect entity list view // TODO make sort work
-    installed_connects.listView().sortField('name').fields([
+    installed_connects.listView().fields([
         nga.field('name'),
         nga.field('type'),
         nga.field('subtype'),
         nga.field('certified'),
         nga.field('class')
-    ]);
+    ]).sortField('name').sortDir('DESC');
     installed_connects.listView().title('Installed');
     installed_connects.listView().batchActions([]);
 

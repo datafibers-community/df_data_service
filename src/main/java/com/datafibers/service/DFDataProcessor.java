@@ -279,6 +279,7 @@ public class DFDataProcessor extends AbstractVerticle {
     public void corsHandle(RoutingContext routingContext) {
         routingContext.response().putHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
                 .putHeader("Access-Control-Allow-Headers", "X-Requested-With, Content-Type")
+                .putHeader("Access-Control-Allow-Headers", "X-Total-Count")
                 .putHeader("Access-Control-Max-Age", "60").end();
     }
 
@@ -1118,13 +1119,23 @@ public class DFDataProcessor extends AbstractVerticle {
                                     replace("}", "\"").replace("class=", "");
                             JsonObject query = new JsonObject().put("class",
                                     new JsonObject().put("$in", new JsonArray(search)));
-                            mongo.find(COLLECTION_INSTALLED, query, res -> {
+                            FindOptions options = new FindOptions().setSort(new JsonObject().put("name", 1));
+
+                            mongo.findWithOptions(COLLECTION_INSTALLED, query, options, res -> {
+                                if(res.result().toString().equalsIgnoreCase("[]")) {
+                                    LOG.warn("To see a full metadata, import df_installed.json to mongodb");
+                                    LOG.warn("mongoimport -c df_installed -d DEFAULT_DB --file df_installed.json");
+                                }
+
                                 if (res.succeeded()) {
-                                    LOG.info("smongo response result - " + res.result());
                                     routingContext
                                             .response().setStatusCode(ConstantApp.STATUS_CODE_OK)
                                             .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                                            .end(Json.encodePrettily(res.result()));
+                                            .end(Json.encodePrettily(
+                                                    res.result().toString()=="[]"?
+                                                            portRestResponse.getBody():res.result()
+                                            )
+                                    );
                                 }
                             });
                         });
