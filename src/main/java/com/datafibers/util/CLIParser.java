@@ -1,21 +1,23 @@
 package com.datafibers.util;
 
 import org.apache.commons.cli.*;
-import org.slf4j.LoggerFactory;
+import org.apache.log4j.Logger;
 
 public class CLIParser {
-    private static final org.slf4j.Logger LOG = LoggerFactory.getLogger(CLIParser.class);
+    private static final Logger LOG = Logger.getLogger(CLIParser.class);
     private String[] args = null;
     private Options options = new Options();
     public static String run_mode;
     public static String service_mode;
     public static String test_mode;
     public static String admin_tool;
+    public static String debug_mode;
 
 
     public CLIParser(String[] args) {
         this.args = args;
-        options.addOption("h", "help", false, "show help.");
+        options.addOption("h", "help", false, "show usage help");
+        options.addOption("d", "debug", false, "run application in debug level");
         options.addOption("t", "test", true, "run configured test cases, <arg>=test_case_number");
         options.addOption("u", "webui", true, "enable web, <arg>=ui|noui");
         options.addOption("m", "mode", true, "running vertx mode, <arg>=cluster|standalone");
@@ -35,6 +37,9 @@ public class CLIParser {
             cmd = parser.parse(options, args);
             if (cmd.hasOption("h"))
                 help();
+
+            if (cmd.hasOption("d"))
+                this.debug_mode = "DEBUG";
 
             if (cmd.hasOption("m")) {
                 if(cmd.getOptionValue("m").equalsIgnoreCase("cluster")) {
@@ -88,7 +93,7 @@ public class CLIParser {
         LOG.info("service_mode = " + this.service_mode);
         LOG.info("test_mode = " + this.test_mode);
         LOG.info("admin_tool = " + this.admin_tool);
-        return this.run_mode + this.service_mode + this.test_mode + this.admin_tool;
+        return this.run_mode + this.service_mode + this.test_mode + this.admin_tool + this.debug_mode;
     }
 
     public void help() {

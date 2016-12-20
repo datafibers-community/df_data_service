@@ -3,16 +3,11 @@ package com.datafibers.processor;
 import io.vertx.core.Vertx;
 import io.vertx.core.WorkerExecutor;
 import io.vertx.ext.web.RoutingContext;
-
 import java.net.ConnectException;
-import java.util.UUID;
-
 import org.bson.types.ObjectId;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import org.apache.log4j.Logger;
 import com.datafibers.util.ConstantApp;
 import com.datafibers.util.HelpFunc;
 import com.hubrick.vertx.rest.RestClient;
@@ -22,7 +17,7 @@ import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
 
 public class SchemaRegisterProcessor {
-    private static final Logger LOG = LoggerFactory.getLogger(SchemaRegisterProcessor.class);
+    private static final Logger LOG = Logger.getLogger(SchemaRegisterProcessor.class);
 
     /**
      * Retrieve all subjects first; and then retrieve corresponding subject's schema information

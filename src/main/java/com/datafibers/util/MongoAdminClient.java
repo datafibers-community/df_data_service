@@ -1,12 +1,7 @@
 package com.datafibers.util;
 
-import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.util.JSON;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Created by DUW3 on 11/17/2016.

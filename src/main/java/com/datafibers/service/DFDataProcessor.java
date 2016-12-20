@@ -15,7 +15,6 @@ import io.vertx.ext.web.FileUpload;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
-
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
@@ -26,12 +25,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-
 import org.bson.types.ObjectId;
 import org.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import org.apache.log4j.Logger;
 import com.datafibers.flinknext.DFRemoteStreamEnvironment;
 import com.datafibers.model.DFJobPOPJ;
 import com.datafibers.processor.FlinkTransformProcessor;
@@ -94,7 +90,7 @@ public class DFDataProcessor extends AbstractVerticle {
     private static Integer schema_registry_rest_port;
 
 
-    private static final Logger LOG = LoggerFactory.getLogger(DFDataProcessor.class);
+    private static final Logger LOG = Logger.getLogger(DFDataProcessor.class);
 
     @Override
     public void start(Future<Void> fut) {
@@ -181,8 +177,8 @@ public class DFDataProcessor extends AbstractVerticle {
 //                        .setParallelism(config().getInteger("flink.job.parallelism", 1));
             } else {
                 String jarPath = getClass().getProtectionDomain().getCodeSource().getLocation().getPath();
-                LOG.debug("Distribute " + jarPath + " to Apache Flink cluster at " +
-                        this.flink_server_host + ":" + this.flink_server_port);
+                LOG.debug("Flink resource manager is started at " + this.flink_server_host + ":" + this.flink_server_port);
+                LOG.debug("Distribute " + jarPath + " to above RM.");
                 env = new DFRemoteStreamEnvironment(this.flink_server_host, this.flink_server_port, jarPath)
                         .setParallelism(config().getInteger("flink.job.parallelism", 1));
 //                env = StreamExecutionEnvironment.createRemoteEnvironment(this.flink_server_host,
@@ -203,14 +199,14 @@ public class DFDataProcessor extends AbstractVerticle {
         // Start Core application
         startWebApp((http) -> completeStartup(http, fut));
 
-        LOG.info("********* DataFibers Services is started :)");
-
         // Regular update Kafka connects status
         if(this.kafka_connect_enabled) {
             long timerID = vertx.setPeriodic(ConstantApp.REGULAR_REFRESH_STATUS_TO_REPO, id -> {
                 updateKafkaConnectorStatus();
             });
         }
+
+        LOG.info("********* DataFibers Services is started :) *********");
     }
 
     private void startWebApp(Handler<AsyncResult<HttpServer>> next) {
@@ -976,9 +972,9 @@ public class DFDataProcessor extends AbstractVerticle {
                                 );
                                 mongo.insert(COLLECTION, insertJob.toJson(), ar -> {
                                     if (ar.failed()) {
-                                        LOG.error("IMPORT Status - failed", ar);
+                                        LOG.error("IMPORT Status - failed", ar.cause());
                                     } else {
-                                        LOG.debug("IMPORT Status - successfully", ar);
+                                        LOG.debug("IMPORT Status - successfully");
                                     }
                                 });
                             } else { // Update the connectConfig portion from Kafka import
@@ -1122,6 +1118,9 @@ public class DFDataProcessor extends AbstractVerticle {
      * @apiSampleRequest http://localhost:8080/api/df/installed_transforms
      */
     private void getAllInstalledConnects(RoutingContext routingContext) {
+
+        LOG.info("getAllInstalledConnects - request: " + routingContext.request());
+
         // TODO get all installed transforms as well
         final RestClientRequest postRestClientRequest =
                 rc.get(

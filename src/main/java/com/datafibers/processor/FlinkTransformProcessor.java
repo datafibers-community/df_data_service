@@ -26,40 +26,11 @@ import org.apache.flink.streaming.connectors.kafka.Kafka09JsonTableSource;
 import org.apache.flink.streaming.connectors.kafka.KafkaJsonTableSource;
 import org.apache.flink.streaming.connectors.kafka.partitioner.FixedPartitioner;
 import org.apache.flink.streaming.util.serialization.SimpleStringSchema;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import org.apache.log4j.Logger;
 import java.util.Properties;
 
-/* This is sample transform config
-    {
-        "group.id":"consumer3",
-        "data.format.input":"json_string",
-        "data.format.output":"json_string",
-        "avro.schema.enabled":"false",
-        "column.name.list":"symbol,name",
-        "column.schema.list":"string,string",
-        "topic.for.query":"finance",
-        "topic.for.result":"stock",
-        "trans.sql":"SELECT STREAM symbol, name FROM finance"
-    }
-*/
-
-/* This is sample udf config
-    {
-        "group.id":"consumer3",
-        "data.format.input":"json_string",
-        "data.format.output":"json_string",
-        "avro.schema.enabled":"false",
-        "topic.for.query":"finance",
-        "topic.for.result":"stock",
-        "trans.jar":"flinkUDFDemo.jar"
-    }
-*/
-
 public class FlinkTransformProcessor {
-    private static final Logger LOG = LoggerFactory.getLogger(FlinkTransformProcessor.class);
-
+    private static final Logger LOG = Logger.getLogger(FlinkTransformProcessor.class);
     /**
      * This method first submit a flink job against Kafka streaming in other thread. Then, it captures job_id from console.
      * After that of 8000 milliseconds, it restores the system.out and put newly captured job_id to job config property
