@@ -178,7 +178,8 @@ public class DFDataProcessor extends AbstractVerticle {
             } else {
                 String jarPath = getClass().getProtectionDomain().getCodeSource().getLocation().getPath();
                 LOG.debug("Flink resource manager is started at " + this.flink_server_host + ":" + this.flink_server_port);
-                LOG.debug("Distribute " + jarPath + " to above RM.");
+                LOG.debug("Distributed below Jar to above Flink resource manager.");
+                LOG.debug(jarPath);
                 env = new DFRemoteStreamEnvironment(this.flink_server_host, this.flink_server_port, jarPath)
                         .setParallelism(config().getInteger("flink.job.parallelism", 1));
 //                env = StreamExecutionEnvironment.createRemoteEnvironment(this.flink_server_host,

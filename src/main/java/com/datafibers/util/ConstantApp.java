@@ -83,6 +83,8 @@ public final class ConstantApp {
         CONNECT_KAFKA_HDFS_SINK,    // The plugin export data out of HDFS
         CONNECT_HIVE_SOURCE,        // The plugin import data into Hive
         CONNECT_HIVE_SINK,          // The plugin export data out of Hive
+        CONNECT_MONGODB_SOURCE,       // The plugin import data into mongodb
+        CONNECT_MONGODB_SINK,         // The plugin export data out of mongodb
         TRANSFORM_FLINK_SQL_GENE,     // Flink streaming SQL
         TRANSFORM_FLINK_SQL_A2J,      // Flink streaming SQL from Avro to Json
         TRANSFORM_FLINK_SQL_J2J,      // Flink streaming SQL from Json to Json

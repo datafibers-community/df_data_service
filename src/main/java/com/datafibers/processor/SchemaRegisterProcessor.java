@@ -27,7 +27,7 @@ public class SchemaRegisterProcessor {
      * @param schema_registry_host_and_port
      */
     public static void forwardGetAllSchemas(Vertx vertx, RoutingContext routingContext, RestClient rc_schema, String schema_registry_host_and_port) {
-        LOG.debug("=== forwardGetAllSchemas === ");
+        LOG.debug("SchemaRegisterProcessor.forwardGetAllSchemas is called ");
         StringBuffer returnString = new StringBuffer();
         WorkerExecutor executor = vertx.createSharedWorkerExecutor("forwardGetAllSchemas_pool_" + new ObjectId(),
                 ConstantApp.WORKER_POOL_SIZE, ConstantApp.MAX_RUNTIME);
@@ -36,7 +36,7 @@ public class SchemaRegisterProcessor {
             String restURI = "http://" + schema_registry_host_and_port + "/subjects";
             int status_code = ConstantApp.STATUS_CODE_OK;
 
-            LOG.debug("=== Step 1: Starting List All Subjects ... restURI: " + restURI);
+            LOG.debug("Starting List All Subjects @" + restURI);
 
             try {
                 HttpResponse<String> res = Unirest.get(restURI).header("accept", "application/vnd.schemaregistry.v1+json").asString();
@@ -48,8 +48,7 @@ public class SchemaRegisterProcessor {
                 } else {
                     String subjects = res.getBody();
                     // ["Kafka-value","Kafka-key"]
-                    LOG.debug("==== Step 2: res ==> res.getBody(): " + res);
-                    LOG.debug("==== Step 3: All subjects ==> subjects: " + subjects);
+                    LOG.debug("All subjects received are " + subjects);
                     StringBuffer strBuff = new StringBuffer();
                     int count = 0;
 
@@ -66,20 +65,20 @@ public class SchemaRegisterProcessor {
                                 status_code = resSubject.getStatus();
                             } else {
                                 JsonNode resSchema = resSubject.getBody();
-                                LOG.debug("==== Step 41: resSchema: " + resSchema);
+                                LOG.debug("resSchema: " + resSchema);
 
                                 String schema = resSchema.toString().replace("\\\"", "");
-                                LOG.debug("==== Step 42: schema - remove \": " + schema);
+                                LOG.debug("schema - remove \": " + schema);
 
                                 String compatibility = getCompatibilityOfSubject(schema_registry_host_and_port, subject);
-                                LOG.debug("==== Step 51: compatibility: " + compatibility);
+                                LOG.debug("compatibility: " + compatibility);
 
                                 if (compatibility != null && !compatibility.isEmpty()) {
                                     JSONObject jsonSchema = new JSONObject(schema);
                                     jsonSchema.put(ConstantApp.COMPATIBILITY, compatibility);
                                     schema = jsonSchema.toString();
 
-                                    LOG.debug("==== Step 52: jsonSchema.toString(): " + jsonSchema.toString());
+                                    LOG.debug("jsonSchema.toString(): " + jsonSchema.toString());
                                 }
 
                                 if (count == 0) {
@@ -91,13 +90,13 @@ public class SchemaRegisterProcessor {
                             }
                         }
 
-                        LOG.debug("==== Step 6: strBuf.toString(): " + strBuff.toString() + ", count = " + count);
+                        LOG.debug("strBuf.toString(): " + strBuff.toString() + ", count = " + count);
 
                         if (count > 0) {
                             returnString.append(strBuff.toString().substring(0, strBuff.toString().length() - 1) + "]");
                         }
 
-                        LOG.debug("==== Step 7: returnString: " + returnString.toString());
+                        LOG.debug("returnString: " + returnString.toString());
 
                     }
                 }
@@ -107,7 +106,7 @@ public class SchemaRegisterProcessor {
                 status_code = ConstantApp.STATUS_CODE_BAD_REQUEST;
             }
 
-            LOG.debug("Step 8:  status_code:" + status_code);
+            LOG.debug("status_code:" + status_code);
             future.complete(status_code);
         }, res -> {
             Object result = HelpFunc.coalesce(res.result(), ConstantApp.STATUS_CODE_BAD_REQUEST);
@@ -128,7 +127,7 @@ public class SchemaRegisterProcessor {
      * @param schema_registry_host_and_port
      */
     public static void forwardGetOneSchema(Vertx vertx, RoutingContext routingContext, RestClient rc_schema, String schema_registry_host_and_port) {
-        LOG.debug("=== forwardGetOneSchema === ");
+        LOG.debug("SchemaRegisterProcessor.forwardGetOneSchema is called.");
 
         final String subject = routingContext.request().getParam("id");
         StringBuffer returnString = new StringBuffer();
@@ -165,7 +164,6 @@ public class SchemaRegisterProcessor {
                     status_code = ConstantApp.STATUS_CODE_BAD_REQUEST;
                 }
             }
-            LOG.debug("Step 11:  status_code: " + status_code);
             future.complete(status_code);
         }, res -> {
             Object result = HelpFunc.coalesce(res.result(), ConstantApp.STATUS_CODE_BAD_REQUEST);
@@ -192,7 +190,7 @@ public class SchemaRegisterProcessor {
 
         try {
             res = Unirest.get(fullUrl).header("accept", "application/vnd.schemaregistry.v1+json").asString();
-            LOG.debug("===== res.getBody(): " + res.getBody());
+            LOG.debug("getCompatibilityOfSubject res.getBody(): " + res.getBody());
             if (res.getBody() != null) {
                 if (res.getBody().indexOf("40401") > 0) {
                 } else {
@@ -201,7 +199,7 @@ public class SchemaRegisterProcessor {
                 }
             }
         } catch (UnirestException e) {
-            LOG.error("===== DF DataProcessor, getCompatibilityOfSubject(), error message: " + e.getCause());
+            LOG.error("getCompatibilityOfSubject(), error message: " + e.getCause());
         }
 
         return compatibility;
