@@ -1,8 +1,5 @@
 package com.datafibers.service;
 
-import com.datafibers.processor.FlinkTransformProcessor;
-import com.datafibers.processor.KafkaConnectProcessor;
-import com.datafibers.processor.SchemaRegisterProcessor;
 import com.datafibers.test_tool.AvroProducerTest;
 import com.datafibers.util.CLIParser;
 import com.datafibers.util.MongoAdminClient;
@@ -10,8 +7,6 @@ import com.datafibers.util.Runner;
 import com.datafibers.test_tool.UnitTestSuiteFlink;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.log4j.Level;
-import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
 import java.io.IOException;
@@ -31,15 +26,6 @@ public class DFInitService {
         runningMode = cli.getRunMode();
 
         if (runningMode == null || runningMode.contains("DEBUG")) {
-            if (runningMode != null && runningMode.contains("DEBUG")) {
-                LogManager.getLogger(DFInitService.class).setLevel(Level.DEBUG);
-                LogManager.getLogger(DFWebUI.class).setLevel(Level.DEBUG);
-                LogManager.getLogger(DFDataProcessor.class).setLevel(Level.DEBUG);
-                LogManager.getLogger(FlinkTransformProcessor.class).setLevel(Level.DEBUG);
-                LogManager.getLogger(KafkaConnectProcessor.class).setLevel(Level.DEBUG);
-                LogManager.getLogger(SchemaRegisterProcessor.class).setLevel(Level.DEBUG);
-            }
-
             Runner.runExample(DFDataProcessor.class);
             Runner.runExample(DFWebUI.class);
         } else {

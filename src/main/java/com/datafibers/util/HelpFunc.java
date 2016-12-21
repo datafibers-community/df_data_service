@@ -88,6 +88,18 @@ public class HelpFunc {
     }
 
     /**
+     * Comparing string ease of lambda expression
+     * @param a
+     * @param b
+     * @param <T>
+     * @return object
+     */
+    public static <T> T strCompare(String a, String b, T c, T d) {
+        if (a.equalsIgnoreCase(b)) return c;
+                else return d;
+    }
+
+    /**
      * Print error message in better JSON format
      *
      * @param error_code

@@ -70,7 +70,8 @@ customHeaderTemplate =
                 .choices([
                                 {value:'CONNECT_KAFKA_SOURCE', label:'Flat Source'},
                                 {value:'CONNECT_KAFKA_SOURCE_AVRO', label:'Avro Source'},
-                                {value:'CONNECT_KAFKA_SINK', label:'Flat Sink'}
+                                {value:'CONNECT_KAFKA_SINK', label:'Flat Sink'},
+                                {value:'CONNECT_KAFKA_HDFS_SINK', label:'Hadoop File Sink'}
                          ]).label('Connect Type'),
         nga.field('status').editable(false).label('Task Status'),
         nga.field('description', 'text'),
@@ -105,7 +106,21 @@ customHeaderTemplate =
 		"tasks.max" : "Number of tasks in parallel.",
 		"topics" : "List of Kafka topics having data streamed out"
 		})
-		.template('<ma-field ng-if="entry.values.connectorType == \'CONNECT_KAFKA_SINK\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true)
+		.template('<ma-field ng-if="entry.values.connectorType == \'CONNECT_KAFKA_SINK\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true),
+		nga.field('connectorConfig_1','json').label('Connect Config')
+        .defaultValue({
+        "config_ignored" :"template marker, remove it to make config effective",
+        "connector.class" : "io.confluent.connect.hdfs.HdfsSinkConnector",
+        "schema.compatibility" : "BACKWARD",
+        "hdfs.url" : "hdfs://localhost:8020",
+        "hive.metastore.uris" : "thrift://localhost:9083",
+        "hive.integration" : "true",
+        "tasks.max" : "1",
+        "flush.size" : "1",
+        "topics" : "The Kafka topic names having data to sink."
+        })
+        .template('<ma-field ng-if="entry.values.connectorType == \'CONNECT_KAFKA_HDFS_SINK\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true)
+
     ]);
 
     connect.editionView().fields([

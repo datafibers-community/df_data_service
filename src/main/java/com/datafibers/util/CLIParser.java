@@ -1,6 +1,14 @@
 package com.datafibers.util;
 
+import com.datafibers.processor.FlinkTransformProcessor;
+import com.datafibers.processor.KafkaConnectProcessor;
+import com.datafibers.processor.SchemaRegisterProcessor;
+import com.datafibers.service.DFDataProcessor;
+import com.datafibers.service.DFInitService;
+import com.datafibers.service.DFWebUI;
 import org.apache.commons.cli.*;
+import org.apache.log4j.Level;
+import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
 public class CLIParser {
@@ -38,8 +46,15 @@ public class CLIParser {
             if (cmd.hasOption("h"))
                 help();
 
-            if (cmd.hasOption("d"))
+            if (cmd.hasOption("d")) {
                 this.debug_mode = "DEBUG";
+                LogManager.getLogger(DFInitService.class).setLevel(Level.DEBUG);
+                LogManager.getLogger(DFWebUI.class).setLevel(Level.DEBUG);
+                LogManager.getLogger(DFDataProcessor.class).setLevel(Level.DEBUG);
+                LogManager.getLogger(FlinkTransformProcessor.class).setLevel(Level.DEBUG);
+                LogManager.getLogger(KafkaConnectProcessor.class).setLevel(Level.DEBUG);
+                LogManager.getLogger(SchemaRegisterProcessor.class).setLevel(Level.DEBUG);
+            }
 
             if (cmd.hasOption("m")) {
                 if(cmd.getOptionValue("m").equalsIgnoreCase("cluster")) {

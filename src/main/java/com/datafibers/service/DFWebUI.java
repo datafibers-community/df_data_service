@@ -29,8 +29,7 @@ public class DFWebUI extends AbstractVerticle {
                 .listen(config().getInteger("http.port.df.processor", 8000));
 
         try {
-            InetAddress ip = InetAddress.getLocalHost();
-            LOG.info("Welcome page is started @ http://" + ip + ":" +
+            LOG.info("DataFibers Welcome You @ http://" + InetAddress.getLocalHost().getHostAddress() + ":" +
                     config().getInteger("http.port.df.processor", 8000));
         } catch (UnknownHostException e) {
             LOG.error("NetworkHostException", e.getCause());

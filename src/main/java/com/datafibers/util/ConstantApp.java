@@ -79,8 +79,8 @@ public final class ConstantApp {
         CONNECT_KAFKA_SINK,         // Kafka Connector export data out of Kafka
         CONNECT_EVENTBUS_SOURCE,    // The plugin import data into Vertx Event Bus
         CONNECT_EVENTBUS_SINK,      // The plugin export data out of Vertx Event Bus
-        CONNECT_HDFS_SOURCE,        // The plugin import data into HDFS
-        CONNECT_HDFS_SINK,          // The plugin export data out of HDFS
+        CONNECT_KAFKA_HDFS_SOURCE,  // The plugin import data into HDFS
+        CONNECT_KAFKA_HDFS_SINK,    // The plugin export data out of HDFS
         CONNECT_HIVE_SOURCE,        // The plugin import data into Hive
         CONNECT_HIVE_SINK,          // The plugin export data out of Hive
         TRANSFORM_FLINK_SQL_GENE,     // Flink streaming SQL

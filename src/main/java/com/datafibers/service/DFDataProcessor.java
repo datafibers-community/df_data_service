@@ -408,12 +408,18 @@ public class DFDataProcessor extends AbstractVerticle {
      * @param routingContext
      */
     private void getAll(RoutingContext routingContext, String connectorCategoryFilter) {
-        mongo.find(COLLECTION, new JsonObject().put("connectorCategory", connectorCategoryFilter), results -> {
-            List<JsonObject> objects = results.result();
-            List<DFJobPOPJ> jobs = objects.stream().map(DFJobPOPJ::new).collect(Collectors.toList());
-            routingContext.response()
-                    .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                    .end(Json.encodePrettily(jobs));
+        String sortName = HelpFunc.coalesce(routingContext.request().getParam("_sortField"), "name");
+        int sortOrder = HelpFunc.strCompare(
+                HelpFunc.coalesce(routingContext.request().getParam("_sortDir"), "ASC"), "ASC", 1, -1);
+        FindOptions options = new FindOptions().setSort(new JsonObject().put(sortName, sortOrder));
+
+        mongo.findWithOptions(COLLECTION, new JsonObject().put("connectorCategory", connectorCategoryFilter), options,
+                results -> {
+                    List<JsonObject> objects = results.result();
+                    List<DFJobPOPJ> jobs = objects.stream().map(DFJobPOPJ::new).collect(Collectors.toList());
+                    routingContext.response()
+                            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+                            .end(Json.encodePrettily(jobs));
         });
     }
 
@@ -1119,7 +1125,9 @@ public class DFDataProcessor extends AbstractVerticle {
      */
     private void getAllInstalledConnects(RoutingContext routingContext) {
 
-        LOG.info("getAllInstalledConnects - request: " + routingContext.request());
+        String sortName = HelpFunc.coalesce(routingContext.request().getParam("_sortField"), "name");
+        int sortOrder = HelpFunc.strCompare(
+                HelpFunc.coalesce(routingContext.request().getParam("_sortDir"), "ASC"), "ASC", 1, -1);
 
         // TODO get all installed transforms as well
         final RestClientRequest postRestClientRequest =
@@ -1130,7 +1138,8 @@ public class DFDataProcessor extends AbstractVerticle {
                                     replace("}", "\"").replace("class=", "");
                             JsonObject query = new JsonObject().put("class",
                                     new JsonObject().put("$in", new JsonArray(search)));
-                            FindOptions options = new FindOptions().setSort(new JsonObject().put("name", 1));
+
+                            FindOptions options = new FindOptions().setSort(new JsonObject().put(sortName, sortOrder));
 
                             mongo.findWithOptions(COLLECTION_INSTALLED, query, options, res -> {
                                 if(res.result().toString().equalsIgnoreCase("[]")) {
