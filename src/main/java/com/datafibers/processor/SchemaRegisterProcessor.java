@@ -64,11 +64,7 @@ public class SchemaRegisterProcessor {
                             } else if (resSubject.getStatus() != ConstantApp.STATUS_CODE_OK) {
                                 status_code = resSubject.getStatus();
                             } else {
-                                JsonNode resSchema = resSubject.getBody();
-                                LOG.debug("resSchema: " + resSchema);
-
-                                String schema = resSchema.toString().replace("\\\"", "");
-                                LOG.debug("schema - remove \": " + schema);
+                                String schema = resSubject.getBody().toString();
 
                                 String compatibility = getCompatibilityOfSubject(schema_registry_host_and_port, subject);
                                 LOG.debug("compatibility: " + compatibility);
@@ -77,9 +73,9 @@ public class SchemaRegisterProcessor {
                                     JSONObject jsonSchema = new JSONObject(schema);
                                     jsonSchema.put(ConstantApp.COMPATIBILITY, compatibility);
                                     schema = jsonSchema.toString();
-
-                                    LOG.debug("jsonSchema.toString(): " + jsonSchema.toString());
                                 }
+
+                                LOG.debug("schema: " + schema);
 
                                 if (count == 0) {
                                     strBuff.append("[");

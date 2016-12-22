@@ -1484,8 +1484,15 @@ public class DFDataProcessor extends AbstractVerticle {
                         .header("accept", "application/json").header("Content-Type", "application/json")
                         .body(metaSinkConnect).asString();
             }
-            LOG.info("The metadata sink @topic:df_meta is started with status: "
-                    + new JSONObject(res.getBody()).getJSONObject("connector").get("state"));
+
+            JSONObject resObj = new JSONObject(res.getBody());
+            if (resObj.has("connector")) {
+                LOG.info("The metadata sink @topic:df_meta is started with status: "
+                        + resObj.getJSONObject("connector").get("state"));
+            } else {
+                LOG.info("The metadata sink @topic:df_meta is started with status: Unknown.");
+                LOG.info("Check the latest status in Web UI -> ALL view.");
+            }
 
         } catch (UnirestException ue) {
         LOG.error("Starting adding MetadataSink connector exception", ue);
