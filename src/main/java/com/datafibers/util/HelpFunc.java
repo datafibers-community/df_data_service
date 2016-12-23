@@ -183,6 +183,9 @@ public class HelpFunc {
      */
     public static String stringToJsonFormat(String srcStr) {
         if (srcStr.isEmpty()) return "[]";
-        return srcStr.replace("\"{", "{").replace("}\"", "}").replace("\\\"", "\"");
+        // .replace("\"\"", "\"") is used to fix issue on STRING SCHEMA,
+        // where the origin schema show as "schema":"\"string\"" == replace as ==> "schema":""string""
+        // Then, replace as "schema":"string"
+        return srcStr.replace("\"{", "{").replace("}\"", "}").replace("\\\"", "\"").replace("\"\"", "\"");
     }
 }
