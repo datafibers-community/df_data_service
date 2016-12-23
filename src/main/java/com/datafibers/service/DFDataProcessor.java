@@ -1494,6 +1494,8 @@ public class DFDataProcessor extends AbstractVerticle {
                 LOG.info("Check the latest status in Web UI -> ALL view.");
             }
 
+            // TODO add the aro schema for metadata as well
+
         } catch (UnirestException ue) {
         LOG.error("Starting adding MetadataSink connector exception", ue);
     }
