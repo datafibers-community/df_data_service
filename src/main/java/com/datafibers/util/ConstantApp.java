@@ -27,12 +27,14 @@ public final class ConstantApp {
     public static final String DF_TRANSFORMS_REST_URL_WITH_ID = DF_TRANSFORMS_REST_URL + "/:id";
     public static final String DF_TRANSFORMS_UPLOAD_FILE_REST_URL_WILD = "/api/df/uploaded_files*";
     public static final String DF_TRANSFORMS_UPLOAD_FILE_REST_URL = "/api/df/uploaded_files";
-    // DF REST endpoint URLs for all registries: SZ
+
+    // DF Schema registry endpoint URLs
     public static final String DF_SCHEMA_REST_URL = "/api/df/schema";
     public static final String DF_SCHEMA_REST_URL_WILD = "/api/df/schema*";
     public static final String DF_SCHEMA_REST_URL_WITH_ID = DF_SCHEMA_REST_URL + "/:id";
+    public static final String AVRO_REGISTRY_CONTENT_TYPE = "application/vnd.schemaregistry.v1+json";
 
-    // Kafka CONNECT endpoint URLs
+    // Kafka Connect endpoint URLs
     public static final String KAFKA_CONNECT_REST_URL = "/connectors";
     public static final String KAFKA_CONNECT_PLUGIN_REST_URL = "/connector-plugins";
     public static String KAFKA_CONNECT_PLUGIN_CONFIG = "/connectors/CONNECTOR_NAME_PLACEHOLDER/config";
@@ -45,9 +47,6 @@ public final class ConstantApp {
     public static final String APPLICATION_JSON_CHARSET_UTF_8 = "application/json; charset=utf-8";
     public static final String TEXT_HTML = "text/html";
 
-    public static final String AVRO_REGISTRY_CONTENT_TYPE = "application/vnd.schemaregistry.v1+json";
-    
-    
     // HTTP status codes
     public static final int STATUS_CODE_OK = 200;
     public static final int STATUS_CODE_OK_CREATED = 201;
@@ -64,8 +63,8 @@ public final class ConstantApp {
         UNASSIGNED,         // The Kafka connector/task has not yet been assigned to a worker.
         RUNNING,            // The Kafka connector/task is running.
         PAUSED,             // The Kafka connector/task has been administratively paused.
-        FAILED,             // The Kafka connector/task has failed (usually by raising an exception, which is reported in the status output).
-        LOST,               // The Kafka connect restart and lost the connector job in DF repository. These jobs should be removed manually.
+        FAILED,             // The Kafka connector/task has failed.
+        LOST,               // The Kafka connect restart and lost the connector job in DF repository.
         NONE
     }
 

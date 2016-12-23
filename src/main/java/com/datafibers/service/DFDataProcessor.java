@@ -1473,7 +1473,7 @@ public class DFDataProcessor extends AbstractVerticle {
                         .put("port", metaDBPort).put("bulk.size", "1")
                         .put("mongodb.database", config().getString("db.name", "DEFAULT_DB"))
                         .put("mongodb.collections", config().getString("db.metadata.collection.name", "df_meta"))
-                        .put("topics", "metadata")).toString();
+                        .put("topics", config().getString("kafka.topic.df.metadata", "df_meta"))).toString();
         try {
             HttpResponse<String> res = Unirest.get(restURI + "/metadata_sink_connect/status")
                     .header("accept", "application/json")

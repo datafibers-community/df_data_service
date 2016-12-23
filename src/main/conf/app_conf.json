@@ -15,6 +15,7 @@
   "kafka.connect.rest.host":"localhost",
   "kafka.connect.enable":"true",
   "kafka.connect.import.start":"true",
+  "kafka.topic.df.metadata":"df_meta",
 
   "transform.engine.flink.enable":"true",
   "flink.servers.host":"localhost",
