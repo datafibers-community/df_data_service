@@ -29,6 +29,7 @@ customHeaderTemplate =
 	var transform = nga.entity('tr').label('TRANSFORMS');
 	var schema = nga.entity('schema').identifier(nga.field('subject')).label('SCHEMA');
     var installed_connects = nga.entity('installed_connects').identifier(nga.field('class')).label('INSTALLED').readOnly();
+    var process_history = nga.entity('hist').identifier(nga.field('uid')).label('HISTORY').readOnly();
 
     // set the fields of the connect entity list view
     connect.listView().sortField('name').fields([
@@ -49,6 +50,7 @@ customHeaderTemplate =
         nga.field('connectorType').label('Type'),
         nga.field('status').label('Task Status')
     ]);
+
   	schema.listView().sortField('name').fields([
   	    nga.field('subject').label('Subject Name').isDetailLink(true),
         nga.field('id').label('Schema ID'),
@@ -57,10 +59,23 @@ customHeaderTemplate =
         nga.field('compatibility').label('Compatibility')
     ]);
 
+   	process_history.listView().sortField('cuid').fields([
+   	    nga.field('cuid').label('Connect UID'),
+        nga.field('file_name').label('Processed'),
+        nga.field('file_size').label('Size (byte)'),
+        nga.field('schema_version').label('Schema Version'),
+        nga.field('schema_subject').label('Schema Subject'),
+        nga.field('topic_sent').label('Topic'),
+        nga.field('process_milliseconds').label('Time Spent (ms.)'),
+        nga.field('status').label('Status')
+     ]);
+
     connect.listView().title('Connects Dashboard');
     transform.listView().title('Transforms Dashboard');
     schema.listView().title('Schema Dashboard');
     schema.listView().batchActions([]);
+    process_history.listView().title('Process History');
+    process_history.listView().batchActions([]);
 
     connect.creationView().fields([
         nga.field('taskSeq', 'number').format('0o').label('Task Seq'),
@@ -282,15 +297,17 @@ customHeaderTemplate =
     installed_connects.listView().batchActions([]);
 
     // add the connect entity to the admin application
-    admin.addEntity(processor).addEntity(connect).addEntity(transform).addEntity(installed_connects).addEntity(schema);
+    admin.addEntity(processor).addEntity(connect).addEntity(transform).addEntity(installed_connects).addEntity(schema)
+    .addEntity(process_history);
 
 	// customize menubar
 	admin.menu(nga.menu()
-  .addChild(nga.menu(processor).icon('<span class="fa fa-globe fa-fw"></span>'))
-  .addChild(nga.menu(connect).icon('<span class="fa fa-plug fa-fw"></span>'))
-  .addChild(nga.menu(transform).icon('<span class="fa fa-flask fa-fw"></span>'))
-  .addChild(nga.menu(schema).icon('<span class="fa fa-scribd fa-fw"></span>'))
-  .addChild(nga.menu(installed_connects).icon('<span class="fa fa-cog fa-fw"></span>'))
+      .addChild(nga.menu(processor).icon('<span class="fa fa-globe fa-fw"></span>'))
+      .addChild(nga.menu(connect).icon('<span class="fa fa-plug fa-fw"></span>'))
+      .addChild(nga.menu(transform).icon('<span class="fa fa-flask fa-fw"></span>'))
+      .addChild(nga.menu(schema).icon('<span class="fa fa-scribd fa-fw"></span>'))
+      .addChild(nga.menu(installed_connects).icon('<span class="fa fa-cog fa-fw"></span>'))
+      .addChild(nga.menu(process_history).icon('<span class="fa fa-history fa-fw"></span>'))
 );
     // attach the admin application to the DOM and execute it
     nga.configure(admin);

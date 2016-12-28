@@ -34,6 +34,10 @@ public final class ConstantApp {
     public static final String DF_SCHEMA_REST_URL_WITH_ID = DF_SCHEMA_REST_URL + "/:id";
     public static final String AVRO_REGISTRY_CONTENT_TYPE = "application/vnd.schemaregistry.v1+json";
 
+    // DF process history endpoint URLs
+    public static final String DF_PROCESS_HIST_REST_URL = "/api/df/hist";
+    public static final String DF_PROCESS_HIST_URL_WILD = "/api/df/hist*";
+
     // Kafka Connect endpoint URLs
     public static final String KAFKA_CONNECT_REST_URL = "/connectors";
     public static final String KAFKA_CONNECT_PLUGIN_REST_URL = "/connector-plugins";

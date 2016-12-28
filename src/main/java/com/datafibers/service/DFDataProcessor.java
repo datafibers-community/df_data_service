@@ -256,6 +256,10 @@ public class DFDataProcessor extends AbstractVerticle {
         router.post(ConstantApp.DF_SCHEMA_REST_URL).handler(this::addOneSchema); // Schema Registry Forward
         router.put(ConstantApp.DF_SCHEMA_REST_URL_WITH_ID).handler(this::updateOneSchema); // Schema Registry Forward
         router.delete(ConstantApp.DF_SCHEMA_REST_URL_WITH_ID).handler(this::deleteOneConnects); // Schema Registry Forward
+
+        // Process History
+        router.options(ConstantApp.DF_PROCESS_HIST_REST_URL).handler(this::corsHandle);
+        router.get(ConstantApp.DF_PROCESS_HIST_REST_URL).handler(this::getAllProcessHistory);
         
         // Create the HTTP server and pass the "accept" method to the request handler.
         vertx.createHttpServer().requestHandler(router::accept)
@@ -1178,6 +1182,76 @@ public class DFDataProcessor extends AbstractVerticle {
     }
 
     /**
+     * Get all connector process history from df_meta topic sinked into Mongo
+     * @param routingContext
+     *
+     * @api {get} /hist 2.List connect processed history
+     * @apiVersion 0.1.1
+     * @apiName getAllProcessHistory
+     * @apiGroup Other
+     * @apiPermission none
+     * @apiDescription This is where get history of processed files in tasks or jobs.
+     * @apiSuccess	{JsonObject[]}	history    List of processed history.
+     * @apiSampleRequest http://localhost:8080/api/df/hist
+     */
+    private void getAllProcessHistory(RoutingContext routingContext) {
+
+        String sortName = HelpFunc.coalesce(routingContext.request().getParam("_sortField"), "name");
+        int sortOrder = HelpFunc.strCompare(
+                HelpFunc.coalesce(routingContext.request().getParam("_sortDir"), "ASC"), "ASC", 1, -1);
+
+        JsonObject command = new JsonObject()
+                .put("aggregate", config().getString("db.metadata.collection.name", "df_meta"))
+                .put("pipeline", new JsonArray().add(
+                        new JsonObject().put("$group",
+                                new JsonObject()
+                                .put("_id", new JsonObject().put("cuid", "$cuid").put("file_name", "$file_name"))
+                                .put("cuid", new JsonObject().put("$first", "$cuid"))
+                                .put("file_name", new JsonObject().put("$first", "$file_name"))
+                                .put("schema_version", new JsonObject().put("$first", "$schema_version"))
+                                .put("last_modified_timestamp", new JsonObject().put("$first", "$last_modified_timestamp"))
+                                .put("file_size", new JsonObject().put("$first", "$file_size"))
+                                .put("topic_sent", new JsonObject().put("$first", "$topic_sent"))
+                                .put("schema_subject", new JsonObject().put("$first", "$schema_subject"))
+                                .put("start_time", new JsonObject().put("$min", "$current_timemillis"))
+                                .put("end_time", new JsonObject().put("$max", "$current_timemillis"))
+                                .put("status", new JsonObject().put("$min", "$status"))
+                        )).add(
+                            new JsonObject().put("$project", new JsonObject()
+                                    .put("_id", 0)
+                                    .put("uid", new JsonObject().put("$concat",
+                                            new JsonArray().add("$cuid").add("$file_name")))
+                                    .put("cuid", 1)
+                                    .put("file_name", 1)
+                                    .put("schema_version", 1)
+                                    .put("schema_subject", 1)
+                                    .put("last_modified_timestamp", 1)
+                                    .put("file_owner", 1)
+                                    .put("file_size", 1)
+                                    .put("topic_sent", 1)
+                                    .put("status", 1)
+                                    .put("process_milliseconds",
+                                            new JsonObject().put("$subtract",
+                                                    new JsonArray().add("$end_time").add("$start_time")))
+
+                            )
+                        ).add( new JsonObject().put("$sort", new JsonObject().put(sortName, sortOrder)))
+                );
+
+        mongo.runCommand("aggregate", command, res -> {
+            if (res.succeeded()) {
+                JsonArray resArr = res.result().getJsonArray("result");
+                routingContext.response()
+                        .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+                        .end(Json.encodePrettily(resArr));
+            } else {
+                res.cause().printStackTrace();
+            }
+
+        });
+    }
+
+    /**
      * Get all schema from schema registry
      * @param routingContext
      *
@@ -1515,6 +1589,7 @@ public class DFDataProcessor extends AbstractVerticle {
                                         "{\"name\": \"file_owner\", \"type\": \"string\"}," +
                                         "{\"name\": \"last_modified_timestamp\", \"type\": \"string\"}," +
                                         "{\"name\": \"current_timestamp\", \"type\": \"string\"}," +
+                                        "{\"name\": \"current_timemillis\", \"type\": \"long\"}," +
                                         "{\"name\": \"stream_offset\", \"type\": \"string\"}," +
                                         "{\"name\": \"topic_sent\", \"type\": \"string\"}," +
                                         "{\"name\": \"schema_subject\", \"type\": \"string\"}," +
