@@ -95,7 +95,7 @@ public final class ConstantApp {
         TRANSFORM_SPARK_UDF,          // Spark user defined jar/program
         TRANSFORM_HIVE_TRANS,         // Hive batch SQL
         TRANSFORM_HIVE_JOINS,         // Hive batch join
-        INTERNAL_METADATA_COLLECT,                // Reserved metadata sinl
+        INTERNAL_METADATA_COLLECT,    // Reserved metadata sinl
         NONE
     }
 
@@ -105,6 +105,4 @@ public final class ConstantApp {
     public static final String COMPATIBILITYLEVEL = "compatibilityLevel";
     public static final int WORKER_POOL_SIZE = 20; // VERT.X Worker pool size
     public static final int MAX_RUNTIME = 6000;  // VERT.X Worker timeout in 6 sec
-    
-    
 }

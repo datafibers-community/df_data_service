@@ -24,5 +24,7 @@
   "flink.trans.client.timeout":120000,
 
   "zookeeper.server.host":"localhost",
-  "zookeeper.server.port":2181
+  "zookeeper.server.port":2181,
+
+  "df.metadata.schema":"{\"type\":\"record\",\"name\": \"df_meta\",\"fields\":[{\"name\": \"cuid\", \"type\": \"string\"},{\"name\": \"file_name\", \"type\": \"string\"},{\"name\": \"file_size\", \"type\": \"string\"}, {\"name\": \"file_owner\", \"type\": \"string\"},{\"name\": \"last_modified_timestamp\", \"type\": \"string\"},{\"name\": \"current_timestamp\", \"type\": \"string\"},{\"name\": \"stream_offset\", \"type\": \"string\"},{\"name\": \"topic_sent\", \"type\": \"string\"},{\"name\": \"schema_subject\", \"type\": \"string\"},{\"name\": \"schema_version\", \"type\": \"string\"},{\"name\": \"status\", \"type\": \"string\"}]}"
 }

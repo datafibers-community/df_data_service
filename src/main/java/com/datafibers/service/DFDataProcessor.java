@@ -1,6 +1,7 @@
 package com.datafibers.service;
 
 import com.datafibers.processor.SchemaRegisterProcessor;
+import com.datafibers.util.SchemaRegistryClient;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -961,7 +962,8 @@ public class DFDataProcessor extends AbstractVerticle {
                     // Get task status
                     HttpResponse<JsonNode> resConnectorStatus = Unirest.get(restURI + "/" + connectName + "/status")
                             .header("accept", "application/json").asJson();
-                    String resStatus = resConnectorStatus.getBody().getObject().getJSONObject("connector").getString("state");
+                    String resStatus = resConnectorStatus.getBody().getObject().getJSONObject("connector")
+                            .getString("state");
 
                     mongo.count(COLLECTION, new JsonObject().put("connectUid", connectName), count -> {
                         if (count.succeeded()) {
@@ -974,7 +976,8 @@ public class DFDataProcessor extends AbstractVerticle {
                                                 .put("connectorType", resConnectType)
                                                 .put("connectorCategory", "CONNECT")
                                                 .put("status", resStatus)
-                                                .put("jobConfig", new JsonObject().put("comments", "This is imported from Kafka Connect.").toString())
+                                                .put("jobConfig", new JsonObject()
+                                                .put("comments", "This is imported from Kafka Connect.").toString())
                                                 .put("connectorConfig", resConfig.getObject().toString())
                                 );
                                 mongo.insert(COLLECTION, insertJob.toJson(), ar -> {
@@ -985,26 +988,29 @@ public class DFDataProcessor extends AbstractVerticle {
                                     }
                                 });
                             } else { // Update the connectConfig portion from Kafka import
-                                mongo.findOne(COLLECTION, new JsonObject().put("connectUid", connectName), null, findidRes -> {
-                                    if (findidRes.succeeded()) {
-                                        DFJobPOPJ updateJob = new DFJobPOPJ(findidRes.result());
-                                        try {
-                                            updateJob.setStatus(resStatus).setConnectorConfig(
-                                                    new ObjectMapper().readValue(resConfig.getObject().toString(),
-                                                            new TypeReference<HashMap<String, String>>(){}));
+                                mongo.findOne(COLLECTION, new JsonObject().put("connectUid", connectName), null,
+                                        findidRes -> {
+                                        if (findidRes.succeeded()) {
+                                            DFJobPOPJ updateJob = new DFJobPOPJ(findidRes.result());
+                                            try {
+                                                updateJob.setStatus(resStatus).setConnectorConfig(
+                                                        new ObjectMapper().readValue(resConfig.getObject().toString(),
+                                                                new TypeReference<HashMap<String, String>>(){}));
 
-                                        } catch (IOException ioe) {
-                                            LOG.error("IMPORT Status - Read Connector Config as Map failed", ioe.getCause());
-                                        }
+                                            } catch (IOException ioe) {
+                                                LOG.error("IMPORT Status - Read Connector Config as Map failed",
+                                                        ioe.getCause());
+                                            }
 
-                                        mongo.updateCollection(COLLECTION, new JsonObject().put("_id", updateJob.getId()),
-                                                // The update syntax: {$set, the json object containing the fields to update}
+                                        mongo.updateCollection(COLLECTION,
+                                                new JsonObject().put("_id", updateJob.getId()),
+                                                // The update syntax: {$set, json object containing fields to update}
                                                 new JsonObject().put("$set", updateJob.toJson()), v -> {
                                                     if (v.failed()) {
-                                                        LOG.error("IMPORT Status - Update Connector Config as Map failed",
+                                                        LOG.error("IMPORT Status - Update Connect Config Failed",
                                                                 v.cause());
                                                     } else {
-                                                        LOG.debug("IMPORT Status - Update Connector Config as Map Successfully");
+                                                        LOG.debug("IMPORT Status - Update Connect Config Successfully");
                                                     }
                                                 }
                                         );
@@ -1053,7 +1059,7 @@ public class DFDataProcessor extends AbstractVerticle {
                                 HttpResponse<JsonNode> resConnectorStatus =
                                         Unirest.get(restURI + "/" + connectName + "/status")
                                                 .header("accept", "application/json").asJson();
-                                if(resConnectorStatus.getStatus() == 404) {
+                                if(resConnectorStatus.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND) {
                                     // Not find - Mark status as LOST
                                     resStatus = ConstantApp.DF_STATUS.LOST.name();
                                 } else {
@@ -1258,9 +1264,9 @@ public class DFDataProcessor extends AbstractVerticle {
                     String rs = portRestResponse.getBody();
                     
                     if (rs != null) {
-	                    LOG.info("== Add schema sucefully. Response respond: " + rs);
-	                    LOG.info("== Add schema sucefully. Received response from schema registry server: " + portRestResponse.statusMessage());
-	                    LOG.info("== Add schema sucefully. Received response from schema registry server: " + portRestResponse.statusCode());
+	                    LOG.info("== Add schema successfully. Response respond: " + rs);
+	                    LOG.info("== Add schema successfully. Received response from schema registry server: " + portRestResponse.statusMessage());
+	                    LOG.info("== Add schema successfully. Received response from schema registry server: " + portRestResponse.statusCode());
 	                    
 	                    routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_OK)
 	    	            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
@@ -1324,7 +1330,7 @@ public class DFDataProcessor extends AbstractVerticle {
     }
     
     /**
-     * Update specified schmea in schema registry
+     * Update specified schema in schema registry
      * @api {put} /schema/:id   4.Update a schema
      * @apiVersion 0.1.1
      * @apiName updateOneSchema
@@ -1469,20 +1475,55 @@ public class DFDataProcessor extends AbstractVerticle {
 
         String metaSinkConnect = new JSONObject().put("name", "metadata_sink_connect").put("config",
                 new JSONObject().put("connector.class", "org.apache.kafka.connect.mongodb.MongodbSinkConnector")
-                        .put("tasks.max", "1").put("host", metaDBHost)
+                        .put("tasks.max", "2").put("host", metaDBHost)
                         .put("port", metaDBPort).put("bulk.size", "1")
                         .put("mongodb.database", config().getString("db.name", "DEFAULT_DB"))
                         .put("mongodb.collections", config().getString("db.metadata.collection.name", "df_meta"))
                         .put("topics", config().getString("kafka.topic.df.metadata", "df_meta"))).toString();
         try {
             HttpResponse<String> res = Unirest.get(restURI + "/metadata_sink_connect/status")
-                    .header("accept", "application/json")
+                    .header("accept", ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
                     .asString();
 
-            if(res.getStatus() == 404) { // Add the meta sink
-                HttpResponse<String> metaSink = Unirest.post(restURI)
+            if(res.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND) { // Add the meta sink
+                Unirest.post(restURI)
                         .header("accept", "application/json").header("Content-Type", "application/json")
                         .body(metaSinkConnect).asString();
+            }
+
+            // TODO add the avro schema for metadata as well
+            String dfMetaSchemaSubject = config().getString("kafka.topic.df.metadata", "df_meta") + "-value";
+            String schemaRegistryRestURL = "http://" + this.schema_registry_host_and_port + "/subjects/" +
+                            dfMetaSchemaSubject + "/versions";
+
+            HttpResponse<String> schmeaRes = Unirest.get(schemaRegistryRestURL + "/latest")
+                    .header("accept", ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+                    .asString();
+
+            if(schmeaRes.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND) { // Add the meta sink schema
+                LOG.info("Metadata schema is not available, so create it.");
+                Unirest.post(schemaRegistryRestURL)
+                        .header("accept", ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+                        .header("Content-Type", ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
+                        .body(new JSONObject().put("schema", config().getString("df.metadata.schema",
+                                "{\"type\":\"record\"," +
+                                        "\"name\": \"df_meta\"," +
+                                        "\"fields\":[" +
+                                        "{\"name\": \"cuid\", \"type\": \"string\"}," +
+                                        "{\"name\": \"file_name\", \"type\": \"string\"}," +
+                                        "{\"name\": \"file_size\", \"type\": \"string\"}, " +
+                                        "{\"name\": \"file_owner\", \"type\": \"string\"}," +
+                                        "{\"name\": \"last_modified_timestamp\", \"type\": \"string\"}," +
+                                        "{\"name\": \"current_timestamp\", \"type\": \"string\"}," +
+                                        "{\"name\": \"stream_offset\", \"type\": \"string\"}," +
+                                        "{\"name\": \"topic_sent\", \"type\": \"string\"}," +
+                                        "{\"name\": \"schema_subject\", \"type\": \"string\"}," +
+                                        "{\"name\": \"schema_version\", \"type\": \"string\"}," +
+                                        "{\"name\": \"status\", \"type\": \"string\"}]}"
+                        )).toString()
+                        ).asString();
+            } else {
+                LOG.info("Metadata schema is available and continue starting.");
             }
 
             JSONObject resObj = new JSONObject(res.getBody());
@@ -1493,8 +1534,6 @@ public class DFDataProcessor extends AbstractVerticle {
                 LOG.info("The metadata sink @topic:df_meta is started with status: Unknown.");
                 LOG.info("Check the latest status in Web UI -> ALL view.");
             }
-
-            // TODO add the aro schema for metadata as well
 
         } catch (UnirestException ue) {
         LOG.error("Starting adding MetadataSink connector exception", ue);
