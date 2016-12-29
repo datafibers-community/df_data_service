@@ -1,7 +1,6 @@
 package com.datafibers.service;
 
 import com.datafibers.processor.SchemaRegisterProcessor;
-import com.datafibers.util.SchemaRegistryClient;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -34,7 +33,6 @@ import com.datafibers.model.DFJobPOPJ;
 import com.datafibers.processor.FlinkTransformProcessor;
 import com.datafibers.processor.KafkaConnectProcessor;
 import com.datafibers.util.ConstantApp;
-import com.datafibers.util.DFMediaType;
 import com.datafibers.util.HelpFunc;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -53,8 +51,8 @@ import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
 
 /**
- * DF Producer is used to route producer service to kafka connect rest or lunch locally
- * The overall status is maintained in the its local database - mongo
+ * DF Producer is used to route producer service to kafka connect rest or lunch locally.
+ * The overall status is maintained in the its local database - mongodb
  */
 
 public class DFDataProcessor extends AbstractVerticle {
@@ -282,7 +280,7 @@ public class DFDataProcessor extends AbstractVerticle {
     }
 
     /**
-     * This is mainly to bypass security control for local API testing
+     * This is mainly to bypass security control for local API testing.
      * @param routingContext
      */
     public void corsHandle(RoutingContext routingContext) {
@@ -293,7 +291,7 @@ public class DFDataProcessor extends AbstractVerticle {
     }
 
     /**
-     * Generic getOne method for REST API End Point
+     * Generic getOne method for REST API End Point.
      * @param routingContext
      *
      * @api {get} /ps/:id    3.Get a connect task
@@ -930,6 +928,91 @@ public class DFDataProcessor extends AbstractVerticle {
     }
 
     /**
+     * Get all schema from schema registry
+     * @param routingContext
+     *
+     * @api {get} /schema 1.List all schema
+     * @apiVersion 0.1.1
+     * @apiName getAllSchemas
+     * @apiGroup Schema
+     * @apiPermission none
+     * @apiDescription This is where we get list of available schema data from schema registry.
+     * @apiSuccess	{JsonObject[]}	connects    List of schemas added in schema registry.
+     * @apiSampleRequest http://localhost:8080/api/df/schema
+     */
+    public void getAllSchemas(RoutingContext routingContext) {
+        SchemaRegisterProcessor.forwardGetAllSchemas(vertx, routingContext, schema_registry_host_and_port);
+    }
+
+    /**
+     * Get one schema with schema subject specified
+     * 1) Retrieve a specific subject latest information:
+     * curl -X GET -i http://localhost:8081/subjects/Kafka-value/versions/latest
+     *
+     * 2) Retrieve a specific subject compatibility:
+     * curl -X GET -i http://localhost:8081/config/finance-value
+     *
+     * @api {get} /schema/:subject   2.Get a schema
+     * @apiVersion 0.1.1
+     * @apiName getOneSchema
+     * @apiGroup Schema
+     * @apiPermission none
+     * @apiDescription This is where we get schema with specified schema subject.
+     * @apiParam {String}   subject      schema subject name in schema registry.
+     * @apiSuccess	{JsonObject[]}	schema    One schema object.
+     * @apiSampleRequest http://localhost:8080/api/df/schema/:subject
+     */
+    private void getOneSchema(RoutingContext routingContext) {
+        SchemaRegisterProcessor.forwardGetOneSchema(vertx, routingContext, schema_registry_host_and_port);
+    }
+
+    /** Add one schema to schema registry
+     *
+     * @api {post} /schema 3.Add a Schema
+     * @apiVersion 0.1.1
+     * @apiName addOneSchema
+     * @apiGroup Schema
+     * @apiPermission none
+     * @apiDescription This is how we add a new schema to schema registry service
+     * @apiParam   {String}  None        Json String of Schema as message body.
+     * @apiSuccess (201) {JsonObject[]} connect     The newly added connect task.
+     * @apiError    code        The error code.
+     * @apiError    message     The error message.
+     * @apiErrorExample {json} Error-Response:
+     *     HTTP/1.1 409 Conflict
+     *     {
+     *       "code" : "409",
+     *       "message" : "POST Request exception - Conflict"
+     *     }
+     */
+    private void addOneSchema(RoutingContext routingContext) {
+        SchemaRegisterProcessor.forwardAddOneSchema(routingContext, rc_schema, schema_registry_host_and_port);
+    }
+
+    /**
+     * Update specified schema in schema registry
+     * @api {put} /schema/:id   4.Update a schema
+     * @apiVersion 0.1.1
+     * @apiName updateOneSchema
+     * @apiGroup Schema
+     * @apiPermission none
+     * @apiDescription This is how we update specified schema information in schema registry.
+     * @apiParam    {String}    subject  schema subject in schema registry.
+     * @apiSuccess  {String}    message     OK.
+     * @apiError    code        The error code.
+     * @apiError    message     The error message.
+     * @apiErrorExample {json} Error-Response:
+     *     HTTP/1.1 404 Not Found
+     *     {
+     *       "code" : "409",
+     *       "message" : "PUT Request exception - Not Found."
+     *     }
+     */
+    private void updateOneSchema(RoutingContext routingContext) {
+        SchemaRegisterProcessor.forwardUpdateOneSchema(routingContext, rc_schema, schema_registry_host_and_port);
+    }
+
+    /**
      * Get initial method to import all available|paused|running connectors from Kafka connect.
      */
     private void importAllFromKafkaConnect() {
@@ -1107,7 +1190,7 @@ public class DFDataProcessor extends AbstractVerticle {
         // TODO add implementation against Flink new REST API
     }
 
-    /**
+    /***
      * List all installed Connects
      * @param routingContext
      *
@@ -1249,289 +1332,6 @@ public class DFDataProcessor extends AbstractVerticle {
             }
 
         });
-    }
-
-    /**
-     * Get all schema from schema registry
-     * @param routingContext
-     *
-     * @api {get} /schema 1.List all schema
-     * @apiVersion 0.1.1
-     * @apiName getAllSchemas
-     * @apiGroup Schema
-     * @apiPermission none
-     * @apiDescription This is where we get list of available schema data from schema registry.
-     * @apiSuccess	{JsonObject[]}	connects    List of schemas added in schema registry.
-     * @apiSampleRequest http://localhost:8080/api/df/schema
-     */
-    public void getAllSchemas(RoutingContext routingContext) {
-    	SchemaRegisterProcessor.forwardGetAllSchemas(vertx, routingContext, rc_schema, schema_registry_host_and_port);
-	}
-    
-    /**
-     * Get one schema with schema subject specified
-     * 1) Retrieve a specific subject latest information:
-     * curl -X GET -i http://localhost:8081/subjects/Kafka-value/versions/latest
-     * 
-     * 2) Retrieve a specific subject compatibility:
-     * curl -X GET -i http://localhost:8081/config/finance-value
-     *
-     * @api {get} /schema/:subject   2.Get a schema
-     * @apiVersion 0.1.1
-     * @apiName getOneSchema
-     * @apiGroup Schema
-     * @apiPermission none
-     * @apiDescription This is where we get schema with specified schema subject.
-     * @apiParam {String}   subject      schema subject name in schema registry.
-     * @apiSuccess	{JsonObject[]}	schema    One schema object.
-     * @apiSampleRequest http://localhost:8080/api/df/schema/:subject
-     */
-    private void getOneSchema(RoutingContext routingContext) {
-    	SchemaRegisterProcessor.forwardGetOneSchema(vertx, routingContext, rc_schema, schema_registry_host_and_port);
-    }
-    
-    /** Add one schema to schema registry
-     *
-     * @api {post} /schema 3.Add a Schema
-     * @apiVersion 0.1.1
-     * @apiName addOneSchema
-     * @apiGroup Schema
-     * @apiPermission none
-     * @apiDescription This is how we add a new schema to schema registry service
-     * @apiParam   {String}  None        Json String of Schema as message body.
-     * @apiSuccess (201) {JsonObject[]} connect     The newly added connect task.
-     * @apiError    code        The error code.
-     * @apiError    message     The error message.
-     * @apiErrorExample {json} Error-Response:
-     *     HTTP/1.1 409 Conflict
-     *     {
-     *       "code" : "409",
-     *       "message" : "POST Request exception - Conflict"
-     *     }
-     */
-    private void addOneSchema(RoutingContext routingContext) {
-    	JSONObject schema = null;
-    	String subject = "";
-    	String compatibility = null;
-    	String restURI = "";
-    	
-    	String formInfo = routingContext.getBodyAsString();
-    	LOG.debug("received the body is:" + formInfo);
-        
-    	JSONObject jsonObj = new JSONObject(formInfo);
-    	schema = jsonObj.getJSONObject(ConstantApp.SCHEMA);
-    	LOG.debug("==== Schema1 ==> " + schema.toString());
-    	
-    	subject = jsonObj.getString(ConstantApp.SUBJECT);
-    	LOG.debug("=== subject: " + subject);
-	
-	    compatibility = jsonObj.optString(ConstantApp.COMPATIBILITY);
-		LOG.debug("=== compatibility: " + compatibility);
-
-	    // restURI = "http://localhost:8081/subjects/Kafka-key/versions";
-    	restURI = "http://" + this.schema_registry_host_and_port + "/subjects/" + subject + "/versions";
-        LOG.debug("=== restURI: " + restURI);
-        
-        // 1). Add the new schema
-        final RestClientRequest postRestClientRequest = rc_schema.post(restURI, String.class,
-                portRestResponse -> {
-                    String rs = portRestResponse.getBody();
-                    
-                    if (rs != null) {
-	                    LOG.info("== Add schema successfully. Response respond: " + rs);
-	                    LOG.info("== Add schema successfully. Received response from schema registry server: " + portRestResponse.statusMessage());
-	                    LOG.info("== Add schema successfully. Received response from schema registry server: " + portRestResponse.statusCode());
-	                    
-	                    routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_OK)
-	    	            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-	    	            .end();
-                    }
-                });
-
-        postRestClientRequest.exceptionHandler(exception -> {
-        	LOG.debug("== exception: " + exception.toString());
-        	
-            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                    .putHeader(ConstantApp.CONTENT_TYPE, "application/vnd.schemaregistry.v1+json")
-                    .end();
-        });
-
-        postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
-        // postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
-        postRestClientRequest.setAcceptHeader(Arrays.asList(DFMediaType.APPLICATION_SCHEMAREGISTRY_JSON));
-        
-        JSONObject object = new JSONObject().put("schema", schema.toString());
-        // JSONObject object = new JSONObject().put("schema", "{ \"type\": \"record\", \"name\": \"test2\", \"fields\":[{\"name\": \"symbol\", \"type\": \"string\"}, {\"name\": \"field1\", \"type\": \"double\" }]}");
-        
-        LOG.debug("==== Schema object.toString(): " + object.toString());
-        
-        postRestClientRequest.end(object.toString());
-        
-        // 2) Set compatibility to the subject
-        LOG.debug("============ 2. set compatibility to the subject ============");
-        if (compatibility != null && compatibility.trim().length() > 0) {
-	        restURI = "http://" + this.schema_registry_host_and_port + "/config/" + subject;
-	        final RestClientRequest postRestClientRequest2 = rc_schema.put(restURI, portRestResponse -> {
-	            LOG.info("== Update Config Compatibility sucefully. Received response from schema registry server: " + portRestResponse.statusMessage());
-	            LOG.info("== Update Config Compatibility sucefully. Received response from schema registry server: " + portRestResponse.statusCode());
-	            
-	            if (routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_OK) {
-		            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_OK)
-		            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-		            .end();
-	            }
-	        });
-	        
-	        postRestClientRequest2.exceptionHandler(exception -> {
-	        	LOG.debug("== exception: " + exception.toString());
-	        	
-	        	if (routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_CONFLICT && routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_OK) {
-		            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-		                    .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
-		                    .end();
-	        	}
-	        });
-	
-	        postRestClientRequest2.setContentType(MediaType.APPLICATION_JSON);
-	        // postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
-	        postRestClientRequest2.setAcceptHeader(Arrays.asList(DFMediaType.APPLICATION_SCHEMAREGISTRY_JSON));
-        
-            JSONObject jsonToBeSubmitted = new JSONObject().put(ConstantApp.COMPATIBILITY, compatibility);
-            LOG.debug("==== Compatibility object2.toString() === : " + jsonToBeSubmitted.toString());
-            
-            postRestClientRequest2.end(jsonToBeSubmitted.toString());
-        }
-    }
-    
-    /**
-     * Update specified schema in schema registry
-     * @api {put} /schema/:id   4.Update a schema
-     * @apiVersion 0.1.1
-     * @apiName updateOneSchema
-     * @apiGroup Schema
-     * @apiPermission none
-     * @apiDescription This is how we update specified schema information in schema registry.
-     * @apiParam    {String}    subject  schema subject in schema registry.
-     * @apiSuccess  {String}    message     OK.
-     * @apiError    code        The error code.
-     * @apiError    message     The error message.
-     * @apiErrorExample {json} Error-Response:
-     *     HTTP/1.1 404 Not Found
-     *     {
-     *       "code" : "409",
-     *       "message" : "PUT Request exception - Not Found."
-     *     }
-     */
-    private void updateOneSchema(RoutingContext routingContext) {
-    	LOG.debug("=== updateOneSchema === ");
-    	
-    	JSONObject schema = null;
-    	String subject = "";
-    	String compatibility = null;
-    	String restURI = "";
-    	JSONObject schema1 = null;
-    	JSONObject jsonForSubmit = null;
-    	
-    	LOG.debug("== Update schema ...");
-    	String formInfo = routingContext.getBodyAsString();
-    	LOG.debug("received the body is:" + formInfo);
-    	
-    	JSONObject jsonObj = new JSONObject(formInfo);
-    	
-    	try {
-    		schema = jsonObj.getJSONObject(ConstantApp.SCHEMA);
-    		LOG.debug("=== schema: " + schema.toString());
-    		schema1 = new JSONObject(schema.toString());
-    		LOG.debug("=== schema1 array: " + schema1.toString());
-    	} catch (Exception ex) {
-    		LOG.debug("=== schema no element ");
-    		schema1 = new JSONObject();
-    		String tt = jsonObj.getString(ConstantApp.SCHEMA);
-    		LOG.debug("=== Schema extracted from body: " + tt);
-    		
-    		schema1.put("type", tt);
-    		LOG.debug("=== schema1 with no key: " + schema1.toString());
-    	}
-    	
-    	subject = jsonObj.getString(ConstantApp.SUBJECT);
-    	LOG.debug("=== subject: " + subject);
-    	
-    	compatibility = jsonObj.optString(ConstantApp.COMPATIBILITY);
- 		LOG.debug("=== compatibility: " + compatibility);
- 		
-    	restURI = "http://" + this.schema_registry_host_and_port + "/subjects/" + subject + "/versions";
-
-        LOG.debug("=== restURI: " + restURI);
-        
-        final RestClientRequest postRestClientRequest = rc_schema.post(restURI, String.class,
-                portRestResponse -> {
-                    String rs = portRestResponse.getBody();
-                    
-                    if (rs != null) {
-	                    LOG.info("== Update schema successfully. Response rs: " + rs);
-	                    LOG.info("== Update schema successfully. received response from schema registry server for updating schema: " + portRestResponse.statusMessage());
-	                    LOG.info("== Update schema successfully. Received response from schema registry server for updating schema: " + portRestResponse.statusCode());
-
-                        routingContext
-                                .response().setStatusCode(ConstantApp.STATUS_CODE_OK)
-                                .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                                .end();
-                    }
-                });
-
-        postRestClientRequest.exceptionHandler(exception -> {
-        	LOG.info("== exception: " + exception.toString());
-        	
-            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                    .putHeader(ConstantApp.CONTENT_TYPE, "application/vnd.schemaregistry.v1+json")
-                    .end("== POST Request exception - " + exception.toString());
-        });
-
-        postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
-        // postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
-        postRestClientRequest.setAcceptHeader(Arrays.asList(DFMediaType.APPLICATION_SCHEMAREGISTRY_JSON));
-        
-        jsonForSubmit = new JSONObject().put("schema", schema1.toString());
-        // JSONObject object = new JSONObject().put("schema", "{ \"type\": \"record\", \"name\": \"test2\", \"fields\":[{\"name\": \"symbol\", \"type\": \"string\"}, {\"name\": \"field1\", \"type\": \"double\" }]}");
-        
-        LOG.debug("==== Schema send to server jsonForSubmit.toString(): " + jsonForSubmit.toString());
-        
-        postRestClientRequest.end(jsonForSubmit.toString());
-        
-        // 2) Set compatibility to the subject
-        LOG.debug("============ 2. set compatibility to the subject ============");
-        
-        if (compatibility != null && compatibility.trim().length() > 0) {
-	        // Set compatibility
-	        // curl -X PUT -i -H "Content-Type: application/vnd.schemaregistry.v1+json" --data '{"compatibility": "FORWARD"}' http://localhost:8081/config/SZ01
-	        restURI = "http://" + this.schema_registry_host_and_port + "/config/" + subject;
-	        final RestClientRequest postRestClientRequest2 = rc_schema.put(restURI, portRestResponse -> {
-
-	            if (routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_OK) {
-		            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_OK)
-		            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-		            .end(portRestResponse.statusMessage());
-	            }
-	        });
-	        
-	        postRestClientRequest2.exceptionHandler(exception -> {
-	        	LOG.info("== exception: " + exception.toString());
-	        	if (routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_CONFLICT && routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_OK) {
-		            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-		                    .putHeader(ConstantApp.CONTENT_TYPE, "application/vnd.schemaregistry.v1+json")
-		                    .end("== POST Request exception updating compatibility - " + exception.toString());
-	        	}
-	        });
-	        
-	        postRestClientRequest2.setContentType(MediaType.APPLICATION_JSON);
-	        // postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
-	        postRestClientRequest2.setAcceptHeader(Arrays.asList(DFMediaType.APPLICATION_SCHEMAREGISTRY_JSON));
-	        
-	        JSONObject jsonToBeSubmitted = new JSONObject().put(ConstantApp.COMPATIBILITY, compatibility);
-	        LOG.debug("==== Compatibility object2.toString() === : " + jsonToBeSubmitted.toString());
-	        
-	        postRestClientRequest2.end(jsonToBeSubmitted.toString());
-        }
     }
 
     /**
