@@ -357,6 +357,40 @@ define({ "api": [
     "groupTitle": "Connect"
   },
   {
+    "type": "get",
+    "url": "/hist",
+    "title": "2.List connect processed history",
+    "version": "0.1.1",
+    "name": "getAllProcessHistory",
+    "group": "Other",
+    "permission": [
+      {
+        "name": "none"
+      }
+    ],
+    "description": "<p>This is where get history of processed files in tasks or jobs.</p>",
+    "success": {
+      "fields": {
+        "Success 200": [
+          {
+            "group": "Success 200",
+            "type": "JsonObject[]",
+            "optional": false,
+            "field": "history",
+            "description": "<p>List of processed history.</p>"
+          }
+        ]
+      }
+    },
+    "sampleRequest": [
+      {
+        "url": "http://localhost:8080/api/df/hist"
+      }
+    ],
+    "filename": "stage/DFDataProcessor.java",
+    "groupTitle": "Other"
+  },
+  {
     "type": "post",
     "url": "/schema",
     "title": "3.Add a Schema",
