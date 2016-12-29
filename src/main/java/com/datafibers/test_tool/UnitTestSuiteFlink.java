@@ -22,9 +22,7 @@ import org.apache.flink.streaming.connectors.kafka.Kafka09JsonTableSource;
 import org.apache.flink.streaming.connectors.kafka.KafkaJsonTableSource;
 import org.apache.flink.streaming.connectors.kafka.partitioner.FixedPartitioner;
 import org.apache.flink.streaming.util.serialization.SimpleStringSchema;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import org.apache.log4j.Logger;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -36,7 +34,7 @@ import java.util.Properties;
  */
 public class UnitTestSuiteFlink {
 
-    private static final Logger LOG = LoggerFactory.getLogger(UnitTestSuiteFlink.class);
+    private static final Logger LOG = Logger.getLogger(UnitTestSuiteFlink.class);
 
     public static void testFlinkRun() {
         LOG.info("Only Unit Testing Function is enabled - Test Flink Run UDF");

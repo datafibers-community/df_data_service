@@ -3,15 +3,13 @@ package com.datafibers.service;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.StaticHandler;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import org.apache.log4j.Logger;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
 public class DFWebUI extends AbstractVerticle {
 
-    private static final Logger LOG = LoggerFactory.getLogger(DFWebUI.class);
+    private static final Logger LOG = Logger.getLogger(DFWebUI.class);
 
     @Override
     public void start() {
@@ -31,8 +29,7 @@ public class DFWebUI extends AbstractVerticle {
                 .listen(config().getInteger("http.port.df.processor", 8000));
 
         try {
-            InetAddress ip = InetAddress.getLocalHost();
-            LOG.info("DataFibers Welcome started @ http://" + ip + ":" +
+            LOG.info("DataFibers Welcome You @ http://" + InetAddress.getLocalHost().getHostAddress() + ":" +
                     config().getInteger("http.port.df.processor", 8000));
         } catch (UnknownHostException e) {
             LOG.error("NetworkHostException", e.getCause());

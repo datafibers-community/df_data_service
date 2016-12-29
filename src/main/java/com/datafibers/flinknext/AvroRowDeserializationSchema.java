@@ -15,10 +15,6 @@ import org.apache.flink.api.table.Row;
 import org.apache.flink.api.table.typeutils.RowTypeInfo;
 import org.apache.flink.streaming.util.serialization.DeserializationSchema;
 import org.apache.flink.util.Preconditions;
-import org.apache.kafka.common.errors.SerializationException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Properties;
@@ -32,7 +28,7 @@ import java.util.Properties;
  * <p>Failure during deserialization are forwarded as wrapped IOExceptions.
  */
 public class AvroRowDeserializationSchema implements DeserializationSchema<Row> {
-    private static final Logger LOG = LoggerFactory.getLogger(AvroRowDeserializationSchema.class);
+
     private static final long serialVersionUID = 4330538776656642779L;
 
     /** Field names to parse. Indices match fieldTypes indices. */

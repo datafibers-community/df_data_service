@@ -88,6 +88,18 @@ public class HelpFunc {
     }
 
     /**
+     * Comparing string ease of lambda expression
+     * @param a
+     * @param b
+     * @param <T>
+     * @return object
+     */
+    public static <T> T strCompare(String a, String b, T c, T d) {
+        if (a.equalsIgnoreCase(b)) return c;
+                else return d;
+    }
+
+    /**
      * Print error message in better JSON format
      *
      * @param error_code
@@ -105,12 +117,14 @@ public class HelpFunc {
      * will be removed. For example {"connectorConfig_1":{"config_ignored":"test"}, "connectorConfig_2":{"test":"test"}}
      * will be cleaned as {"connectorConfig":{"test":"test"}}
      *
+     * This will also remove any comments in "\/* *\/"
+     *
      * @param JSON_STRING
      * @param key_ingored_mark: If the
      * @return cleaned json string
      */
     public static String cleanJsonConfig(String JSON_STRING, String key_pattern, String key_ingored_mark) {
-        JSONObject json = new JSONObject(JSON_STRING);
+        JSONObject json = new JSONObject(JSON_STRING.replaceAll("\\s+?/\\*.*?\\*/", ""));
         int index = 0;
         int index_found = 0;
         String json_key_to_check;
@@ -169,6 +183,9 @@ public class HelpFunc {
      */
     public static String stringToJsonFormat(String srcStr) {
         if (srcStr.isEmpty()) return "[]";
-        return srcStr.replace("\"{", "{").replace("}\"", "}").replace("\\\"", "\"");
+        // .replace("\"\"", "\"") is used to fix issue on STRING SCHEMA,
+        // where the origin schema show as "schema":"\"string\"" == replace as ==> "schema":""string""
+        // Then, replace as "schema":"string"
+        return srcStr.replace("\"{", "{").replace("}\"", "}").replace("\\\"", "\"").replace("\"\"", "\"");
     }
 }

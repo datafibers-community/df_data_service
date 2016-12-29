@@ -7,26 +7,25 @@ import com.datafibers.util.Runner;
 import com.datafibers.test_tool.UnitTestSuiteFlink;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.log4j.Logger;
 
 import java.io.IOException;
 
 public class DFInitService {
 
-    private static final Logger LOG = LoggerFactory.getLogger(DFInitService.class);
+    private static final Logger LOG = Logger.getLogger(DFInitService.class);
     private static String runningMode;
 
     public static void main(String[] args) {
 
         welcome();
-        LOG.info("*********Starting DataFibers Services ...");
+        LOG.info("********* DataFibers Services is starting.  *********");
 
         CLIParser cli = new CLIParser(args);
         cli.parse();
         runningMode = cli.getRunMode();
 
-        if (runningMode == null) {
+        if (runningMode == null || runningMode.contains("DEBUG")) {
             Runner.runExample(DFDataProcessor.class);
             Runner.runExample(DFWebUI.class);
         } else {
@@ -36,8 +35,6 @@ public class DFInitService {
             if (runningMode.contains("Standalone")) Runner.runExample(DFDataProcessor.class);
             if (runningMode.contains("WebUI")) Runner.runExample(DFWebUI.class);
         }
-
-        LOG.info("*********Start DataFibers Services Completed :)");
     }
 
     public static void welcome() {
