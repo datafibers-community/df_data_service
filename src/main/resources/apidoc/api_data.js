@@ -34,6 +34,40 @@ define({ "api": [
     "groupTitle": "All"
   },
   {
+    "type": "get",
+    "url": "/hist",
+    "title": "2.List all processed history",
+    "version": "0.1.1",
+    "name": "getAllProcessHistory",
+    "group": "All",
+    "permission": [
+      {
+        "name": "none"
+      }
+    ],
+    "description": "<p>This is where get history of processed files in tasks or jobs.</p>",
+    "success": {
+      "fields": {
+        "Success 200": [
+          {
+            "group": "Success 200",
+            "type": "JsonObject[]",
+            "optional": false,
+            "field": "history",
+            "description": "<p>List of processed history.</p>"
+          }
+        ]
+      }
+    },
+    "sampleRequest": [
+      {
+        "url": "http://localhost:8080/api/df/hist"
+      }
+    ],
+    "filename": "stage/DFDataProcessor.java",
+    "groupTitle": "All"
+  },
+  {
     "type": "post",
     "url": "/ps",
     "title": "4.Add a connect task",
@@ -355,40 +389,6 @@ define({ "api": [
     },
     "filename": "stage/DFDataProcessor.java",
     "groupTitle": "Connect"
-  },
-  {
-    "type": "get",
-    "url": "/hist",
-    "title": "2.List connect processed history",
-    "version": "0.1.1",
-    "name": "getAllProcessHistory",
-    "group": "Other",
-    "permission": [
-      {
-        "name": "none"
-      }
-    ],
-    "description": "<p>This is where get history of processed files in tasks or jobs.</p>",
-    "success": {
-      "fields": {
-        "Success 200": [
-          {
-            "group": "Success 200",
-            "type": "JsonObject[]",
-            "optional": false,
-            "field": "history",
-            "description": "<p>List of processed history.</p>"
-          }
-        ]
-      }
-    },
-    "sampleRequest": [
-      {
-        "url": "http://localhost:8080/api/df/hist"
-      }
-    ],
-    "filename": "stage/DFDataProcessor.java",
-    "groupTitle": "Other"
   },
   {
     "type": "post",
