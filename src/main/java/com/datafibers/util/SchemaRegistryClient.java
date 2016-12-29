@@ -6,9 +6,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import org.apache.log4j.Logger;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -21,7 +19,7 @@ import static org.apache.avro.Schema.Type.RECORD;
 
 public class SchemaRegistryClient {
 
-    private static final Logger LOG = LoggerFactory.getLogger(SchemaRegistryClient.class);
+    private static final Logger LOG = Logger.getLogger(SchemaRegistryClient.class);
 
     public static Schema getSchemaFromRegistry (String schemaUri, String schemaSubject, String schemaVersion) {
 

@@ -5,18 +5,13 @@ package com.datafibers.test_tool;
  */
 import kafka.consumer.ConsumerIterator;
 import kafka.consumer.KafkaStream;
-import kafka.message.MessageAndMetadata;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.generic.IndexedRecord;
 import org.apache.avro.io.DatumReader;
 import org.apache.avro.io.Decoder;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.specific.SpecificDatumReader;
-import org.apache.commons.codec.binary.Hex;
-
 import java.io.File;
-import java.io.IOException;
 
 public class ConsumerTest implements Runnable{
 

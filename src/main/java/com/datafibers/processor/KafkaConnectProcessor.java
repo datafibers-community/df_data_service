@@ -4,30 +4,19 @@ import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.RoutingContext;
-
-import java.net.ConnectException;
 import java.util.Arrays;
-
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import org.apache.log4j.Logger;
 import com.datafibers.model.DFJobPOPJ;
 import com.datafibers.util.ConstantApp;
 import com.datafibers.util.HelpFunc;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.RestClient;
 import com.hubrick.vertx.rest.RestClientRequest;
-import com.mashape.unirest.http.HttpResponse;
-import com.mashape.unirest.http.JsonNode;
-import com.mashape.unirest.http.Unirest;
-import com.mashape.unirest.http.exceptions.UnirestException;
 
 public class KafkaConnectProcessor {
 
-    private static final Logger LOG = LoggerFactory.getLogger(KafkaConnectProcessor.class);
-
+    private static final Logger LOG = Logger.getLogger(KafkaConnectProcessor.class);
+    
     public KafkaConnectProcessor(){
 
     }
@@ -60,7 +49,7 @@ public class KafkaConnectProcessor {
                     mongoClient.insert(mongoCOLLECTION, dfJobResponsed.toJson(), r -> routingContext
                             .response().setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
                             .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                            .end(Json.encodePrettily(dfJobResponsed.setId(r.result()))));
+                            .end(Json.encodePrettily(dfJobResponsed)));
                 });
 
         postRestClientRequest.exceptionHandler(exception -> {
@@ -94,7 +83,7 @@ public class KafkaConnectProcessor {
         final RestClientRequest postRestClientRequest =
                 restClient.put(
                         ConstantApp.KAFKA_CONNECT_PLUGIN_CONFIG.
-                                replace("CONNECTOR_NAME_PLACEHOLDER", dfJobResponsed.getConnector()),
+                                replace("CONNECTOR_NAME_PLACEHOLDER", dfJobResponsed.getConnectUid()),
                         String.class, portRestResponse -> {
                             LOG.info("received response from Kafka server: " + portRestResponse.statusMessage());
                             LOG.info("received response from Kafka server: " + portRestResponse.statusCode());
@@ -139,7 +128,7 @@ public class KafkaConnectProcessor {
         String id = routingContext.request().getParam("id");
         // Create REST Client for Kafka Connect REST Forward
         final RestClientRequest postRestClientRequest = restClient.delete(ConstantApp.KAFKA_CONNECT_REST_URL + "/" +
-                        dfJobResponsed.getConnector(), String.class,
+                        dfJobResponsed.getConnectUid(), String.class,
                 portRestResponse -> {
                     LOG.info("received response from Kafka server: " + portRestResponse.statusMessage());
                     LOG.info("received response from Kafka server: " + portRestResponse.statusCode());
@@ -168,17 +157,7 @@ public class KafkaConnectProcessor {
         postRestClientRequest.end("");
     }
     
-    
-    /**
-     * Print error message in better JSON format
-     *
-     * @param error_code
-     * @param msg
-     * @return
-     */
     public static String errorMsg(int error_code, String msg) {
-        return Json.encodePrettily(new JsonObject()
-                .put("code", String.format("%6d", error_code))
-                .put("message", msg));
+        return HelpFunc.errorMsg(error_code, msg);
     }
 }

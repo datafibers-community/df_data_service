@@ -27,12 +27,18 @@ public final class ConstantApp {
     public static final String DF_TRANSFORMS_REST_URL_WITH_ID = DF_TRANSFORMS_REST_URL + "/:id";
     public static final String DF_TRANSFORMS_UPLOAD_FILE_REST_URL_WILD = "/api/df/uploaded_files*";
     public static final String DF_TRANSFORMS_UPLOAD_FILE_REST_URL = "/api/df/uploaded_files";
-    // DF REST endpoint URLs for all registries: SZ
+
+    // DF Schema registry endpoint URLs
     public static final String DF_SCHEMA_REST_URL = "/api/df/schema";
     public static final String DF_SCHEMA_REST_URL_WILD = "/api/df/schema*";
     public static final String DF_SCHEMA_REST_URL_WITH_ID = DF_SCHEMA_REST_URL + "/:id";
+    public static final String AVRO_REGISTRY_CONTENT_TYPE = "application/vnd.schemaregistry.v1+json";
 
-    // Kafka CONNECT endpoint URLs
+    // DF process history endpoint URLs
+    public static final String DF_PROCESS_HIST_REST_URL = "/api/df/hist";
+    public static final String DF_PROCESS_HIST_URL_WILD = "/api/df/hist*";
+
+    // Kafka Connect endpoint URLs
     public static final String KAFKA_CONNECT_REST_URL = "/connectors";
     public static final String KAFKA_CONNECT_PLUGIN_REST_URL = "/connector-plugins";
     public static String KAFKA_CONNECT_PLUGIN_CONFIG = "/connectors/CONNECTOR_NAME_PLACEHOLDER/config";
@@ -45,9 +51,6 @@ public final class ConstantApp {
     public static final String APPLICATION_JSON_CHARSET_UTF_8 = "application/json; charset=utf-8";
     public static final String TEXT_HTML = "text/html";
 
-    public static final String AVRO_REGISTRY_CONTENT_TYPE = "application/vnd.schemaregistry.v1+json";
-    
-    
     // HTTP status codes
     public static final int STATUS_CODE_OK = 200;
     public static final int STATUS_CODE_OK_CREATED = 201;
@@ -64,30 +67,39 @@ public final class ConstantApp {
         UNASSIGNED,         // The Kafka connector/task has not yet been assigned to a worker.
         RUNNING,            // The Kafka connector/task is running.
         PAUSED,             // The Kafka connector/task has been administratively paused.
-        FAILED,             // The Kafka connector/task has failed (usually by raising an exception, which is reported in the status output).
-        LOST,               // The Kafka connect restart and lost the connector job in DF repository. These jobs should be removed manually.
+        FAILED,             // The Kafka connector/task has failed.
+        LOST,               // The Kafka connect restart and lost the connector job in DF repository.
         NONE
     }
 
+    /**
+     * IF contains SOURCE or SINK, it is CONNECT, else TRANSFORM
+     * Convention: CATEGORY_TYPE
+     */
     public enum DF_CONNECT_TYPE {
-        KAFKA_SOURCE,       // Kafka Connector import data into Kafka
-        KAFKA_SINK,         // Kafka Connector export data out of Kafka
-        EVENTBUS_SOURCE,    // The plugin import data into Vertx Event Bus
-        EVENTBUS_SINK,      // The plugin export data out of Vertx Event Bus
-        HDFS_SOURCE,        // The plugin import data into HDFS
-        HDFS_SINK,          // The plugin export data out of HDFS
-        HIVE_SOURCE,        // The plugin import data into Hive
-        HIVE_SINK,          // The plugin export data out of Hive
-        FLINK_TRANS,        // Flink streaming SQL
-        FLINK_SQL_A2J,      // Flink streaming SQL from Avro to Json
-        FLINK_SQL_J2J,      // Flink streaming SQL from Json to Json
-        FLINK_JOINS,        // Flink streaming of Data Join
-        FLINK_UDF,          // Flink user defined jar/program
-        SPARK_TRANS,        // Spark streaming SQL
-        SPARK_JOINS,        // Spark streaming of Data Join
-        SPARK_UDF,          // Spark user defined jar/program
-        HIVE_TRANS,         // Hive batch SQL
-        HIVE_JOINS,         // Hive batch join
+        CONNECT_KAFKA_SOURCE,       // Kafka Connector import data into Kafka
+        CONNECT_KAFKA_SOURCE_AVRO,  // DF Generic Avro source
+        CONNECT_KAFKA_SINK,         // Kafka Connector export data out of Kafka
+        CONNECT_EVENTBUS_SOURCE,    // The plugin import data into Vertx Event Bus
+        CONNECT_EVENTBUS_SINK,      // The plugin export data out of Vertx Event Bus
+        CONNECT_KAFKA_HDFS_SOURCE,  // The plugin import data into HDFS
+        CONNECT_KAFKA_HDFS_SINK,    // The plugin export data out of HDFS
+        CONNECT_HIVE_SOURCE,        // The plugin import data into Hive
+        CONNECT_HIVE_SINK,          // The plugin export data out of Hive
+        CONNECT_MONGODB_SOURCE,       // The plugin import data into mongodb
+        CONNECT_MONGODB_SINK,         // The plugin export data out of mongodb
+        TRANSFORM_FLINK_SQL_GENE,     // Flink streaming SQL
+        TRANSFORM_FLINK_SQL_A2J,      // Flink streaming SQL from Avro to Json
+        TRANSFORM_FLINK_SQL_J2J,      // Flink streaming SQL from Json to Json
+        TRANSFORM_FLINK_JOINS,        // Flink streaming of Data Join
+        TRANSFORM_FLINK_UDF,          // Flink user defined jar/program
+        TRANSFORM_SPARK_SQL,          // Spark streaming SQL
+        TRANSFORM_SPARK_BATCH_SQL,    // Spark streaming SQL
+        TRANSFORM_SPARK_JOINS,        // Spark streaming of Data Join
+        TRANSFORM_SPARK_UDF,          // Spark user defined jar/program
+        TRANSFORM_HIVE_TRANS,         // Hive batch SQL
+        TRANSFORM_HIVE_JOINS,         // Hive batch join
+        INTERNAL_METADATA_COLLECT,    // Reserved metadata sinl
         NONE
     }
 
@@ -97,6 +109,4 @@ public final class ConstantApp {
     public static final String COMPATIBILITYLEVEL = "compatibilityLevel";
     public static final int WORKER_POOL_SIZE = 20; // VERT.X Worker pool size
     public static final int MAX_RUNTIME = 6000;  // VERT.X Worker timeout in 6 sec
-    
-    
 }

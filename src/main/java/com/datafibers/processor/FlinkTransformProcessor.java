@@ -12,7 +12,6 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.RoutingContext;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.logging.Log;
 import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.table.StreamTableEnvironment;
@@ -20,50 +19,18 @@ import org.apache.flink.api.table.Table;
 import org.apache.flink.api.table.TableEnvironment;
 import org.apache.flink.client.CliFrontend;
 import org.apache.flink.client.program.ProgramInvocationException;
-import org.apache.flink.runtime.client.JobExecutionException;
 import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer09;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer09;
 import org.apache.flink.streaming.connectors.kafka.Kafka09JsonTableSource;
 import org.apache.flink.streaming.connectors.kafka.KafkaJsonTableSource;
 import org.apache.flink.streaming.connectors.kafka.partitioner.FixedPartitioner;
 import org.apache.flink.streaming.util.serialization.SimpleStringSchema;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import java.io.*;
-import java.util.HashMap;
+import org.apache.log4j.Logger;
 import java.util.Properties;
 
-/* This is sample transform config
-    {
-        "group.id":"consumer3",
-        "data.format.input":"json_string",
-        "data.format.output":"json_string",
-        "avro.schema.enabled":"false",
-        "column.name.list":"symbol,name",
-        "column.schema.list":"string,string",
-        "topic.for.query":"finance",
-        "topic.for.result":"stock",
-        "trans.sql":"SELECT STREAM symbol, name FROM finance"
-    }
-*/
-
-/* This is sample udf config
-    {
-        "group.id":"consumer3",
-        "data.format.input":"json_string",
-        "data.format.output":"json_string",
-        "avro.schema.enabled":"false",
-        "topic.for.query":"finance",
-        "topic.for.result":"stock",
-        "trans.jar":"flinkUDFDemo.jar"
-    }
-*/
-
 public class FlinkTransformProcessor {
-    private static final Logger LOG = LoggerFactory.getLogger(FlinkTransformProcessor.class);
-
+    private static final Logger LOG = Logger.getLogger(FlinkTransformProcessor.class);
     /**
      * This method first submit a flink job against Kafka streaming in other thread. Then, it captures job_id from console.
      * After that of 8000 milliseconds, it restores the system.out and put newly captured job_id to job config property
@@ -429,25 +396,25 @@ public class FlinkTransformProcessor {
                 mongoClient, mongoCOLLECTION, routingContext, Boolean.FALSE);
 
         // Submit generic Flink SQL Json|Avro
-        if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.FLINK_TRANS.name()) {
+        if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_FLINK_SQL_GENE.name()) {
             submitFlinkSQL(dfJob, vertx, maxRunTime, flinkEnv, zookeeperHostPort, kafkaHostPort, groupid, colNameList,
                     colSchemaList, inputTopic, outputTopic, transSql, mongoClient, mongoCOLLECTION);
         }
 
         // Submit Flink UDF
-        if(dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.FLINK_UDF.name()) {
+        if(dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_FLINK_UDF.name()) {
             FlinkTransformProcessor.runFlinkJar(dfJob.getUdfUpload(), jobManagerHostPort);
         }
 
         // Submit Flink SQL Avro to Json
-        if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.FLINK_SQL_A2J.name()) {
+        if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_FLINK_SQL_A2J.name()) {
             submitFlinkSQLA2J(dfJob, vertx, maxRunTime, flinkEnv, zookeeperHostPort, kafkaHostPort,
                     SchemaRegistryHostPort, groupid, inputTopic, outputTopic, transSql, schemSubject, staticSchemaString,
                     mongoClient, mongoCOLLECTION);
         }
 
         // Submit Flink SQL Json to Json
-        if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.FLINK_SQL_J2J.name()) {
+        if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_FLINK_SQL_J2J.name()) {
             submitFlinkSQLJ2J(dfJob, vertx, maxRunTime, flinkEnv, zookeeperHostPort, kafkaHostPort, groupid, colNameList,
                     colSchemaList, inputTopic, outputTopic, transSql, mongoClient, mongoCOLLECTION);
         }

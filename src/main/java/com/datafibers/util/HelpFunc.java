@@ -12,6 +12,7 @@ import java.net.ConnectException;
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 import java.util.Properties;
 import java.util.Random;
 
@@ -87,6 +88,18 @@ public class HelpFunc {
     }
 
     /**
+     * Comparing string ease of lambda expression
+     * @param a
+     * @param b
+     * @param <T>
+     * @return object
+     */
+    public static <T> T strCompare(String a, String b, T c, T d) {
+        if (a.equalsIgnoreCase(b)) return c;
+                else return d;
+    }
+
+    /**
      * Print error message in better JSON format
      *
      * @param error_code
@@ -95,7 +108,7 @@ public class HelpFunc {
      */
     public static String errorMsg(int error_code, String msg) {
         return Json.encodePrettily(new JsonObject()
-                .put("code", String.format("%6d", error_code))
+                .put("code", String.format("%06d", error_code))
                 .put("message", msg));
     }
 
@@ -104,12 +117,14 @@ public class HelpFunc {
      * will be removed. For example {"connectorConfig_1":{"config_ignored":"test"}, "connectorConfig_2":{"test":"test"}}
      * will be cleaned as {"connectorConfig":{"test":"test"}}
      *
+     * This will also remove any comments in "\/* *\/"
+     *
      * @param JSON_STRING
      * @param key_ingored_mark: If the
      * @return cleaned json string
      */
     public static String cleanJsonConfig(String JSON_STRING, String key_pattern, String key_ingored_mark) {
-        JSONObject json = new JSONObject(JSON_STRING);
+        JSONObject json = new JSONObject(JSON_STRING.replaceAll("\\s+?/\\*.*?\\*/", ""));
         int index = 0;
         int index_found = 0;
         String json_key_to_check;
@@ -148,5 +163,29 @@ public class HelpFunc {
         StringWriter writer = new StringWriter();
         prop.list(new PrintWriter(writer));
         return writer.getBuffer().toString();
+    }
+
+    /**
+     * Loop the enum of ConnectType to add all connects to the list by l
+     */
+    public static void addSpecifiedConnectTypetoList(List<String> list, String type) {
+
+        for (ConstantApp.DF_CONNECT_TYPE item : ConstantApp.DF_CONNECT_TYPE.values()) {
+            if(item.name().contains(type.toUpperCase())) list.add(item.name());
+        }
+
+    }
+
+    /**
+     * Convert string to Json format by remove first " and end " and replace \" to "
+     * @param srcStr String to format
+     * @return String formatted
+     */
+    public static String stringToJsonFormat(String srcStr) {
+        if (srcStr.isEmpty()) return "[]";
+        // .replace("\"\"", "\"") is used to fix issue on STRING SCHEMA,
+        // where the origin schema show as "schema":"\"string\"" == replace as ==> "schema":""string""
+        // Then, replace as "schema":"string"
+        return srcStr.replace("\"{", "{").replace("}\"", "}").replace("\\\"", "\"").replace("\"\"", "\"");
     }
 }
