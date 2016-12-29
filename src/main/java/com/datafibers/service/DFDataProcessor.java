@@ -1268,10 +1268,10 @@ public class DFDataProcessor extends AbstractVerticle {
      * Get all connector process history from df_meta topic sinked into Mongo
      * @param routingContext
      *
-     * @api {get} /hist 2.List connect processed history
+     * @api {get} /hist 2.List all processed history
      * @apiVersion 0.1.1
      * @apiName getAllProcessHistory
-     * @apiGroup Other
+     * @apiGroup All
      * @apiPermission none
      * @apiDescription This is where get history of processed files in tasks or jobs.
      * @apiSuccess	{JsonObject[]}	history    List of processed history.

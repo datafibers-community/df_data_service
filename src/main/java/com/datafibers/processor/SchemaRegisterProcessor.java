@@ -348,7 +348,7 @@ public class SchemaRegisterProcessor {
     }
 
     /**
-     * curl -X GET -i http://localhost:8081/config/finance-value
+     * Get schema compatibility from schema registry.
      *
      * @param schemaUri
      * @param schemaSubject
