@@ -284,9 +284,10 @@ public class DFDataProcessor extends AbstractVerticle {
      * @param routingContext
      */
     public void corsHandle(RoutingContext routingContext) {
-        routingContext.response().putHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
-                .putHeader("Access-Control-Allow-Headers", "X-Requested-With, Content-Type")
-                .putHeader("Access-Control-Allow-Headers", "X-Total-Count")
+        routingContext.response()
+                .putHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
+                .putHeader("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, X-Total-Count")
+                .putHeader("Access-Control-Expose-Headers", "X-Total-Count")
                 .putHeader("Access-Control-Max-Age", "60").end();
     }
 
@@ -423,6 +424,8 @@ public class DFDataProcessor extends AbstractVerticle {
                     List<DFJobPOPJ> jobs = objects.stream().map(DFJobPOPJ::new).collect(Collectors.toList());
                     routingContext.response()
                             .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+                            .putHeader("Access-Control-Expose-Headers", "X-Total-Count")
+                            .putHeader("X-Total-Count", jobs.size() + "" )
                             .end(Json.encodePrettily(jobs));
         });
     }
