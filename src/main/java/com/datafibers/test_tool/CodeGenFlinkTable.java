@@ -1,6 +1,9 @@
 package com.datafibers.test_tool;
 import net.openhft.compiler.CompilerUtils;
+import org.apache.flink.api.java.DataSet;
+import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.table.StreamTableEnvironment;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.table.Table;
 import org.apache.flink.api.table.TableEnvironment;
 
@@ -24,17 +27,7 @@ public class CodeGenFlinkTable {
 
 	public static void main(String args[]) {
 
-
-
-		String article = 	"\"To be, or not to be,--that is the question:--" +
-							"Whether 'tis nobler in the mind to suffer" +
-							"The slings and arrows of outrageous fortune" +
-							"Or to take arms against a sea of troubles,\"";
-
-		String transform = "flatMap(new com.datafibers.test_tool.FlinkUDF.LineSplitter()).groupBy(0).sum(1).print();\n";
-
-		String flinkEnv = "final ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();\n";
-		String dataSet = "DataSet<String> ds = env.fromElements(" + article + ");\n";
+		String transform = "flatMap(new FlinkUDF.LineSplitter()).groupBy(0).sum(1).print();\n";
 
 		String header = "package dynamic;\n" +
 				"import org.apache.flink.api.java.DataSet;\n" +
@@ -45,22 +38,23 @@ public class CodeGenFlinkTable {
 				"import org.apache.flink.util.Collector;";
 
 		String javaCode = header +
-				"public class WordCount implements DynamicRunner {\n" +
+				"public class FlinkScript implements DynamicRunner {\n" +
 				"@Override \n" +
-				"    public void run() {\n" +
-						flinkEnv +
-						dataSet +
+				"    public void runTransform(DataSet<String> ds) {\n" +
 						"try {" +
 						"ds."+ transform +
 						"} catch (Exception e) {" +
 						"};" +
 				"}}";
 
+		final ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
+		DataSet<String> ds = env.fromElements("test a a a the the");
+
 		try {
-			String className = "dynamic.WordCount";
+			String className = "dynamic.FlinkScript";
 			Class aClass = CompilerUtils.CACHED_COMPILER.loadFromJava(className, javaCode);
 			DynamicRunner runner = (DynamicRunner) aClass.newInstance();
-			runner.run();
+			runner.runTransform(ds);
 
 		} catch (Exception e) {
 			e.printStackTrace();
