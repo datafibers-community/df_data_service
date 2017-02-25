@@ -23,12 +23,19 @@ public class CodeGenFlinkTable {
 	}
 
 	public static void main(String args[]) {
-		String udfPackage = "com.datafibers.test_tool.FlinkUDF.";
-		String className = "dynamic.WordCount";
+
+
+
 		String article = 	"\"To be, or not to be,--that is the question:--" +
 							"Whether 'tis nobler in the mind to suffer" +
 							"The slings and arrows of outrageous fortune" +
 							"Or to take arms against a sea of troubles,\"";
+
+		String transform = "flatMap(new com.datafibers.test_tool.FlinkUDF.LineSplitter()).groupBy(0).sum(1).print();\n";
+
+		String flinkEnv = "final ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();\n";
+		String dataSet = "DataSet<String> ds = env.fromElements(" + article + ");\n";
+
 		String header = "package dynamic;\n" +
 				"import org.apache.flink.api.java.DataSet;\n" +
 				"import org.apache.flink.api.java.ExecutionEnvironment;\n" +
@@ -41,17 +48,16 @@ public class CodeGenFlinkTable {
 				"public class WordCount implements DynamicRunner {\n" +
 				"@Override \n" +
 				"    public void run() {\n" +
-				"       final ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();\n" +
-				"		DataSet<String> text = env.fromElements(" + article + ");\n" +
-						"DataSet<Tuple2<String, Integer>> counts = " +
-						"text.flatMap(new " + udfPackage + "LineSplitter()).groupBy(0).sum(1);\n" +
+						flinkEnv +
+						dataSet +
 						"try {" +
-						"counts.print();" +
+						"ds."+ transform +
 						"} catch (Exception e) {" +
 						"};" +
 				"}}";
 
 		try {
+			String className = "dynamic.WordCount";
 			Class aClass = CompilerUtils.CACHED_COMPILER.loadFromJava(className, javaCode);
 			DynamicRunner runner = (DynamicRunner) aClass.newInstance();
 			runner.run();
