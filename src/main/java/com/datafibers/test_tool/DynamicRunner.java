@@ -2,9 +2,10 @@ package com.datafibers.test_tool;
 
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.table.Table;
+import org.apache.flink.streaming.api.datastream.DataStream;
 
 /**
- * Created by DUW3 on 2/24/2017.
+ * Interface for dynamic Flink stable api script generation and running
  */
 public interface DynamicRunner {
 
@@ -13,9 +14,13 @@ public interface DynamicRunner {
      */
     default void runTransform(DataSet<String> ds) {
 
-    };
+    }
 
-    default Table getTableObj() {
-        return null;
-    };
+    default void runTransform(DataStream<String> ds) {
+
+    }
+
+    default Table transTableObj(Table table) {
+        return table;
+    }
 }
