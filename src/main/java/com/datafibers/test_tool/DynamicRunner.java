@@ -20,7 +20,7 @@ public interface DynamicRunner {
 
     }
 
-    default Table transTableObj(Table table) {
-        return table;
+    default Table transTableObj(Table tbl) {
+        return tbl;
     }
 }

@@ -667,6 +667,23 @@ public class DFDataProcessor extends AbstractVerticle {
                         mongo, COLLECTION);
             }
 
+            // Submit Flink SQL Avro to Json using table api
+            if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_FLINK_SCRIPT.name()) {
+                FlinkTransformProcessor.submitFlinkScriptA2J(dfJob, vertx,
+                        config().getInteger("flink.trans.client.timeout", 8000), env,
+                        this.zookeeper_server_host_and_port,
+                        this.kafka_server_host_and_port,
+                        this.schema_registry_host_and_port,
+                        HelpFunc.coalesce(dfJob.getConnectorConfig().get("group.id"),
+                                ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
+                        dfJob.getConnectorConfig().get("topic.for.query"),
+                        dfJob.getConnectorConfig().get("topic.for.result"),
+                        dfJob.getConnectorConfig().get("trans.script"),
+                        dfJob.getConnectorConfig().get("schema.subject"),
+                        HelpFunc.coalesce(dfJob.getConnectorConfig().get("static.avro.schema"),"empty_schema"),
+                        mongo, COLLECTION);
+            }
+
             // Submit Flink SQL Json to Json
             if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_FLINK_SQL_J2J.name()) {
                 FlinkTransformProcessor.submitFlinkSQLJ2J(dfJob, vertx,
