@@ -191,11 +191,11 @@ customHeaderTemplate =
         nga.field('connectorConfig_2','json').label('Transforms Config')
         .defaultValue({
 		"config_ignored" : "remove this template marker to submit, /* this is comments */",
-        "group.id" : "fink_sql /* Kafka consumer id. */",
+        "group.id" : "fink_table /* Kafka consumer id. */",
         "schema.subject" : "test-value /* The subject name for the schema */",
         "topic.for.query" : "stock /* The Kafka topic to query data */",
         "topic.for.result" : "output /* The Kafka topic to output data */",
-        "trans.script" : "select(\"name\") /* The Flink Stream SQL query.*/"
+        "trans.script" : "select(\"name\") /* The Flink Stream Table API */"
         })
         .template('<ma-field ng-if="entry.values.connectorType == \'TRANSFORM_FLINK_SCRIPT\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true),
         nga.field('connectorConfig_3','json').label('Transforms Config')

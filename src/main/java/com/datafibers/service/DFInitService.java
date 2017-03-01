@@ -61,6 +61,10 @@ public class DFInitService {
                     break;
                 case "4":
                     UnitTestSuiteFlink.testFlinkAvroSQLJson();
+                case "5":
+                    UnitTestSuiteFlink.testFlinkAvroSQLWithStaticSchema();
+                case "6":
+                    UnitTestSuiteFlink.testFlinkAvroScriptWithStaticSchema();
                 default:
                     break;
             }

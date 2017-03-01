@@ -405,7 +405,7 @@ public class FlinkTransformProcessor {
                         "@Override \n" +
                         "    public Table transTableObj(Table tbl) {\n" +
                         "try {" +
-                        "return tbl."+ transScript + ";" +
+                        "return tbl."+ transScript + ";\n" +
                         "} catch (Exception e) {" +
                         "};" +
                         "return null;}}";
