@@ -206,6 +206,14 @@ public class UnitTestSuiteFlink {
 
     public static void testFlinkAvroSQLJson() {
         System.out.println("TestCase_Test Avro SQL to Json Sink");
+        final String STATIC_USER_SCHEMA = "{"
+                + "\"type\":\"record\","
+                + "\"name\":\"myrecord\","
+                + "\"fields\":["
+                + "  { \"name\":\"symbol\", \"type\":\"string\" },"
+                + "  { \"name\":\"name\", \"type\":\"string\" },"
+                + "  { \"name\":\"exchange\", \"type\":\"string\" }"
+                + "]}";
 
         String jarPath = DFInitService.class.getProtectionDomain().getCodeSource().getLocation().getPath();
         DFRemoteStreamEnvironment env = new DFRemoteStreamEnvironment("localhost", 6123, jarPath)
@@ -216,6 +224,7 @@ public class UnitTestSuiteFlink {
         properties.setProperty("group.id", "consumer_test");
         properties.setProperty("schema.subject", "test-value");
         properties.setProperty("schema.registry", "localhost:8081");
+        properties.setProperty("static.avro.schema", STATIC_USER_SCHEMA);
 
         try {
             HashMap<String, String> hm = new HashMap<>();
@@ -295,13 +304,8 @@ public class UnitTestSuiteFlink {
             String className = "dynamic.FlinkScript";
 
             String header = "package dynamic;\n" +
-                    "import org.apache.flink.api.java.DataSet;\n" +
                     "import org.apache.flink.api.table.Table;\n" +
-                    "import org.apache.flink.api.java.ExecutionEnvironment;\n" +
-                    "import org.apache.flink.api.common.functions.FlatMapFunction;\n" +
-                    "import org.apache.flink.api.java.tuple.Tuple2;\n" +
-                    "import com.datafibers.test_tool.*;\n" +
-                    "import org.apache.flink.util.Collector;";
+                    "import com.datafibers.util.*;\n";
 
             String transScript = "select(\"name\")";
 
@@ -325,7 +329,9 @@ public class UnitTestSuiteFlink {
             Files.deleteIfExists(Paths.get(resultFile));
 
             // create a TableSink
-            TableSink sink = new CsvTableSink(resultFile, "|");
+            // TableSink sink = new CsvTableSink(resultFile, "|");
+            Kafka09JsonTableSink sink =
+                    new Kafka09JsonTableSink ("test_json", properties, new FixedPartitioner());
             // write the result Table to the TableSink
             result.writeToSink(sink);
             env.execute("Flink AVRO SQL KAFKA Test");
