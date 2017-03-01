@@ -4,7 +4,7 @@ import com.datafibers.flinknext.DFRemoteStreamEnvironment;
 import com.datafibers.flinknext.Kafka09AvroTableSource;
 import com.datafibers.flinknext.Kafka09JsonTableSink;
 import com.datafibers.model.DFJobPOPJ;
-import com.datafibers.test_tool.DynamicRunner;
+import com.datafibers.util.DynamicRunner;
 import com.datafibers.util.ConstantApp;
 import com.datafibers.util.HelpFunc;
 import io.vertx.core.Vertx;
@@ -392,13 +392,8 @@ public class FlinkTransformProcessor {
                 String className = "dynamic.FlinkScript";
 
                 String header = "package dynamic;\n" +
-                        "import org.apache.flink.api.java.DataSet;\n" +
                         "import org.apache.flink.api.table.Table;\n" +
-                        "import org.apache.flink.api.java.ExecutionEnvironment;\n" +
-                        "import org.apache.flink.api.common.functions.FlatMapFunction;\n" +
-                        "import org.apache.flink.api.java.tuple.Tuple2;\n" +
-                        "import com.datafibers.test_tool.*;\n" +
-                        "import org.apache.flink.util.Collector;";
+                        "import com.datafibers.util.*;\n";
 
                 String javaCode = header +
                         "public class FlinkScript implements DynamicRunner {\n" +

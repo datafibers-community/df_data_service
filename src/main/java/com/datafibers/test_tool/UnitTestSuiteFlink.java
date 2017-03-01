@@ -4,6 +4,7 @@ import com.datafibers.flinknext.*;
 import com.datafibers.model.DFJobPOPJ;
 import com.datafibers.processor.FlinkTransformProcessor;
 import com.datafibers.service.DFInitService;
+import com.datafibers.util.DynamicRunner;
 import com.datafibers.util.SchemaRegistryClient;
 import net.openhft.compiler.CompilerUtils;
 import org.apache.avro.Schema;

@@ -1,18 +1,14 @@
 package com.datafibers.test_tool;
+import com.datafibers.util.DynamicRunner;
 import net.openhft.compiler.CompilerUtils;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.java.DataSet;
-import org.apache.flink.api.java.ExecutionEnvironment;
-import org.apache.flink.api.java.table.BatchTableEnvironment;
 import org.apache.flink.api.java.table.StreamTableEnvironment;
-import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.table.Table;
 import org.apache.flink.api.table.TableEnvironment;
 import org.apache.flink.api.table.Types;
 import org.apache.flink.api.table.sinks.CsvTableSink;
 import org.apache.flink.api.table.sinks.TableSink;
 import org.apache.flink.api.table.sources.CsvTableSource;
-import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 
 /**
@@ -40,14 +36,8 @@ public class CodeGenFlinkTable {
 		String transform2 = "select(\"name\");\n";
 
 		String header = "package dynamic;\n" +
-				"import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;\n" +
-				"import org.apache.flink.api.java.DataSet;\n" +
 				"import org.apache.flink.api.table.Table;\n" +
-				"import org.apache.flink.api.java.ExecutionEnvironment;\n" +
-				"import org.apache.flink.api.common.functions.FlatMapFunction;\n" +
-				"import org.apache.flink.api.java.tuple.Tuple2;\n" +
-				"import com.datafibers.test_tool.*;\n" +
-				"import org.apache.flink.util.Collector;";
+				"import com.datafibers.util.*;\n";
 
 		String javaCode = header +
 				"public class FlinkScript implements DynamicRunner {\n" +

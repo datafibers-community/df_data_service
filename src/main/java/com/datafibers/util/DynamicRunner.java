@@ -1,4 +1,4 @@
-package com.datafibers.test_tool;
+package com.datafibers.util;
 
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.table.Table;
