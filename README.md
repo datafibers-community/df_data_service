@@ -40,7 +40,7 @@ http://localhost:8000/admin/
 <img src="https://raw.githubusercontent.com/datafibers/datafibers_web_src/master/themes/hugo-agency-theme/static/img/UI.PNG" width="800">
 
 ## Manual
-https://www.gitbook.com/read/book/datafibers/datafibers-complete-guide
+https://datafibers-community.gitbooks.io/datafibers-complete-guide/content/
 
 ## Todo
 - [x] Fetch all installed connectors/plugins in regularly frequency
