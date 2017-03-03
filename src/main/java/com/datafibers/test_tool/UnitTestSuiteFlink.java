@@ -224,7 +224,8 @@ public class UnitTestSuiteFlink {
         properties.setProperty("group.id", "consumer_test");
         properties.setProperty("schema.subject", "test-value");
         properties.setProperty("schema.registry", "localhost:8081");
-        properties.setProperty("static.avro.schema", STATIC_USER_SCHEMA);
+        properties.setProperty("static.avro.schema",
+                SchemaRegistryClient.getSchemaFromRegistry("http://localhost:8081", "test-value", "latest").toString());
 
         try {
             HashMap<String, String> hm = new HashMap<>();
@@ -282,7 +283,6 @@ public class UnitTestSuiteFlink {
                 + "  { \"name\":\"name\", \"type\":\"string\" },"
                 + "  { \"name\":\"exchange\", \"type\":\"string\" }"
                 + "]}";
-        String resultFile = "/home/vagrant/test.txt";
 
         String jarPath = DFInitService.class.getProtectionDomain().getCodeSource().getLocation().getPath();
         StreamExecutionEnvironment env = StreamExecutionEnvironment.createRemoteEnvironment("localhost", 6123, jarPath)
@@ -324,12 +324,6 @@ public class UnitTestSuiteFlink {
             DynamicRunner runner = (DynamicRunner) aClass.newInstance();
             Table result = runner.transTableObj(ingest);
 
-           // Table result = tableEnv.sql("SELECT STREAM name, symbol, exchange FROM Orders");
-
-            Files.deleteIfExists(Paths.get(resultFile));
-
-            // create a TableSink
-            // TableSink sink = new CsvTableSink(resultFile, "|");
             Kafka09JsonTableSink sink =
                     new Kafka09JsonTableSink ("test_json", properties, new FixedPartitioner());
             // write the result Table to the TableSink
@@ -341,6 +335,18 @@ public class UnitTestSuiteFlink {
     }
 
     public static void main(String[] args) throws IOException, DecoderException {
-        testFlinkAvroSerDe("http://localhost:18081");
+        //testFlinkAvroSerDe("http://localhost:18081");
+       // testFlinkAvroSQLJson();
+
+        final String STATIC_USER_SCHEMA = "{"
+                + "\"type\":\"record\","
+                + "\"name\":\"myrecord\","
+                + "\"fields\":["
+                + "  { \"name\":\"symbol\", \"type\":\"string\" },"
+                + "  { \"name\":\"name\", \"type\":\"string\" },"
+                + "  { \"name\":\"exchange\", \"type\":\"string\" }"
+                + "]}";
+
+        System.out.println(SchemaRegistryClient.getSchemaFromRegistry ("http://localhost:7081", "test-value", "latest"));
     }
 }

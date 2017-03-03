@@ -57,6 +57,44 @@ public class SchemaRegistryClient {
         return null;
     }
 
+    public static Schema getSchemaFromRegistrywithDefault (String schemaUri, String schemaSubject, String schemaVersion) {
+        if(!schemaUri.contains("http")) {
+            schemaUri = "http://" + schemaUri;
+        }
+        if(schemaVersion == null) schemaVersion = "latest";
+        String fullUrl = String.format("%s/subjects/%s/versions/%s", schemaUri, schemaSubject, schemaVersion);
+
+        String schemaString;
+        BufferedReader br = null;
+        try {
+            StringBuilder response = new StringBuilder();
+            String line;
+            br = new BufferedReader(new InputStreamReader(new URL(fullUrl).openStream()));
+            while ((line = br.readLine()) != null) {
+                response.append(line);
+            }
+
+            JsonNode responseJson = new ObjectMapper().readValue(response.toString(), JsonNode.class);
+            schemaString = responseJson.get("schema").getValueAsText();
+
+            try {
+                return new Schema.Parser().parse(schemaString);
+            } catch (SchemaParseException ex) {
+                LOG.error(String.format("Unable to successfully parse schema from: %s", schemaString), ex);
+            }
+        } catch(Exception ex) {
+            ex.printStackTrace();
+        } finally {
+            try {
+                if (br != null)
+                    br.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return null;
+    }
+
     public static Schema getVersionedSchemaFromProperty (Properties properties, String schemaVersion) {
 
         String schemaUri;

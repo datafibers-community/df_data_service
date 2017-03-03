@@ -194,6 +194,7 @@ customHeaderTemplate =
 		"config_ignored" : "remove this template marker to submit, /* this is comments */",
         "group.id" : "fink_table /* Kafka consumer id. */",
         "schema.subject" : "test-value /* The subject name for the schema */",
+        "schema.version" : "latest /* The version for the schema. This is optional. */",
         "topic.for.query" : "stock /* The Kafka topic to query data */",
         "topic.for.result" : "output /* The Kafka topic to output data */",
         "trans.script" : "select(\"name\") /* The Flink Stream Table API */"
@@ -204,6 +205,7 @@ customHeaderTemplate =
 		"config_ignored" : "remove this template marker to submit, /* this is comments */",
         "group.id" : "fink_sql /* Kafka consumer id. */",
         "schema.subject" : "test-value /* The subject name for the schema */",
+        "schema.version" : "latest /* The version for the schema. This is optional. */",
         "topic.for.query" : "stock /* The Kafka topic to query data */",
         "topic.for.result" : "output /* The Kafka topic to output data */",
         "trans.sql" : "SELECT STREAM name, symbol from stock /* The Flink Stream SQL query.*/"

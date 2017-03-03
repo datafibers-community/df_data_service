@@ -1,6 +1,7 @@
 package com.datafibers.service;
 
 import com.datafibers.processor.SchemaRegisterProcessor;
+import com.datafibers.util.SchemaRegistryClient;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -663,7 +664,10 @@ public class DFDataProcessor extends AbstractVerticle {
                         dfJob.getConnectorConfig().get("topic.for.result"),
                         dfJob.getConnectorConfig().get("trans.sql"),
                         dfJob.getConnectorConfig().get("schema.subject"),
-                        HelpFunc.coalesce(dfJob.getConnectorConfig().get("static.avro.schema"),"empty_schema"),
+                        HelpFunc.coalesce(dfJob.getConnectorConfig().get("static.avro.schema"),
+                                SchemaRegistryClient.getSchemaFromRegistrywithDefault(this.schema_registry_host_and_port,
+                                        dfJob.getConnectorConfig().get("schema.subject"),
+                                        dfJob.getConnectorConfig().get("schema.version")).toString()),
                         mongo, COLLECTION);
             }
 
@@ -680,7 +684,10 @@ public class DFDataProcessor extends AbstractVerticle {
                         dfJob.getConnectorConfig().get("topic.for.result"),
                         dfJob.getConnectorConfig().get("trans.script"),
                         dfJob.getConnectorConfig().get("schema.subject"),
-                        HelpFunc.coalesce(dfJob.getConnectorConfig().get("static.avro.schema"),"empty_schema"),
+                        HelpFunc.coalesce(dfJob.getConnectorConfig().get("static.avro.schema"),
+                                SchemaRegistryClient.getSchemaFromRegistrywithDefault(this.schema_registry_host_and_port,
+                                        dfJob.getConnectorConfig().get("schema.subject"),
+                                        dfJob.getConnectorConfig().get("schema.version")).toString()),
                         mongo, COLLECTION);
             }
 

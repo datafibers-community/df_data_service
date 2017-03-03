@@ -59,10 +59,8 @@ public class AvroRowDeserializationSchema implements DeserializationSchema<Row> 
     public AvroRowDeserializationSchema(String[] fieldNames, Class<?>[] fieldTypes, Properties properties) {
 
         this.properties = Preconditions.checkNotNull(properties, "properties");
-        if (properties.getProperty("static.avro.schema") != null &&
-                !properties.getProperty("static.avro.schema").equalsIgnoreCase("empty_schema") ) {
-            static_avro_schema = properties.getProperty("static.avro.schema");
-        } else static_avro_schema = null;
+        static_avro_schema = properties.getProperty("static.avro.schema");
+
         this.fieldNames = Preconditions.checkNotNull(fieldNames, "Field names");
         this.fieldTypes = new TypeInformation[fieldTypes.length];
         for (int i = 0; i < fieldTypes.length; i++) {
@@ -82,10 +80,8 @@ public class AvroRowDeserializationSchema implements DeserializationSchema<Row> 
     public AvroRowDeserializationSchema(String[] fieldNames, TypeInformation<?>[] fieldTypes, Properties properties) {
 
         this.properties = Preconditions.checkNotNull(properties, "properties");
-        if (properties.getProperty("static.avro.schema") != null &&
-                !properties.getProperty("static.avro.schema").equalsIgnoreCase("empty_schema") ) {
-            static_avro_schema = properties.getProperty("static.avro.schema");
-        } else static_avro_schema = null;
+        static_avro_schema = properties.getProperty("static.avro.schema");
+
         this.fieldNames = Preconditions.checkNotNull(fieldNames, "Field names");
         this.fieldTypes = Preconditions.checkNotNull(fieldTypes, "Field types");
 
@@ -112,10 +108,9 @@ public class AvroRowDeserializationSchema implements DeserializationSchema<Row> 
             }
 
             reader = new GenericDatumReader<>(
-                    static_avro_schema == null ?
-                            SchemaRegistryClient.getVersionedSchemaFromProperty(properties, schema_id):
-                            new Schema.Parser().parse(static_avro_schema)
-            );
+                    new Schema.Parser().parse(static_avro_schema)
+            ); // TODO get row level schema
+
             GenericRecord gr = reader.read(null, decoder);
 
             JsonNode root = objectMapper.readTree(gr.toString());
