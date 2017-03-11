@@ -1,6 +1,7 @@
 package com.datafibers.service;
 
 import com.datafibers.processor.SchemaRegisterProcessor;
+import com.datafibers.util.MongoAdminClient;
 import com.datafibers.util.SchemaRegistryClient;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
@@ -61,6 +62,7 @@ public class DFDataProcessor extends AbstractVerticle {
     // Generic attributes
     public static String COLLECTION;
     public static String COLLECTION_INSTALLED;
+    public static String COLLECTION_META;
     private MongoClient mongo;
     private RestClient rc;
     private RestClient rc_schema;
@@ -101,6 +103,7 @@ public class DFDataProcessor extends AbstractVerticle {
         // Get generic variables
         this.COLLECTION = config().getString("db.collection.name", "df_processor");
         this.COLLECTION_INSTALLED = config().getString("db.collection_installed.name", "df_installed");
+        this.COLLECTION_META = config().getString("db.metadata.collection.name", "df_meta");
 
         // Get Connects config
         this.kafka_connect_enabled = config().getBoolean("kafka.connect.enable", Boolean.TRUE);
@@ -1311,7 +1314,7 @@ public class DFDataProcessor extends AbstractVerticle {
                 HelpFunc.coalesce(routingContext.request().getParam("_sortDir"), "ASC"), "ASC", 1, -1);
 
         JsonObject command = new JsonObject()
-                .put("aggregate", config().getString("db.metadata.collection.name", "df_meta"))
+                .put("aggregate", config().getString("db.metadata.collection.name", this.COLLECTION_META))
                 .put("pipeline", new JsonArray().add(
                         new JsonObject().put("$group",
                                 new JsonObject()
@@ -1366,6 +1369,7 @@ public class DFDataProcessor extends AbstractVerticle {
      * This is blocking process since it is a part of application initialization.
      */
     private void startMetadataSink() {
+
         // Check if the sink is already started. If yes, do not start
         String restURI = "http://" + this.kafka_connect_rest_host + ":" + this.kafka_connect_rest_port +
                 ConstantApp.KAFKA_CONNECT_REST_URL;
@@ -1373,13 +1377,18 @@ public class DFDataProcessor extends AbstractVerticle {
                 .replace("//", "").split(":")[1];
         String metaDBPort = config().getString("repo.connection.string", "mongodb://localhost:27017")
                 .replace("//", "").split(":")[2];
+        String metaDBName = config().getString("db.name", "DEFAULT_DB");
+
+        //Create meta-database is it is not exist
+        new MongoAdminClient(metaDBHost, Integer.parseInt(metaDBPort), metaDBName).createCollection(this.COLLECTION_META);
+
 
         String metaSinkConnect = new JSONObject().put("name", "metadata_sink_connect").put("config",
                 new JSONObject().put("connector.class", "org.apache.kafka.connect.mongodb.MongodbSinkConnector")
                         .put("tasks.max", "2").put("host", metaDBHost)
                         .put("port", metaDBPort).put("bulk.size", "1")
-                        .put("mongodb.database", config().getString("db.name", "DEFAULT_DB"))
-                        .put("mongodb.collections", config().getString("db.metadata.collection.name", "df_meta"))
+                        .put("mongodb.database", config().getString("db.name", metaDBName))
+                        .put("mongodb.collections", config().getString("db.metadata.collection.name", this.COLLECTION_META))
                         .put("topics", config().getString("kafka.topic.df.metadata", "df_meta"))).toString();
         try {
             HttpResponse<String> res = Unirest.get(restURI + "/metadata_sink_connect/status")
