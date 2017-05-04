@@ -91,7 +91,7 @@ customHeaderTemplate =
                          ]).label('Connect Type'),
         nga.field('status').editable(false).label('Task Status'),
         nga.field('description', 'text'),
-        //nga.field('jobConfig','json').defaultValue({}).label('Job Config'),
+        nga.field('jobConfig','json').defaultValue({}).label('Job Config'),
         nga.field('connectorConfig','json').label('Connect Config')
 		.defaultValue({
 		"config_ignored" : "remove this template marker to submit, /* this is comments */",
@@ -158,7 +158,7 @@ customHeaderTemplate =
         nga.field('connectorType').editable(false),
         nga.field('status').editable(false).label('Task Status'),
         nga.field('description', 'text'),
-        //nga.field('jobConfig','json').defaultValue({}).label('Job Config'),
+        nga.field('jobConfig','json').defaultValue({}).label('Job Config'),
         nga.field('connectorConfig','json').label('Connect Config')
     ]);
 
@@ -180,7 +180,7 @@ customHeaderTemplate =
         .template('<ma-field ng-if="entry.values.connectorType == \'TRANSFORM_FLINK_UDF\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true),
         nga.field('status').editable(false).label('Task Status'),
         nga.field('description', 'text'),
-        //nga.field('jobConfig','json').defaultValue({}).label('Job Config'),
+        nga.field('jobConfig','json').defaultValue({}).label('Job Config'),
         nga.field('connectorConfig_1','json').label('Transform Config')
         .defaultValue({
 		"config_ignored" : "remove this template marker to submit, /* this is comments */",
@@ -238,7 +238,7 @@ customHeaderTemplate =
         .template('<ma-field ng-if="entry.values.connectorType == \'TRANSFORM_FLINK_UDF\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true),
         nga.field('status').editable(false).label('Task Status'),
         nga.field('description', 'text'),
-        //nga.field('jobConfig','json').defaultValue({}).label('Job Config'),
+        nga.field('jobConfig','json').defaultValue({}).label('Job Config'),
         nga.field('connectorConfig','json').label('Transform Config')
     ]);
 
