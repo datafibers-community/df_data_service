@@ -4,7 +4,9 @@ import com.datafibers.flinknext.*;
 import com.datafibers.model.DFJobPOPJ;
 import com.datafibers.processor.FlinkTransformProcessor;
 import com.datafibers.service.DFInitService;
+import com.datafibers.util.DynamicRunner;
 import com.datafibers.util.SchemaRegistryClient;
+import net.openhft.compiler.CompilerUtils;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.codec.DecoderException;
@@ -140,6 +142,7 @@ public class UnitTestSuiteFlink {
         properties.setProperty("group.id", "consumer_test");
         properties.setProperty("schema.subject", "test-value");
         properties.setProperty("schema.registry", "localhost:8081");
+        properties.setProperty("static.avro.schema", "empty_schema");
 
         try {
             Kafka09AvroTableSource kafkaAvroTableSource =  new Kafka09AvroTableSource("test", properties);
@@ -203,6 +206,14 @@ public class UnitTestSuiteFlink {
 
     public static void testFlinkAvroSQLJson() {
         System.out.println("TestCase_Test Avro SQL to Json Sink");
+        final String STATIC_USER_SCHEMA = "{"
+                + "\"type\":\"record\","
+                + "\"name\":\"myrecord\","
+                + "\"fields\":["
+                + "  { \"name\":\"symbol\", \"type\":\"string\" },"
+                + "  { \"name\":\"name\", \"type\":\"string\" },"
+                + "  { \"name\":\"exchange\", \"type\":\"string\" }"
+                + "]}";
 
         String jarPath = DFInitService.class.getProtectionDomain().getCodeSource().getLocation().getPath();
         DFRemoteStreamEnvironment env = new DFRemoteStreamEnvironment("localhost", 6123, jarPath)
@@ -213,6 +224,8 @@ public class UnitTestSuiteFlink {
         properties.setProperty("group.id", "consumer_test");
         properties.setProperty("schema.subject", "test-value");
         properties.setProperty("schema.registry", "localhost:8081");
+        properties.setProperty("static.avro.schema",
+                SchemaRegistryClient.getSchemaFromRegistry("http://localhost:8081", "test-value", "latest").toString());
 
         try {
             HashMap<String, String> hm = new HashMap<>();
@@ -259,7 +272,81 @@ public class UnitTestSuiteFlink {
         }
     }
 
+    public static void testFlinkAvroScriptWithStaticSchema() {
+        System.out.println("TestCase_Test Avro Table API Script with static Schema");
+
+        final String STATIC_USER_SCHEMA = "{"
+                + "\"type\":\"record\","
+                + "\"name\":\"myrecord\","
+                + "\"fields\":["
+                + "  { \"name\":\"symbol\", \"type\":\"string\" },"
+                + "  { \"name\":\"name\", \"type\":\"string\" },"
+                + "  { \"name\":\"exchange\", \"type\":\"string\" }"
+                + "]}";
+
+        String jarPath = DFInitService.class.getProtectionDomain().getCodeSource().getLocation().getPath();
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.createRemoteEnvironment("localhost", 6123, jarPath)
+                .setParallelism(1);
+        StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
+        Properties properties = new Properties();
+        properties.setProperty("bootstrap.servers", "localhost:9092");
+        properties.setProperty("group.id", "consumer_test");
+        properties.setProperty("schema.subject", "test-value");
+        properties.setProperty("schema.registry", "localhost:8081");
+        properties.setProperty("static.avro.schema", STATIC_USER_SCHEMA);
+
+        try {
+            Kafka09AvroTableSource kafkaAvroTableSource =  new Kafka09AvroTableSource("test", properties);
+            tableEnv.registerTableSource("Orders", kafkaAvroTableSource);
+
+            Table ingest = tableEnv.ingest("Orders");
+
+            String className = "dynamic.FlinkScript";
+
+            String header = "package dynamic;\n" +
+                    "import org.apache.flink.api.table.Table;\n" +
+                    "import com.datafibers.util.*;\n";
+
+            String transScript = "select(\"name\")";
+
+            String javaCode = header +
+                    "public class FlinkScript implements DynamicRunner {\n" +
+                    "@Override \n" +
+                    "    public Table transTableObj(Table tbl) {\n" +
+                    "try {" +
+                    "return tbl."+ transScript + ";" +
+                    "} catch (Exception e) {" +
+                    "};" +
+                    "return null;}}";
+
+            // Dynamic code generation
+            Class aClass = CompilerUtils.CACHED_COMPILER.loadFromJava(className, javaCode);
+            DynamicRunner runner = (DynamicRunner) aClass.newInstance();
+            Table result = runner.transTableObj(ingest);
+
+            Kafka09JsonTableSink sink =
+                    new Kafka09JsonTableSink ("test_json", properties, new FixedPartitioner());
+            // write the result Table to the TableSink
+            result.writeToSink(sink);
+            env.execute("Flink AVRO SQL KAFKA Test");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     public static void main(String[] args) throws IOException, DecoderException {
-        testFlinkAvroSerDe("http://localhost:18081");
+        //testFlinkAvroSerDe("http://localhost:18081");
+       // testFlinkAvroSQLJson();
+
+        final String STATIC_USER_SCHEMA = "{"
+                + "\"type\":\"record\","
+                + "\"name\":\"myrecord\","
+                + "\"fields\":["
+                + "  { \"name\":\"symbol\", \"type\":\"string\" },"
+                + "  { \"name\":\"name\", \"type\":\"string\" },"
+                + "  { \"name\":\"exchange\", \"type\":\"string\" }"
+                + "]}";
+
+        System.out.println(SchemaRegistryClient.getSchemaFromRegistry ("http://localhost:7081", "test-value", "latest"));
     }
 }
