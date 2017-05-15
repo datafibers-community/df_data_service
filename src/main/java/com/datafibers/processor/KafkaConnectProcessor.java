@@ -48,12 +48,14 @@ public class KafkaConnectProcessor {
                     // Once REST API forward is successful, add the record to the local repository
                     mongoClient.insert(mongoCOLLECTION, dfJobResponsed.toJson(), r -> routingContext
                             .response().setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
+                            .putHeader("Access-Control-Allow-Origin", "*")
                             .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
                             .end(Json.encodePrettily(dfJobResponsed)));
                 });
 
         postRestClientRequest.exceptionHandler(exception -> {
             routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                    .putHeader("Access-Control-Allow-Origin", "*")
                     .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
                     .end(errorMsg(10, "POST Request exception - " + exception.toString()));
         });
@@ -91,6 +93,7 @@ public class KafkaConnectProcessor {
 
         postRestClientRequest.exceptionHandler(exception -> {
             routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                    .putHeader("Access-Control-Allow-Origin", "*")
                     .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
                     .end(errorMsg(31, "POST Request exception - " + exception.toString()));
         });
@@ -107,6 +110,7 @@ public class KafkaConnectProcessor {
                                 .end(errorMsg(32, "updateOne to repository is failed."));
                     } else {
                         routingContext.response()
+                                .putHeader("Access-Control-Allow-Origin", "*")
                                 .putHeader(ConstantApp.CONTENT_TYPE,
                                         ConstantApp.APPLICATION_JSON_CHARSET_UTF_8).end();
                     }
@@ -146,6 +150,7 @@ public class KafkaConnectProcessor {
             // Once REST API forward is successful, delete the record to the local repository
             mongoClient.removeDocument(mongoCOLLECTION, new JsonObject().put("_id", id),
                     ar -> routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                            .putHeader("Access-Control-Allow-Origin", "*")
                             .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
                             .end(errorMsg(40, "Not Found in KAFKA Connect, " +
                                     "But delete from repository. The not found exception - " + exception.toString())));
