@@ -289,6 +289,7 @@ public class DFDataProcessor extends AbstractVerticle {
      */
     public void corsHandle(RoutingContext routingContext) {
         routingContext.response()
+                .putHeader("Access-Control-Allow-Origin", "*")
                 .putHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
                 .putHeader("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, X-Total-Count")
                 .putHeader("Access-Control-Expose-Headers", "X-Total-Count")
@@ -335,6 +336,7 @@ public class DFDataProcessor extends AbstractVerticle {
                     }
                     DFJobPOPJ dfJob = new DFJobPOPJ(ar.result());
                     routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_OK)
+                            .putHeader("Access-Control-Allow-Origin", "*")
                             .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
                             .end(Json.encodePrettily(dfJob));
                 } else {
@@ -397,12 +399,14 @@ public class DFDataProcessor extends AbstractVerticle {
 	                    LOG.info("FILE COPIED GOOD ==> " + fileToBeCopied);
 	                    
 	                    routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                .putHeader("Access-Control-Allow-Origin", "*")
 	                    .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
 	                    .end(Json.encodePrettily(new JsonObject().put("uploaded_file_name", fileToBeCopied)));
 	                } else {
 	                    // Something went wrong
 	                	routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
-	                    .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+                                .putHeader("Access-Control-Allow-Origin", "*")
+                                .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
 	                    .end(Json.encodePrettily(new JsonObject().put("uploaded_file_name", "Failed")));
 	                }
 	            });
@@ -427,6 +431,7 @@ public class DFDataProcessor extends AbstractVerticle {
                     List<JsonObject> objects = results.result();
                     List<DFJobPOPJ> jobs = objects.stream().map(DFJobPOPJ::new).collect(Collectors.toList());
                     routingContext.response()
+                            .putHeader("Access-Control-Allow-Origin", "*")
                             .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
                             .putHeader("Access-Control-Expose-Headers", "X-Total-Count")
                             .putHeader("X-Total-Count", jobs.size() + "" )
@@ -452,6 +457,7 @@ public class DFDataProcessor extends AbstractVerticle {
             List<JsonObject> objects = results.result();
             List<DFJobPOPJ> jobs = objects.stream().map(DFJobPOPJ::new).collect(Collectors.toList());
             routingContext.response()
+                    .putHeader("Access-Control-Allow-Origin", "*")
                     .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
                     .end(Json.encodePrettily(jobs));
         });
@@ -595,6 +601,7 @@ public class DFDataProcessor extends AbstractVerticle {
         } else {
             mongo.insert(COLLECTION, dfJob.toJson(), r -> routingContext
                     .response().setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
+                    .putHeader("Access-Control-Allow-Origin", "*")
                     .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
                     .end(Json.encodePrettily(dfJob)));
         }
@@ -713,6 +720,7 @@ public class DFDataProcessor extends AbstractVerticle {
 
         mongo.insert(COLLECTION, dfJob.toJson(), r -> routingContext
                 .response().setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
+                .putHeader("Access-Control-Allow-Origin", "*")
                 .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
                 .end(Json.encodePrettily(dfJob)));
     }
@@ -767,7 +775,9 @@ public class DFDataProcessor extends AbstractVerticle {
                                         routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
                                                 .end(HelpFunc.errorMsg(33, "updateOne to repository is failed."));
                                     } else {
-                                        routingContext.response().putHeader(ConstantApp.CONTENT_TYPE,
+                                        routingContext.response()
+                                                .putHeader("Access-Control-Allow-Origin", "*")
+                                                .putHeader(ConstantApp.CONTENT_TYPE,
                                                         ConstantApp.APPLICATION_JSON_CHARSET_UTF_8).end();
                                     }
                                 }
@@ -848,7 +858,9 @@ public class DFDataProcessor extends AbstractVerticle {
                                                 routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
                                                         .end(HelpFunc.errorMsg(133, "updateOne to repository is failed."));
                                             } else {
-                                                routingContext.response().putHeader(ConstantApp.CONTENT_TYPE,
+                                                routingContext.response()
+                                                        .putHeader("Access-Control-Allow-Origin", "*")
+                                                        .putHeader(ConstantApp.CONTENT_TYPE,
                                                         ConstantApp.APPLICATION_JSON_CHARSET_UTF_8).end();
                                             }
                                         }
@@ -1274,6 +1286,7 @@ public class DFDataProcessor extends AbstractVerticle {
                                 if (res.succeeded()) {
                                     routingContext
                                             .response().setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                            .putHeader("Access-Control-Allow-Origin", "*")
                                             .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
                                             .end(Json.encodePrettily(
                                                     res.result().toString()=="[]"?
@@ -1285,6 +1298,7 @@ public class DFDataProcessor extends AbstractVerticle {
                         });
         postRestClientRequest.exceptionHandler(exception -> {
             routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                    .putHeader("Access-Control-Allow-Origin", "*")
                     .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
                     .end(HelpFunc.errorMsg(31, "POST Request exception - " + exception.toString()));
         });
@@ -1355,6 +1369,7 @@ public class DFDataProcessor extends AbstractVerticle {
             if (res.succeeded()) {
                 JsonArray resArr = res.result().getJsonArray("result");
                 routingContext.response()
+                        .putHeader("Access-Control-Allow-Origin", "*")
                         .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
                         .end(Json.encodePrettily(resArr));
             } else {
