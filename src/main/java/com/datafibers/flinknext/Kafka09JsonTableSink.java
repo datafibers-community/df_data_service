@@ -18,8 +18,8 @@
 package com.datafibers.flinknext;
 
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.table.Row;
-import org.apache.flink.api.table.sinks.TableSink;
+import org.apache.flink.types.Row;
+import org.apache.flink.table.sinks.TableSink;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer09;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducerBase;
 import org.apache.flink.streaming.connectors.kafka.partitioner.KafkaPartitioner;
@@ -57,32 +57,32 @@ public class Kafka09JsonTableSink extends KafkaJsonTableSink {
 	
 	
 	
-	@Override
+	//@Override
 	public TableSink<Row> copy() {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
-	@Override
+	//@Override
 	public Option<String[]> org$apache$flink$api$table$sinks$TableSink$$fieldNames() {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
-	@Override
+	//@Override
 	public void org$apache$flink$api$table$sinks$TableSink$$fieldNames_$eq(
 			Option<String[]> arg0) {
 		// TODO Auto-generated method stub
 		
 	}
 
-	@Override
+	//@Override
 	public Option<TypeInformation<?>[]> org$apache$flink$api$table$sinks$TableSink$$fieldTypes() {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
-	@Override
+	//@Override
 	public void org$apache$flink$api$table$sinks$TableSink$$fieldTypes_$eq(
 			Option<TypeInformation<?>[]> arg0) {
 		// TODO Auto-generated method stub

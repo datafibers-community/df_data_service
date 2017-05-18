@@ -2,9 +2,9 @@ package com.datafibers.flinknext;
 
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.typeutils.TypeExtractor;
-import org.apache.flink.api.table.Row;
-import org.apache.flink.api.table.sources.StreamTableSource;
-import org.apache.flink.api.table.typeutils.RowTypeInfo;
+import org.apache.flink.types.Row;
+import org.apache.flink.table.sources.StreamTableSource;
+import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumerBase;
@@ -89,22 +89,22 @@ abstract class KafkaTableSource implements StreamTableSource<Row> {
         return kafkaSource;
     }
 
-    @Override
+    //@Override
     public int getNumberOfFields() {
         return fieldNames.length;
     }
 
-    @Override
+   // @Override
     public String[] getFieldsNames() {
         return fieldNames;
     }
 
-    @Override
+   // @Override
     public TypeInformation<?>[] getFieldTypes() {
         return fieldTypes;
     }
 
-    @Override
+    //@Override
     public TypeInformation<Row> getReturnType() {
         return new RowTypeInfo(fieldTypes);
     }
