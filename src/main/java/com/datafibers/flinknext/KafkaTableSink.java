@@ -97,14 +97,14 @@ public abstract class KafkaTableSink implements StreamTableSink<Row> {
 
 	@Override
 	public TypeInformation<Row> getOutputType() {
-		return new RowTypeInfo(getFieldTypes());
+		return new RowTypeInfo(getFieldTypes(), getFieldNames());
 	}
 
 	public String[] getFieldNames() {
 		return fieldNames;
 	}
 
-	@Override
+	//@Override
 	public TypeInformation<?>[] getFieldTypes() {
 		return fieldTypes;
 	}

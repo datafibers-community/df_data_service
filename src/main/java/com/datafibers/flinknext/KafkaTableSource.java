@@ -22,19 +22,19 @@ import java.util.Properties;
 abstract class KafkaTableSource implements StreamTableSource<Row> {
 
     /** The Kafka topic to consume. */
-    private final String topic;
+	protected final String topic;
 
     /** Properties for the Kafka consumer. */
-    private final Properties properties;
+	protected final Properties properties;
 
     /** Deserialization schema to use for Kafka records. */
-    private final DeserializationSchema<Row> deserializationSchema;
+	protected final DeserializationSchema<Row> deserializationSchema;
 
     /** Row field names. */
-    private final String[] fieldNames;
+	protected final String[] fieldNames;
 
     /** Row field types. */
-    private final TypeInformation<?>[] fieldTypes;
+    protected final TypeInformation<?>[] fieldTypes;
 
     /**
      * Creates a generic Kafka {@link StreamTableSource}.
@@ -89,6 +89,7 @@ abstract class KafkaTableSource implements StreamTableSource<Row> {
         return kafkaSource;
     }
 
+  
     //@Override
     public int getNumberOfFields() {
         return fieldNames.length;
@@ -106,7 +107,7 @@ abstract class KafkaTableSource implements StreamTableSource<Row> {
 
     //@Override
     public TypeInformation<Row> getReturnType() {
-        return new RowTypeInfo(fieldTypes);
+        return new RowTypeInfo(fieldTypes, fieldNames);
     }
 
     /**
@@ -134,7 +135,7 @@ abstract class KafkaTableSource implements StreamTableSource<Row> {
     /**
      * Creates TypeInformation array for an array of Classes.
      */
-    private static TypeInformation<?>[] toTypeInfo(Class<?>[] fieldTypes) {
+    protected static TypeInformation<?>[] toTypeInfo(Class<?>[] fieldTypes) {
         TypeInformation<?>[] typeInfos = new TypeInformation[fieldTypes.length];
         for (int i = 0; i < fieldTypes.length; i++) {
             typeInfos[i] = TypeExtractor.getForClass(fieldTypes[i]);
