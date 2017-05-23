@@ -208,7 +208,7 @@ customHeaderTemplate =
         "schema.version" : "latest /* The version for the schema. This is optional. */",
         "topic.for.query" : "stock /* The Kafka topic to query data */",
         "topic.for.result" : "output /* The Kafka topic to output data */",
-        "trans.sql" : "SELECT STREAM name, symbol from stock /* The Flink Stream SQL query.*/"
+        "trans.sql" : "SELECT name, symbol from stock /* The Flink Stream SQL query.*/"
         })
         .template('<ma-field ng-if="entry.values.connectorType == \'TRANSFORM_FLINK_SQL_A2J\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true),
         nga.field('connectorConfig_4','json').label('Transforms Config')
@@ -219,7 +219,7 @@ customHeaderTemplate =
         "column.schema.list" : "string, string /* The list of data type for Json data */",
         "topic.for.query" : "stock /* The Kafka topic to query data */",
         "topic.for.result" : "output /* The Kafka topic to output data */",
-        "trans.sql" : "SELECT STREAM name, symbol from stock /* The Flink Stream SQL query.*/"
+        "trans.sql" : "SELECT name, symbol from stock /* The Flink Stream SQL query.*/"
         })
         .template('<ma-field ng-if="entry.values.connectorType == \'TRANSFORM_FLINK_SQL_J2J\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true),
         nga.field('connectorConfig','json').label('Transforms Config')
@@ -233,7 +233,7 @@ customHeaderTemplate =
         "column.schema.list" : "string, string /* The list of data type for Json data */",
         "topic.for.query" : "stock /* The Kafka topic to query data */",
         "topic.for.result" : "output /* The Kafka topic to output data */",
-        "trans.sql" : "SELECT STREAM name, symbol from stock /* The Flink Stream SQL query.*/"
+        "trans.sql" : "SELECT name, symbol from stock /* The Flink Stream SQL query.*/"
 		})
 		.template('<ma-field ng-if="entry.values.connectorType == \'TRANSFORM_FLINK_SQL_GENE\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true)
 

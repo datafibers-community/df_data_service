@@ -1,7 +1,7 @@
 package com.datafibers.util;
 
 import org.apache.flink.api.java.DataSet;
-import org.apache.flink.api.table.Table;
+import org.apache.flink.table.api.Table;
 import org.apache.flink.streaming.api.datastream.DataStream;
 
 /**

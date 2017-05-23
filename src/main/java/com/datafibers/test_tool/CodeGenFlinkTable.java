@@ -2,13 +2,13 @@ package com.datafibers.test_tool;
 import com.datafibers.util.DynamicRunner;
 import net.openhft.compiler.CompilerUtils;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.java.table.StreamTableEnvironment;
-import org.apache.flink.api.table.Table;
-import org.apache.flink.api.table.TableEnvironment;
-import org.apache.flink.api.table.Types;
-import org.apache.flink.api.table.sinks.CsvTableSink;
-import org.apache.flink.api.table.sinks.TableSink;
-import org.apache.flink.api.table.sources.CsvTableSource;
+import org.apache.flink.table.api.java.StreamTableEnvironment;
+import org.apache.flink.table.api.Table;
+import org.apache.flink.table.api.TableEnvironment;
+import org.apache.flink.table.api.Types;
+import org.apache.flink.table.sinks.CsvTableSink;
+import org.apache.flink.table.sinks.TableSink;
+import org.apache.flink.table.sources.CsvTableSource;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 
 /**

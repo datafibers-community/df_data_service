@@ -1,8 +1,8 @@
 package com.datafibers.flinknext;
 
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.table.Row;
-import org.apache.flink.api.table.sources.StreamTableSource;
+import org.apache.flink.types.Row;
+import org.apache.flink.table.sources.StreamTableSource;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer09;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumerBase;
 import org.apache.flink.streaming.util.serialization.DeserializationSchema;
@@ -66,4 +66,5 @@ public class Kafka09AvroTableSource extends KafkaAvroTableSource {
     FlinkKafkaConsumerBase<Row> getKafkaConsumer(String topic, Properties properties, DeserializationSchema<Row> deserializationSchema) {
         return new FlinkKafkaConsumer09<>(topic, deserializationSchema, properties);
     }
+
 }

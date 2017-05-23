@@ -18,9 +18,9 @@
 package com.datafibers.flinknext;
 
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.table.Row;
-import org.apache.flink.api.table.sinks.StreamTableSink;
-import org.apache.flink.api.table.typeutils.RowTypeInfo;
+import org.apache.flink.types.Row;
+import org.apache.flink.table.sinks.StreamTableSink;
+import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducerBase;
 import org.apache.flink.streaming.connectors.kafka.partitioner.KafkaPartitioner;
@@ -97,14 +97,14 @@ public abstract class KafkaTableSink implements StreamTableSink<Row> {
 
 	@Override
 	public TypeInformation<Row> getOutputType() {
-		return new RowTypeInfo(getFieldTypes());
+		return new RowTypeInfo(getFieldTypes(), getFieldNames());
 	}
 
 	public String[] getFieldNames() {
 		return fieldNames;
 	}
 
-	@Override
+	//@Override
 	public TypeInformation<?>[] getFieldTypes() {
 		return fieldTypes;
 	}

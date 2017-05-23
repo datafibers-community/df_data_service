@@ -2,9 +2,9 @@ package com.datafibers.flinknext;
 
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.typeutils.TypeExtractor;
-import org.apache.flink.api.table.Row;
-import org.apache.flink.api.table.sources.StreamTableSource;
-import org.apache.flink.api.table.typeutils.RowTypeInfo;
+import org.apache.flink.types.Row;
+import org.apache.flink.table.sources.StreamTableSource;
+import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumerBase;
@@ -22,19 +22,19 @@ import java.util.Properties;
 abstract class KafkaTableSource implements StreamTableSource<Row> {
 
     /** The Kafka topic to consume. */
-    private final String topic;
+	protected final String topic;
 
     /** Properties for the Kafka consumer. */
-    private final Properties properties;
+	protected final Properties properties;
 
     /** Deserialization schema to use for Kafka records. */
-    private final DeserializationSchema<Row> deserializationSchema;
+	protected final DeserializationSchema<Row> deserializationSchema;
 
     /** Row field names. */
-    private final String[] fieldNames;
+	protected final String[] fieldNames;
 
     /** Row field types. */
-    private final TypeInformation<?>[] fieldTypes;
+    protected final TypeInformation<?>[] fieldTypes;
 
     /**
      * Creates a generic Kafka {@link StreamTableSource}.
@@ -89,24 +89,25 @@ abstract class KafkaTableSource implements StreamTableSource<Row> {
         return kafkaSource;
     }
 
-    @Override
+  
+    //@Override
     public int getNumberOfFields() {
         return fieldNames.length;
     }
 
-    @Override
+   // @Override
     public String[] getFieldsNames() {
         return fieldNames;
     }
 
-    @Override
+   // @Override
     public TypeInformation<?>[] getFieldTypes() {
         return fieldTypes;
     }
 
-    @Override
+    //@Override
     public TypeInformation<Row> getReturnType() {
-        return new RowTypeInfo(fieldTypes);
+        return new RowTypeInfo(fieldTypes, fieldNames);
     }
 
     /**
@@ -134,7 +135,7 @@ abstract class KafkaTableSource implements StreamTableSource<Row> {
     /**
      * Creates TypeInformation array for an array of Classes.
      */
-    private static TypeInformation<?>[] toTypeInfo(Class<?>[] fieldTypes) {
+    protected static TypeInformation<?>[] toTypeInfo(Class<?>[] fieldTypes) {
         TypeInformation<?>[] typeInfos = new TypeInformation[fieldTypes.length];
         for (int i = 0; i < fieldTypes.length; i++) {
             typeInfos[i] = TypeExtractor.getForClass(fieldTypes[i]);
