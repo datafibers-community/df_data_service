@@ -101,6 +101,7 @@ public class DFCusterClient extends ClusterClient {
             FlinkPlan compiledPlan, List<URL> libraries, List<URL> classpaths, ClassLoader classLoader, DFJobPOPJ dfJobPOPJ) throws ProgramInvocationException {
         return runWithDFObj(compiledPlan, libraries, classpaths, classLoader, SavepointRestoreSettings.none(), dfJobPOPJ);
     }
+
     public JobSubmissionResult runWithDFObj(FlinkPlan compiledPlan,
             List<URL> libraries, List<URL> classpaths, ClassLoader classLoader, SavepointRestoreSettings savepointSettings, DFJobPOPJ dfJobPOPJ)
 		throws ProgramInvocationException {
@@ -109,19 +110,7 @@ public class DFCusterClient extends ClusterClient {
 		dfJobPOPJ.setFlinkIDToJobConfig(job.getJobID().toString());
 		return submitJob(job, classLoader);
 		}
-   
- /*
-		
-		public JobSubmissionResult runWithDFObj(FlinkPlan compiledPlan,
-		            List<URL> libraries, List<URL> classpaths, ClassLoader classLoader, String savepointPath, DFJobPOPJ dfJobPOPJ)
-		throws ProgramInvocationException {
-		JobGraph job = getJobGraph(compiledPlan, libraries, classpaths, savepointPath);
-		// Keep the jobID to DFPOPJ
-		dfJobPOPJ.setFlinkIDToJobConfig(job.getJobID().toString());
-		return submitJob(job, classLoader);
-		}
-		
- */
+
 
 	private JobGraph getJobGraph(FlinkPlan optPlan, List<URL> jarFiles, List<URL> classpaths, SavepointRestoreSettings savepointSettings) {
 		JobGraph job;
@@ -145,30 +134,7 @@ public class DFCusterClient extends ClusterClient {
 
 		return job;
 	}
-	/*	
-    private JobGraph getJobGraph(FlinkPlan optPlan, List<URL> jarFiles, List<URL> classpaths, String savepointPath) {
-        JobGraph job;
-        if (optPlan instanceof StreamingPlan) {
-            job = ((StreamingPlan) optPlan).getJobGraph();
-            job.setSavepointPath(savepointPath);
-        } else {
-            JobGraphGenerator gen = new JobGraphGenerator(this.flinkConfig);
-            job = gen.compileJobGraph((OptimizedPlan) optPlan);
-        }
 
-        for (URL jar : jarFiles) {
-            try {
-                job.addJar(new Path(jar.toURI()));
-            } catch (URISyntaxException e) {
-                throw new RuntimeException("URL is invalid. This should not happen.", e);
-            }
-        }
-
-        job.setClasspaths(classpaths);
-
-        return job;
-    }
-*/
 
 	@Override
 	public boolean hasUserJarsInClassPath(List<URL> arg0) {

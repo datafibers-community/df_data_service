@@ -26,25 +26,19 @@ public class SchemaRegistryClient {
         if(schemaVersion == null) schemaVersion = "latest";
         String fullUrl = String.format("%s/subjects/%s/versions/%s", schemaUri, schemaSubject, schemaVersion);
 
-        String schemaString="";
+        String schemaString;
         BufferedReader br = null;
         try {
             StringBuilder response = new StringBuilder();
             String line;
-            try{
-	            br = new BufferedReader(new InputStreamReader(new URL(fullUrl).openStream()));
-	            while ((line = br.readLine()) != null) {
-	                response.append(line);
-	            }
-	
-	            JsonNode responseJson = new ObjectMapper().readValue(response.toString(), JsonNode.class);
-	            schemaString = responseJson.get("schema").getValueAsText();
-            }catch(Exception e) {
-            	e.printStackTrace();
-            	//schemaString = "{\"schema\":\"{\"type\":\"record\",\"name\":\"stock\",\"fields\":[{\"name\":\"symbol\",\"type\":\"string\"},{\"name\":\"name\",\"type\":\"string\"},{\"name\":\"exchangecode\",\"type\":\"string\"}],\"connect.name\":\"stock\"}\",\"subject\":\"stock-value\",\"id\":23,\"version\":2}";
-            	schemaString = "{\"name\":\"symbol\",\"type\":\"string\"},{\"name\":\"name\",\"type\":\"string\"},{\"name\":\"exchangecode\",\"type\":\"string\"}";
-            	
+            br = new BufferedReader(new InputStreamReader(new URL(fullUrl).openStream()));
+            while ((line = br.readLine()) != null) {
+                response.append(line);
             }
+
+            JsonNode responseJson = new ObjectMapper().readValue(response.toString(), JsonNode.class);
+            schemaString = responseJson.get("schema").getValueAsText();
+
             try {
                 return new Schema.Parser().parse(schemaString);
             } catch (SchemaParseException ex) {
