@@ -159,7 +159,7 @@ customHeaderTemplate =
         nga.field('connectorType').editable(false),
         nga.field('status').editable(false).label('Task Status'),
         nga.field('description', 'text'),
-        nga.field('jobConfig','json').defaultValue({}).label('Job Config'),
+        //nga.field('jobConfig','json').defaultValue({}).label('Job Config'),
         nga.field('connectorConfig','json').label('Connect Config')
     ]);
 
