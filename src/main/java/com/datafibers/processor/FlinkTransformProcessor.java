@@ -533,7 +533,9 @@ public class FlinkTransformProcessor {
                         routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
                                 .end(HelpFunc.errorMsg(133, "updateOne to repository is failed."));
                     } else {
-                        routingContext.response().putHeader(ConstantApp.CONTENT_TYPE,
+                        routingContext.response()
+                                .putHeader("Access-Control-Allow-Origin", "*")
+                                .putHeader(ConstantApp.CONTENT_TYPE,
                                 ConstantApp.APPLICATION_JSON_CHARSET_UTF_8).end();
                     }
                 }
