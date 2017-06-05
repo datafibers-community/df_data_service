@@ -90,7 +90,8 @@ public class UnitTestSuiteFlink {
 
             tableEnv.registerTableSource("Orders", kafkaTableSource);
 
-            Table result = tableEnv.sql("SELECT STREAM name FROM Orders");
+            //Table result = tableEnv.sql("SELECT STREAM name FROM Orders");
+            Table result = tableEnv.sql("SELECT name FROM Orders");
 
             Files.deleteIfExists(Paths.get(resultFile));
 
@@ -148,7 +149,8 @@ public class UnitTestSuiteFlink {
             Kafka09AvroTableSource kafkaAvroTableSource =  new Kafka09AvroTableSource("test", properties);
             tableEnv.registerTableSource("Orders", kafkaAvroTableSource);
 
-            Table result = tableEnv.sql("SELECT STREAM name, symbol, exchange FROM Orders");
+            //Table result = tableEnv.sql("SELECT STREAM name, symbol, exchange FROM Orders");
+            Table result = tableEnv.sql("SELECT name, symbol, exchangecode FROM Orders");
 
             Files.deleteIfExists(Paths.get(resultFile));
 
@@ -171,7 +173,7 @@ public class UnitTestSuiteFlink {
                 + "\"fields\":["
                 + "  { \"name\":\"symbol\", \"type\":\"string\" },"
                 + "  { \"name\":\"name\", \"type\":\"string\" },"
-                + "  { \"name\":\"exchange\", \"type\":\"string\" }"
+                + "  { \"name\":\"exchangecode\", \"type\":\"string\" }"
                 + "]}";
         String resultFile = "/home/vagrant/test.txt";
 
@@ -190,7 +192,8 @@ public class UnitTestSuiteFlink {
             Kafka09AvroTableSource kafkaAvroTableSource =  new Kafka09AvroTableSource("test", properties);
             tableEnv.registerTableSource("Orders", kafkaAvroTableSource);
 
-            Table result = tableEnv.sql("SELECT STREAM name, symbol, exchange FROM Orders");
+            //Table result = tableEnv.sql("SELECT STREAM name, symbol, exchange FROM Orders");
+            Table result = tableEnv.sql("SELECT name, symbol, exchangecode FROM Orders");
 
             Files.deleteIfExists(Paths.get(resultFile));
 
@@ -212,7 +215,7 @@ public class UnitTestSuiteFlink {
                 + "\"fields\":["
                 + "  { \"name\":\"symbol\", \"type\":\"string\" },"
                 + "  { \"name\":\"name\", \"type\":\"string\" },"
-                + "  { \"name\":\"exchange\", \"type\":\"string\" }"
+                + "  { \"name\":\"exchangecode\", \"type\":\"string\" }"
                 + "]}";
 
         String jarPath = DFInitService.class.getProtectionDomain().getCodeSource().getLocation().getPath();
@@ -232,7 +235,7 @@ public class UnitTestSuiteFlink {
             Kafka09AvroTableSource kafkaAvroTableSource =  new Kafka09AvroTableSource("test", properties);
             tableEnv.registerTableSource("Orders", kafkaAvroTableSource);
 
-            Table result = tableEnv.sql("SELECT STREAM name, symbol, exchange FROM Orders");
+            Table result = tableEnv.sql("SELECT name, symbol, exchangecode FROM Orders");
             Kafka09JsonTableSink json_sink = new Kafka09JsonTableSink ("test_json", properties, new FixedPartitioner());
 
             // write the result Table to the TableSink
@@ -262,7 +265,7 @@ public class UnitTestSuiteFlink {
                     + "\"fields\":["
                     + "  { \"name\":\"name\", \"type\":\"string\" },"
                     + "  { \"name\":\"symbol\", \"type\":\"string\" },"
-                    + "  { \"name\":\"exchange\", \"type\":\"string\" }"
+                    + "  { \"name\":\"exchangecode\", \"type\":\"string\" }"
                     + "]}";
             Schema.Parser parser = new Schema.Parser();
             Schema schema2 = parser.parse(USER_SCHEMA);
@@ -281,7 +284,7 @@ public class UnitTestSuiteFlink {
                 + "\"fields\":["
                 + "  { \"name\":\"symbol\", \"type\":\"string\" },"
                 + "  { \"name\":\"name\", \"type\":\"string\" },"
-                + "  { \"name\":\"exchange\", \"type\":\"string\" }"
+                + "  { \"name\":\"exchangecode\", \"type\":\"string\" }"
                 + "]}";
 
         String jarPath = DFInitService.class.getProtectionDomain().getCodeSource().getLocation().getPath();
@@ -304,7 +307,7 @@ public class UnitTestSuiteFlink {
             String className = "dynamic.FlinkScript";
 
             String header = "package dynamic;\n" +
-                    "import org.apache.flink.api.table.Table;\n" +
+                    "import org.apache.flink.table.api.Table;\n" +
                     "import com.datafibers.util.*;\n";
 
             String transScript = "select(\"name\")";
@@ -335,8 +338,6 @@ public class UnitTestSuiteFlink {
     }
 
     public static void main(String[] args) throws IOException, DecoderException {
-        //testFlinkAvroSerDe("http://localhost:18081");
-       // testFlinkAvroSQLJson();
 
         final String STATIC_USER_SCHEMA = "{"
                 + "\"type\":\"record\","
@@ -344,9 +345,18 @@ public class UnitTestSuiteFlink {
                 + "\"fields\":["
                 + "  { \"name\":\"symbol\", \"type\":\"string\" },"
                 + "  { \"name\":\"name\", \"type\":\"string\" },"
-                + "  { \"name\":\"exchange\", \"type\":\"string\" }"
+                + "  { \"name\":\"exchangecode\", \"type\":\"string\" }"
                 + "]}";
 
-        System.out.println(SchemaRegistryClient.getSchemaFromRegistry ("http://localhost:7081", "test-value", "latest"));
+        System.out.println(SchemaRegistryClient.getSchemaFromRegistry ("http://localhost:8081", "test-value", "latest"));
+        //testFlinkAvroSerDe("http://localhost:18081");
+        //testFlinkAvroSerDe("http://localhost:8081");
+        //testFlinkAvroSQLJson();
+        //testFlinkRun();
+        //testFlinkSQL();
+        //testFlinkAvroSQL();
+        //testFlinkAvroSQLWithStaticSchema();
+        testFlinkAvroScriptWithStaticSchema();
     }
+
 }

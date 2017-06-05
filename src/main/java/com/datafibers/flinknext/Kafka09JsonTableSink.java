@@ -1,5 +1,5 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
+	 * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
  * regarding copyright ownership.  The ASF licenses this file
@@ -17,17 +17,18 @@
  */
 package com.datafibers.flinknext;
 
+import java.util.Properties;
+
+import org.apache.avro.Schema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.types.Row;
-import org.apache.flink.table.sinks.TableSink;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer09;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducerBase;
 import org.apache.flink.streaming.connectors.kafka.partitioner.KafkaPartitioner;
 import org.apache.flink.streaming.util.serialization.SerializationSchema;
+import org.apache.flink.table.sinks.TableSink;
+import org.apache.flink.types.Row;
 
 import scala.Option;
-
-import java.util.Properties;
 
 /**
  * Kafka 0.9 {@link KafkaTableSink} that serializes data in JSON format.
@@ -87,5 +88,11 @@ public class Kafka09JsonTableSink extends KafkaJsonTableSink {
 			Option<TypeInformation<?>[]> arg0) {
 		// TODO Auto-generated method stub
 		
+	}
+
+	@Override
+	protected SerializationSchema<Row> createSerializationSchema(Properties properties) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 }

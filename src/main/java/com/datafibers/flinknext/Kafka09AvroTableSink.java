@@ -17,37 +17,49 @@
  */
 package com.datafibers.flinknext;
 
-import org.apache.avro.Schema;
-import org.apache.flink.streaming.connectors.kafka.partitioner.KafkaPartitioner;
-import org.apache.flink.streaming.util.serialization.SerializationSchema;
-import org.apache.flink.types.Row;
-
 import java.util.Properties;
 
-/**
- * Base class for {@link KafkaTableSink} that serializes data in JSON format
- */
-public abstract class KafkaAvroTableSink extends KafkaTableSink {
+import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer09;
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducerBase;
+import org.apache.flink.streaming.connectors.kafka.partitioner.KafkaPartitioner;
+import org.apache.flink.streaming.util.serialization.SerializationSchema;
+import org.apache.flink.table.sinks.TableSink;
+import org.apache.flink.types.Row;
 
+import scala.Option;
+
+/**
+ * Kafka 0.9 {@link KafkaTableSink} that serializes data in JSON format.
+ */
+public class Kafka09AvroTableSink extends KafkaAvroTableSink {
 	/**
-	 * Creates KafkaJsonTableSink
+	 * Creates {@link KafkaTableSink} for Kafka 0.9
 	 *
 	 * @param topic topic in Kafka to which table is written
 	 * @param properties properties to connect to Kafka
 	 * @param partitioner Kafka partitioner
 	 */
-	public KafkaAvroTableSink(String topic, Properties properties, KafkaPartitioner<Row> partitioner) {
+	public Kafka09AvroTableSink(String topic, Properties properties, KafkaPartitioner<Row> partitioner) {
 		super(topic, properties, partitioner);
 	}
 
 	@Override
-	//protected SerializationSchema<Row> createSerializationSchema(String[] fieldNames) {
-		//return new AvroRowSerializationSchema(fieldNames);
-	//}
-	
+	protected FlinkKafkaProducerBase<Row> createKafkaProducer(String topic, Properties properties, SerializationSchema<Row> serializationSchema, KafkaPartitioner<Row> partitioner) {
+		return new FlinkKafkaProducer09<>(topic, serializationSchema, properties, partitioner);
+	}
 
-	//@Override
-	protected SerializationSchema<Row> createSerializationSchema(Properties properties) {
-		return new AvroRowSerializationSchema(properties);
+	@Override
+	protected Kafka09AvroTableSink createCopy() {
+		return new Kafka09AvroTableSink(topic, properties, partitioner);
+	}
+
+	
+	@Override
+	protected SerializationSchema<Row> createSerializationSchema(
+			String[] fieldNames) {
+		// TODO Auto-generated method stub
+		//return new JsonRowSerializationSchema(fieldNames);
+		return null;
 	}
 }
