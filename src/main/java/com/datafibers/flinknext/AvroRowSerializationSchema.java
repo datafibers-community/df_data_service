@@ -64,7 +64,7 @@ public class AvroRowSerializationSchema implements SerializationSchema<Row> {
     @Override
     public byte[] serialize(Row row) {
         try {
-            int schemaId = 0;
+            int schemaId = SchemaRegistryClient.getLatestSchemaIDFromProperty(properties);
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             out.write(ConstantApp.MAGIC_BYTE);
             out.write(ByteBuffer.allocate(ConstantApp.idSize).putInt(schemaId).array());
@@ -72,6 +72,7 @@ public class AvroRowSerializationSchema implements SerializationSchema<Row> {
             //JsonEncoder encoder = EncoderFactory.get().jsonEncoder(schema, out);
             BinaryEncoder encoder = EncoderFactory.get().directBinaryEncoder(out, null);
             Schema schema = SchemaRegistryClient.getLatestSchemaFromProperty(properties);
+            
             DatumWriter<Object> writer = new GenericDatumWriter<Object>(schema);
 
             writer.write(convertToRecord(schema, row), encoder);

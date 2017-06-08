@@ -320,9 +320,14 @@ public class FlinkTransformProcessor {
         properties.setProperty("bootstrap.servers", kafkaHostPort);
         properties.setProperty("group.id", groupid);
         properties.setProperty("schema.subject", schemSubject);
+        properties.setProperty("output.schema.subject", schemSubject);
         properties.setProperty("schema.registry", SchemaRegistryHostPort);
         properties.setProperty("static.avro.schema", staticSchemaString);
         properties.setProperty("useAvro", "avro");
+        //properties.setProperty("output.schema.id", schemSubject);
+        //properties.setProperty("output.schema.string", schemSubject);
+        //properties.setProperty("input.schema.string", schemSubject);
+        //getLatestSchemaNodeFromProperty as string
 
         LOG.info(HelpFunc.getPropertyAsString(properties));
 
