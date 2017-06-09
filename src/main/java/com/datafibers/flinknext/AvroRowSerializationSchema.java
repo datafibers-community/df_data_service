@@ -1,6 +1,9 @@
 package com.datafibers.flinknext;
 
 import com.datafibers.util.ConstantApp;
+
+import com.datafibers.util.SchemaRegistryClient;
+
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumWriter;
@@ -16,6 +19,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
+import java.util.Properties;
+
+
 /**
  * Deserialization schema from AVRO to {@link Row}.
  *
@@ -28,8 +34,18 @@ public class AvroRowSerializationSchema implements SerializationSchema<Row> {
 
     private static final long serialVersionUID = 4330538776656642780L;
     private static final Logger LOG = Logger.getLogger(AvroRowSerializationSchema.class);
-    private final EncoderFactory encoderFactory = EncoderFactory.get();
-    private final Schema schema;
+
+	/**
+	 * Output stream to serialize records into byte array.
+	 */
+	//private transient ByteArrayOutputStream out =  new ByteArrayOutputStream();
+
+	/**
+	 * Low-level class for serialization of Avro values.
+	 */
+
+    protected final Properties properties;
+    
 
     /** Generic Avro Schema reader for the row */
     private transient DatumWriter<Object> writer;
@@ -41,19 +57,25 @@ public class AvroRowSerializationSchema implements SerializationSchema<Row> {
      *
      * @param schema Names of AVRO fields to parse.
      */
-    public AvroRowSerializationSchema(Schema schema) {
-        this.schema = schema;
-    }
 
+
+    public AvroRowSerializationSchema(Properties properties) {
+        this.properties = properties;
+    }
     @Override
     public byte[] serialize(Row row) {
         try {
-            int schemaId = 0;
+            int schemaId = SchemaRegistryClient.getLatestSchemaIDFromProperty(properties);
+
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             out.write(ConstantApp.MAGIC_BYTE);
             out.write(ByteBuffer.allocate(ConstantApp.idSize).putInt(schemaId).array());
 
-            BinaryEncoder encoder = encoderFactory.directBinaryEncoder(out, null);
+
+            //JsonEncoder encoder = EncoderFactory.get().jsonEncoder(schema, out);
+            BinaryEncoder encoder = EncoderFactory.get().directBinaryEncoder(out, null);
+            Schema schema = SchemaRegistryClient.getLatestSchemaFromProperty(properties);
+
             DatumWriter<Object> writer = new GenericDatumWriter<Object>(schema);
 
             writer.write(convertToRecord(schema, row), encoder);
@@ -65,9 +87,12 @@ public class AvroRowSerializationSchema implements SerializationSchema<Row> {
 
         } catch (IOException t) {
             t.printStackTrace();
+
+        	throw new RuntimeException("Failed to serialize Row.", t);
         }
 
         return null;
+
     }
 
     /**
@@ -75,7 +100,9 @@ public class AvroRowSerializationSchema implements SerializationSchema<Row> {
      * Strings are converted into Avro's {@link Utf8} fields.
      */
     private static Object convertToRecord(Schema schema, Object rowObj) {
+
         if (rowObj instanceof Row) {
+
             // records can be wrapped in a union
             if (schema.getType() == Schema.Type.UNION) {
                 final List<Schema> types = schema.getTypes();

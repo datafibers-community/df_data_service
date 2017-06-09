@@ -28,6 +28,7 @@ import org.apache.flink.table.api.java.StreamTableEnvironment;
 import org.apache.log4j.Logger;
 
 import com.datafibers.flinknext.DFRemoteStreamEnvironment;
+import com.datafibers.flinknext.Kafka09AvroTableSink;
 import com.datafibers.flinknext.Kafka09AvroTableSource;
 import com.datafibers.flinknext.Kafka09JsonTableSink;
 import com.datafibers.model.DFJobPOPJ;
@@ -319,8 +320,14 @@ public class FlinkTransformProcessor {
         properties.setProperty("bootstrap.servers", kafkaHostPort);
         properties.setProperty("group.id", groupid);
         properties.setProperty("schema.subject", schemSubject);
+        properties.setProperty("output.schema.subject", schemSubject);
         properties.setProperty("schema.registry", SchemaRegistryHostPort);
         properties.setProperty("static.avro.schema", staticSchemaString);
+        properties.setProperty("useAvro", "avro");
+        //properties.setProperty("output.schema.id", schemSubject);
+        //properties.setProperty("output.schema.string", schemSubject);
+        //properties.setProperty("input.schema.string", schemSubject);
+        //getLatestSchemaNodeFromProperty as string
 
         LOG.info(HelpFunc.getPropertyAsString(properties));
 
@@ -332,12 +339,15 @@ public class FlinkTransformProcessor {
                 Kafka09AvroTableSource kafkaAvroTableSource =  new Kafka09AvroTableSource(inputTopic, properties);
                 tableEnv.registerTableSource(inputTopic, kafkaAvroTableSource);
                 Table result = tableEnv.sql(transSql);
-                Kafka09JsonTableSink json_sink =
-                        new Kafka09JsonTableSink (outputTopic, properties, new FixedPartitioner());
-                result.writeToSink(json_sink);
-                JobExecutionResult jres = flinkEnv.executeWithDFObj("DF_FLINK_TRANS_SQL_AVRO_TO_JSON_" + uuid, dfJob);
+               // Kafka09JsonTableSink json_sink =
+                       // new Kafka09JsonTableSink (outputTopic, properties, new FixedPartitioner());
+                Kafka09AvroTableSink json_sink =
+                        new Kafka09AvroTableSink (outputTopic, properties, new FixedPartitioner());
+               result.writeToSink(json_sink);
+               JobExecutionResult jres = flinkEnv.executeWithDFObj("DF_FLINK_TRANS_SQL_AVRO_TO_JSON_" + uuid, dfJob);
             } catch (Exception e) {
                 LOG.error("Flink Submit Exception:" + e.getCause());
+                e.printStackTrace();
             }
 
         }, res -> {
@@ -404,7 +414,7 @@ public class FlinkTransformProcessor {
                 String className = "dynamic.FlinkScript";
 
                 String header = "package dynamic;\n" +
-                        "import org.apache.flink.api.table.Table;\n" +
+                        "import org.apache.flink.table.api.Table;\n" +
                         "import com.datafibers.util.*;\n";
 
                 String javaCode = header +
@@ -462,11 +472,13 @@ public class FlinkTransformProcessor {
 
     	try {
     		if (jobID == null || jobID.trim().equalsIgnoreCase("")) {
-    			LOG.warn("Flink job ID is empty or null. Bypass cancelFlinkSQL() ");
-    		} else {
+    			LOG.warn("Flink job ID is empty or null in cancelFlinkSQL() ");
+    		} 
+    		//else {
     			String cancelCMD = "cancel;-m;" + jobManagerHostPort + ";" + jobID;
     			LOG.info("Flink job " + jobID + " cancel CMD: " + cancelCMD);
-    			CliFrontend cli = new CliFrontend("conf/flink-conf.yaml");
+    			//CliFrontend cli = new CliFrontend("conf/flink-conf.yaml");
+    			CliFrontend cli = new CliFrontend("conf");
     			int retCode = cli.parseParameters(cancelCMD.split(";"));
     			LOG.info("Flink job " + jobID + " is canceled " + ((retCode == 0)? "successful.":"failed."));
 
@@ -476,7 +488,7 @@ public class FlinkTransformProcessor {
     				mongoClient.removeDocument(mongoCOLLECTION, new JsonObject().put("_id", id),
     						remove -> routingContext.response().end(id + respMsg));
     			}
-    		}
+    		//}
     	} catch (IllegalArgumentException ire) {
     		LOG.warn("No Flink job found with ID for cancellation");
     	} catch (Throwable t) {
@@ -570,7 +582,8 @@ public class FlinkTransformProcessor {
 
         try {
             String runCMD = "run;-m;" + jobManagerHostPort + ";" + jarFile;
-            CliFrontend cli = new CliFrontend("conf/flink-conf.yaml");
+            //CliFrontend cli = new CliFrontend("conf/flink-conf.yaml");
+            CliFrontend cli = new CliFrontend("conf");
             int retCode = cli.parseParameters(runCMD.split(";"));
             String respMsg = (retCode == 0)? "Flink job is submitted for Jar UDF at " :
                     "Flink job is failed to submit for Jar UDF at " + jarFile;

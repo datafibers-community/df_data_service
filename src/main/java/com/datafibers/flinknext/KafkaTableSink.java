@@ -17,17 +17,20 @@
  */
 package com.datafibers.flinknext;
 
+import java.util.Properties;
+
+import org.apache.avro.Schema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.types.Row;
-import org.apache.flink.table.sinks.StreamTableSink;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducerBase;
 import org.apache.flink.streaming.connectors.kafka.partitioner.KafkaPartitioner;
 import org.apache.flink.streaming.util.serialization.SerializationSchema;
+import org.apache.flink.table.sinks.StreamTableSink;
+import org.apache.flink.types.Row;
 import org.apache.flink.util.Preconditions;
 
-import java.util.Properties;
+import com.datafibers.util.SchemaRegistryClient;
 
 /**
  * A version-agnostic Kafka {@link StreamTableSink}.
@@ -43,6 +46,7 @@ public abstract class KafkaTableSink implements StreamTableSink<Row> {
 	protected final KafkaPartitioner<Row> partitioner;
 	protected String[] fieldNames;
 	protected TypeInformation[] fieldTypes;
+	protected Schema schema;
 	/**
 	 * Creates KafkaTableSink
 	 *
@@ -58,6 +62,7 @@ public abstract class KafkaTableSink implements StreamTableSink<Row> {
 		this.topic = Preconditions.checkNotNull(topic, "topic");
 		this.properties = Preconditions.checkNotNull(properties, "properties");
 		this.partitioner = Preconditions.checkNotNull(partitioner, "partitioner");
+		this.schema = SchemaRegistryClient.getLatestSchemaFromProperty(properties);
 	}
 
 	/**
@@ -81,7 +86,13 @@ public abstract class KafkaTableSink implements StreamTableSink<Row> {
 	 * @return Instance of serialization schema
 	 */
 	protected abstract SerializationSchema<Row> createSerializationSchema(String[] fieldNames);
-
+	
+	/**
+	 * 
+	 * @param schema
+	 * @return
+	 */
+	protected abstract SerializationSchema<Row> createSerializationSchema(Properties properties) ;
 	/**
 	 * Create a deep copy of this sink.
 	 *
@@ -112,12 +123,22 @@ public abstract class KafkaTableSink implements StreamTableSink<Row> {
 	@Override
 	public KafkaTableSink configure(String[] fieldNames, TypeInformation<?>[] fieldTypes) {
 		KafkaTableSink copy = createCopy();
-		copy.fieldNames = Preconditions.checkNotNull(fieldNames, "fieldNames");
-		copy.fieldTypes = Preconditions.checkNotNull(fieldTypes, "fieldTypes");
-		Preconditions.checkArgument(fieldNames.length == fieldTypes.length,
-			"Number of provided field names and types does not match.");
-		copy.serializationSchema = createSerializationSchema(fieldNames);
-
+		String sUseAvro = properties.getProperty("useAvro");
+		if(sUseAvro == null || !properties.getProperty("useAvro").equalsIgnoreCase("avro") ) {
+			copy.fieldNames = Preconditions.checkNotNull(fieldNames, "fieldNames");
+			copy.fieldTypes = Preconditions.checkNotNull(fieldTypes, "fieldTypes");
+			Preconditions.checkArgument(fieldNames.length == fieldTypes.length,
+				"Number of provided field names and types does not match.");
+			copy.serializationSchema = createSerializationSchema(fieldNames);
+		} else {//use avro
+			copy.fieldNames = SchemaRegistryClient.getFieldNamesFromProperty(properties);
+			copy.fieldTypes = SchemaRegistryClient.getFieldTypesInfoFromProperty(properties);
+			//Preconditions.checkArgument(fieldNames.length == fieldTypes.length,
+				//"Number of provided field names and types does not match.");
+			copy.serializationSchema = createSerializationSchema(properties);
+		}
 		return copy;
 	}
+	
+
 }
