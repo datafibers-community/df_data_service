@@ -17,7 +17,7 @@
  */
 package com.datafibers.flinknext;
 
-import org.apache.avro.Schema;
+
 import org.apache.flink.streaming.connectors.kafka.partitioner.KafkaPartitioner;
 import org.apache.flink.streaming.util.serialization.SerializationSchema;
 import org.apache.flink.types.Row;
@@ -40,14 +40,9 @@ public abstract class KafkaAvroTableSink extends KafkaTableSink {
 		super(topic, properties, partitioner);
 	}
 
-	@Override
-	//protected SerializationSchema<Row> createSerializationSchema(String[] fieldNames) {
-		//return new AvroRowSerializationSchema(fieldNames);
-	//}
-	
 
-	//@Override
 	protected SerializationSchema<Row> createSerializationSchema(Properties properties) {
 		return new AvroRowSerializationSchema(properties);
+
 	}
 }
