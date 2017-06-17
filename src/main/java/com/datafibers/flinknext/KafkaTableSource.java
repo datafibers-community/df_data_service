@@ -1,17 +1,17 @@
 package com.datafibers.flinknext;
 
+import java.util.Properties;
+
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.java.typeutils.TypeExtractor;
-import org.apache.flink.types.Row;
-import org.apache.flink.table.sources.StreamTableSource;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
+import org.apache.flink.api.java.typeutils.TypeExtractor;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumerBase;
 import org.apache.flink.streaming.util.serialization.DeserializationSchema;
+import org.apache.flink.table.sources.StreamTableSource;
+import org.apache.flink.types.Row;
 import org.apache.flink.util.Preconditions;
-
-import java.util.Properties;
 
 /**
  * A version-agnostic Kafka {@link StreamTableSource}.
@@ -36,7 +36,32 @@ abstract class KafkaTableSource implements StreamTableSource<Row> {
     /** Row field types. */
     protected final TypeInformation<?>[] fieldTypes;
 
-    /**
+	/** Type information describing the result type. */
+    protected final TypeInformation<Row> typeInfo;
+
+	/**
+	 * Creates a generic Kafka {@link StreamTableSource}.
+	 *
+	 * @param topic                 Kafka topic to consume.
+	 * @param properties            Properties for the Kafka consumer.
+	 * @param deserializationSchema Deserialization schema to use for Kafka records.
+	 * @param typeInfo              Type information describing the result type.
+	 */
+	KafkaTableSource(
+			String topic,
+			Properties properties,
+			DeserializationSchema<Row> deserializationSchema,
+			TypeInformation<Row> typeInfo) {
+
+		this.topic = Preconditions.checkNotNull(topic, "Topic");
+		this.properties = Preconditions.checkNotNull(properties, "Properties");
+		this.deserializationSchema = Preconditions.checkNotNull(deserializationSchema, "Deserialization schema");
+		this.typeInfo = Preconditions.checkNotNull(typeInfo, "Type information");
+		this.fieldTypes = null;
+		this.fieldNames = null;
+	}
+	
+	/**
      * Creates a generic Kafka {@link StreamTableSource}.
      *
      * @param topic                 Kafka topic to consume.
@@ -79,6 +104,8 @@ abstract class KafkaTableSource implements StreamTableSource<Row> {
 
         Preconditions.checkArgument(fieldNames.length == fieldTypes.length,
                 "Number of provided field names and types does not match.");
+        
+        this.typeInfo = new RowTypeInfo(fieldTypes, fieldNames);
     }
 
     @Override
@@ -143,4 +170,9 @@ abstract class KafkaTableSource implements StreamTableSource<Row> {
         return typeInfos;
     }
 
+
+	@Override
+	public String explainSource() {
+		return "";
+	}
 }

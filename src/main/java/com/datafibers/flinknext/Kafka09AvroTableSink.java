@@ -19,15 +19,11 @@ package com.datafibers.flinknext;
 
 import java.util.Properties;
 
-import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer09;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducerBase;
-import org.apache.flink.streaming.connectors.kafka.partitioner.KafkaPartitioner;
+import org.apache.flink.streaming.connectors.kafka.partitioner.FlinkKafkaPartitioner;
 import org.apache.flink.streaming.util.serialization.SerializationSchema;
-import org.apache.flink.table.sinks.TableSink;
 import org.apache.flink.types.Row;
-
-import scala.Option;
 
 /**
  * Kafka 0.9 {@link KafkaTableSink} that serializes data in JSON format.
@@ -40,12 +36,12 @@ public class Kafka09AvroTableSink extends KafkaAvroTableSink {
 	 * @param properties properties to connect to Kafka
 	 * @param partitioner Kafka partitioner
 	 */
-	public Kafka09AvroTableSink(String topic, Properties properties, KafkaPartitioner<Row> partitioner) {
+	public Kafka09AvroTableSink(String topic, Properties properties, FlinkKafkaPartitioner<Row> partitioner) {
 		super(topic, properties, partitioner);
 	}
 
 	@Override
-	protected FlinkKafkaProducerBase<Row> createKafkaProducer(String topic, Properties properties, SerializationSchema<Row> serializationSchema, KafkaPartitioner<Row> partitioner) {
+	protected FlinkKafkaProducerBase<Row> createKafkaProducer(String topic, Properties properties, SerializationSchema<Row> serializationSchema, FlinkKafkaPartitioner<Row> partitioner) {
 		return new FlinkKafkaProducer09<>(topic, serializationSchema, properties, partitioner);
 	}
 
@@ -59,7 +55,7 @@ public class Kafka09AvroTableSink extends KafkaAvroTableSink {
 	protected SerializationSchema<Row> createSerializationSchema(
 			String[] fieldNames) {
 		// TODO Auto-generated method stub
-		//return new JsonRowSerializationSchema(fieldNames);
-		return null;
+		return new JsonRowSerializationSchema(fieldNames);
+		//return null;
 	}
 }

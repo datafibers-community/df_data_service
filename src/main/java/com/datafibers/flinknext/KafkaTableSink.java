@@ -24,9 +24,9 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducerBase;
-import org.apache.flink.streaming.connectors.kafka.partitioner.KafkaPartitioner;
+import org.apache.flink.streaming.connectors.kafka.partitioner.FlinkKafkaPartitioner;
 import org.apache.flink.streaming.util.serialization.SerializationSchema;
-import org.apache.flink.table.sinks.StreamTableSink;
+import org.apache.flink.table.sinks.AppendStreamTableSink;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.Preconditions;
 
@@ -36,14 +36,14 @@ import com.datafibers.util.SchemaRegistryClient;
  * A version-agnostic Kafka {@link StreamTableSink}.
  *
  * <p>The version-specific Kafka consumers need to extend this class and
- * override {@link #createKafkaProducer(String, Properties, SerializationSchema, KafkaPartitioner)}}.
+ * override {@link #createKafkaProducer(String, Properties, SerializationSchema, FlinkKafkaPartitioner)}}.
  */
-public abstract class KafkaTableSink implements StreamTableSink<Row> {
+public abstract class KafkaTableSink implements AppendStreamTableSink<Row> {
 
 	protected final String topic;
 	protected final Properties properties;
 	protected SerializationSchema<Row> serializationSchema;
-	protected final KafkaPartitioner<Row> partitioner;
+	protected final FlinkKafkaPartitioner<Row> partitioner;
 	protected String[] fieldNames;
 	protected TypeInformation[] fieldTypes;
 	protected Schema schema;
@@ -57,7 +57,7 @@ public abstract class KafkaTableSink implements StreamTableSink<Row> {
 	public KafkaTableSink(
 			String topic,
 			Properties properties,
-			KafkaPartitioner<Row> partitioner) {
+			FlinkKafkaPartitioner<Row> partitioner) {
 
 		this.topic = Preconditions.checkNotNull(topic, "topic");
 		this.properties = Preconditions.checkNotNull(properties, "properties");
@@ -77,7 +77,7 @@ public abstract class KafkaTableSink implements StreamTableSink<Row> {
 	protected abstract FlinkKafkaProducerBase<Row> createKafkaProducer(
 		String topic, Properties properties,
 		SerializationSchema<Row> serializationSchema,
-		KafkaPartitioner<Row> partitioner);
+		FlinkKafkaPartitioner<Row> partitioner);
 
 	/**
 	 * Create serialization schema for converting table rows into bytes.

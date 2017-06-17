@@ -1,15 +1,17 @@
 package com.datafibers.test_tool;
-import com.datafibers.util.DynamicRunner;
 import net.openhft.compiler.CompilerUtils;
+
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.table.api.java.StreamTableEnvironment;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableEnvironment;
 import org.apache.flink.table.api.Types;
+import org.apache.flink.table.api.java.StreamTableEnvironment;
 import org.apache.flink.table.sinks.CsvTableSink;
 import org.apache.flink.table.sinks.TableSink;
 import org.apache.flink.table.sources.CsvTableSource;
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+
+import com.datafibers.util.DynamicRunner;
 
 /**
  * The goal is to define a function with parameter TABLE, Transformation Script and return TABLE
@@ -73,7 +75,7 @@ public class CodeGenFlinkTable {
 
 		tableEnv.registerTableSource("mycsv", csvTableSource);
 		TableSink sink = new CsvTableSink("/Users/will/Downloads/out.csv", "|");
-		Table ingest = tableEnv.ingest("mycsv");
+		Table ingest = tableEnv.scan("mycsv");
 
 		try {
 			String className = "dynamic.FlinkScript";
