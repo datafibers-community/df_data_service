@@ -1,24 +1,13 @@
 package com.datafibers.test_tool;
-import net.openhft.compiler.CompilerUtils;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.java.DataSet;
-import org.apache.flink.api.java.ExecutionEnvironment;
-import org.apache.flink.table.api.java.BatchTableEnvironment;
-import org.apache.flink.table.api.java.StreamTableEnvironment;
-import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableEnvironment;
 import org.apache.flink.table.api.Types;
+import org.apache.flink.table.api.java.StreamTableEnvironment;
 import org.apache.flink.table.sinks.CsvTableSink;
 import org.apache.flink.table.sinks.TableSink;
 import org.apache.flink.table.sources.CsvTableSource;
-import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.runtime.tasks.ExceptionInChainedOperatorException;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
 
 /**
  * The goal is to define a function with parameter TABLE, Transformation Script and return TABLE
@@ -54,7 +43,7 @@ public class WordCountStream {
 
 		//tableEnv.registerDataStream("tbl", ds, "a");
 		//Table ingest = tableEnv.fromDataStream(ds, "name");
-		Table in = tableEnv.ingest("mycsv");
+		Table in = tableEnv.scan("mycsv");
 		//Table in = tableEnv.ingest("tbl");
 		//Table in = tableEnv.fromDataStream(ds, "a");
 

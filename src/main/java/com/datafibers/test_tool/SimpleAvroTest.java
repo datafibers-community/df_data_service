@@ -1,20 +1,25 @@
 package com.datafibers.test_tool;
 
-import com.datafibers.util.SchemaRegistryClient;
-import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericData;
-import org.apache.avro.generic.GenericDatumReader;
-import org.apache.avro.generic.GenericDatumWriter;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.io.*;
-import org.apache.commons.lang3.StringUtils;
+import static org.apache.avro.Schema.Type.RECORD;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
-import static org.apache.avro.Schema.Type.RECORD;
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericDatumReader;
+import org.apache.avro.generic.GenericDatumWriter;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.io.BinaryDecoder;
+import org.apache.avro.io.BinaryEncoder;
+import org.apache.avro.io.DecoderFactory;
+import org.apache.avro.io.EncoderFactory;
+import org.apache.commons.lang3.StringUtils;
+
+import com.datafibers.util.SchemaRegistryClient;
 
 public class SimpleAvroTest {
 
@@ -24,7 +29,7 @@ public class SimpleAvroTest {
             + "\"fields\":["
             + "  { \"name\":\"symbol\", \"type\":\"string\" },"
             + "  { \"name\":\"name\", \"type\":\"string\" },"
-            + "  { \"name\":\"exchange\", \"type\":\"string\" }"
+            + "  { \"name\":\"exchangecode\", \"type\":\"string\" }"
             + "]}";
 
     public static void main(String[] args) throws InterruptedException {
@@ -33,7 +38,7 @@ public class SimpleAvroTest {
         GenericRecord user1 = new GenericData.Record(schema);
         user1.put("name", "Alyssa");
         user1.put("symbol", "CHINA");
-        user1.put("exchange", "TEST");
+        user1.put("exchangecode", "TEST");
 
         try {
             final ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -121,7 +126,7 @@ public class SimpleAvroTest {
                         + "\"fields\":["
                         + "  { \"name\":\"name\", \"type\":\"string\" },"
                         + "  { \"name\":\"symbol\", \"type\":\"string\" },"
-                        + "  { \"name\":\"exchange\", \"type\":\"string\" }"
+                        + "  { \"name\":\"exchangecode\", \"type\":\"string\" }"
                         + "]}";
                 Schema.Parser parser2 = new Schema.Parser();
                 Schema schema2 = parser2.parse(USER_SCHEMA);

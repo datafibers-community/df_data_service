@@ -1,6 +1,9 @@
 package com.datafibers.flinknext;
 
-import com.datafibers.model.DFJobPOPJ;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.util.Collections;
+import java.util.List;
 
 import org.apache.flink.api.common.JobSubmissionResult;
 import org.apache.flink.client.program.ClusterClient;
@@ -21,11 +24,7 @@ import org.apache.flink.runtime.jobgraph.SavepointRestoreSettings;
 import scala.concurrent.Await;
 import scala.concurrent.Future;
 
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.util.Collections;
-import java.util.List;
+import com.datafibers.model.DFJobPOPJ;
 
 /**
  * This is customized DF cluster client for communication with an Flink standalone (on-premise) cluster or an existing cluster that has been
@@ -34,7 +33,7 @@ import java.util.List;
  */
 public class DFCusterClient extends ClusterClient {
 
-    public DFCusterClient(Configuration config) throws IOException {
+    public DFCusterClient(Configuration config) throws Exception {
         super(config);
     }
 

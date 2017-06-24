@@ -1,35 +1,42 @@
 package com.datafibers.test_tool;
 
-import com.datafibers.flinknext.*;
-import com.datafibers.model.DFJobPOPJ;
-import com.datafibers.processor.FlinkTransformProcessor;
-import com.datafibers.service.DFInitService;
-import com.datafibers.util.DynamicRunner;
-import com.datafibers.util.SchemaRegistryClient;
-import net.openhft.compiler.CompilerUtils;
-import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.commons.codec.DecoderException;
-import org.apache.flink.api.common.functions.MapFunction;
-import org.apache.flink.table.api.java.StreamTableEnvironment;
-import org.apache.flink.table.api.Table;
-import org.apache.flink.table.api.TableEnvironment;
-import org.apache.flink.table.sinks.CsvTableSink;
-import org.apache.flink.table.sinks.TableSink;
-import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer09;
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer09;
-import org.apache.flink.streaming.connectors.kafka.Kafka09JsonTableSource;
-import org.apache.flink.streaming.connectors.kafka.KafkaJsonTableSource;
-import org.apache.flink.streaming.connectors.kafka.partitioner.FixedPartitioner;
-import org.apache.flink.streaming.util.serialization.SimpleStringSchema;
-import org.apache.log4j.Logger;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Properties;
+
+import net.openhft.compiler.CompilerUtils;
+
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.commons.codec.DecoderException;
+import org.apache.flink.api.common.functions.MapFunction;
+import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer09;
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer09;
+import org.apache.flink.streaming.connectors.kafka.partitioner.FlinkFixedPartitioner;
+import org.apache.flink.streaming.util.serialization.SimpleStringSchema;
+import org.apache.flink.table.api.Table;
+import org.apache.flink.table.api.TableEnvironment;
+import org.apache.flink.table.api.java.StreamTableEnvironment;
+import org.apache.flink.table.sinks.CsvTableSink;
+import org.apache.flink.table.sinks.TableSink;
+import org.apache.log4j.Logger;
+
+import com.datafibers.flinknext.AvroDeserializationSchema;
+import com.datafibers.flinknext.DFRemoteStreamEnvironment;
+import com.datafibers.flinknext.Kafka09AvroTableSink;
+import com.datafibers.flinknext.Kafka09AvroTableSource;
+import com.datafibers.flinknext.Kafka09JsonTableSink;
+import com.datafibers.flinknext.Kafka09JsonTableSource;
+import com.datafibers.flinknext.KafkaJsonTableSource;
+import com.datafibers.model.DFJobPOPJ;
+import com.datafibers.processor.FlinkTransformProcessor;
+import com.datafibers.service.DFInitService;
+import com.datafibers.util.DynamicRunner;
+import com.datafibers.util.SchemaRegistryClient;
 
 /**
  * TC for Flink features
@@ -227,6 +234,7 @@ public class UnitTestSuiteFlink {
         properties.setProperty("group.id", "consumer_test");
         properties.setProperty("schema.subject", "test-value");
         properties.setProperty("schema.registry", "localhost:8081");
+        properties.setProperty("useAvro", "avro");
         properties.setProperty("static.avro.schema",
                 SchemaRegistryClient.getSchemaFromRegistry("http://localhost:8081", "test-value", "latest").toString());
 
@@ -236,7 +244,8 @@ public class UnitTestSuiteFlink {
             tableEnv.registerTableSource("Orders", kafkaAvroTableSource);
 
             Table result = tableEnv.sql("SELECT name, symbol, exchangecode FROM Orders");
-            Kafka09JsonTableSink json_sink = new Kafka09JsonTableSink ("test_json", properties, new FixedPartitioner());
+            //Kafka09JsonTableSink json_sink = new Kafka09JsonTableSink ("test_json", properties, new FlinkFixedPartitioner());
+            Kafka09AvroTableSink json_sink = new Kafka09AvroTableSink ("test_json", properties, new FlinkFixedPartitioner());
 
             // write the result Table to the TableSink
             result.writeToSink(json_sink);
@@ -302,7 +311,7 @@ public class UnitTestSuiteFlink {
             Kafka09AvroTableSource kafkaAvroTableSource =  new Kafka09AvroTableSource("test", properties);
             tableEnv.registerTableSource("Orders", kafkaAvroTableSource);
 
-            Table ingest = tableEnv.ingest("Orders");
+            Table ingest = tableEnv.scan("Orders");
 
             String className = "dynamic.FlinkScript";
 
@@ -328,7 +337,7 @@ public class UnitTestSuiteFlink {
             Table result = runner.transTableObj(ingest);
 
             Kafka09JsonTableSink sink =
-                    new Kafka09JsonTableSink ("test_json", properties, new FixedPartitioner());
+                    new Kafka09JsonTableSink ("test_json", properties, new FlinkFixedPartitioner());
             // write the result Table to the TableSink
             result.writeToSink(sink);
             env.execute("Flink AVRO SQL KAFKA Test");
@@ -351,12 +360,12 @@ public class UnitTestSuiteFlink {
         System.out.println(SchemaRegistryClient.getSchemaFromRegistry ("http://localhost:8081", "test-value", "latest"));
         //testFlinkAvroSerDe("http://localhost:18081");
         //testFlinkAvroSerDe("http://localhost:8081");
-        //testFlinkAvroSQLJson();
+        testFlinkAvroSQLJson();
         //testFlinkRun();
         //testFlinkSQL();
         //testFlinkAvroSQL();
         //testFlinkAvroSQLWithStaticSchema();
-        testFlinkAvroScriptWithStaticSchema();
+        //testFlinkAvroScriptWithStaticSchema();
     }
 
 }

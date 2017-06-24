@@ -18,9 +18,7 @@ import org.apache.flink.client.program.ProgramInvocationException;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer09;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer09;
-import org.apache.flink.streaming.connectors.kafka.Kafka09JsonTableSource;
-import org.apache.flink.streaming.connectors.kafka.KafkaJsonTableSource;
-import org.apache.flink.streaming.connectors.kafka.partitioner.FixedPartitioner;
+import org.apache.flink.streaming.connectors.kafka.partitioner.FlinkFixedPartitioner;
 import org.apache.flink.streaming.util.serialization.SimpleStringSchema;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableEnvironment;
@@ -31,6 +29,8 @@ import com.datafibers.flinknext.DFRemoteStreamEnvironment;
 import com.datafibers.flinknext.Kafka09AvroTableSink;
 import com.datafibers.flinknext.Kafka09AvroTableSource;
 import com.datafibers.flinknext.Kafka09JsonTableSink;
+import com.datafibers.flinknext.Kafka09JsonTableSource;
+import com.datafibers.flinknext.KafkaJsonTableSource;
 import com.datafibers.model.DFJobPOPJ;
 import com.datafibers.util.ConstantApp;
 import com.datafibers.util.DynamicRunner;
@@ -139,7 +139,7 @@ public class FlinkTransformProcessor {
                 result = tableEnv.sql(transSql);
             }
 
-            FixedPartitioner partition =  new FixedPartitioner();
+            FlinkFixedPartitioner partition =  new FlinkFixedPartitioner();
 
             if (dfJob.getConnectorConfig().get("data.format.output").trim().toLowerCase().
                     equalsIgnoreCase("json_string")) {
@@ -260,7 +260,7 @@ public class FlinkTransformProcessor {
     			// run a SQL query on the Table and retrieve the result as a new Table
     			LOG.info("Table Env Sql:" + transSql.toString());
     			result = tableEnv.sql(transSql);
-    			Kafka09JsonTableSink sink = new Kafka09JsonTableSink (outputTopic, properties, new FixedPartitioner());
+    			Kafka09JsonTableSink sink = new Kafka09JsonTableSink (outputTopic, properties, new FlinkFixedPartitioner());
     			result.writeToSink(sink); // Flink will create the output result topic automatically
     		} catch (Exception e) {
     			LOG.error("Flink table register and SQL Exception:" + e.getCause());
@@ -324,6 +324,8 @@ public class FlinkTransformProcessor {
         properties.setProperty("schema.registry", SchemaRegistryHostPort);
         properties.setProperty("static.avro.schema", staticSchemaString);
         properties.setProperty("useAvro", "avro");
+ 
+        
         //properties.setProperty("output.schema.id", schemSubject);
         //properties.setProperty("output.schema.string", schemSubject);
         //properties.setProperty("input.schema.string", schemSubject);
@@ -339,10 +341,10 @@ public class FlinkTransformProcessor {
                 Kafka09AvroTableSource kafkaAvroTableSource =  new Kafka09AvroTableSource(inputTopic, properties);
                 tableEnv.registerTableSource(inputTopic, kafkaAvroTableSource);
                 Table result = tableEnv.sql(transSql);
-               // Kafka09JsonTableSink json_sink =
-                       // new Kafka09JsonTableSink (outputTopic, properties, new FixedPartitioner());
+                //Kafka09JsonTableSink json_sink =
+                       // new Kafka09JsonTableSink (outputTopic, properties, new FlinkFixedPartitioner());
                 Kafka09AvroTableSink json_sink =
-                        new Kafka09AvroTableSink (outputTopic, properties, new FixedPartitioner());
+                        new Kafka09AvroTableSink (outputTopic, properties, new FlinkFixedPartitioner());
                result.writeToSink(json_sink);
                JobExecutionResult jres = flinkEnv.executeWithDFObj("DF_FLINK_TRANS_SQL_AVRO_TO_JSON_" + uuid, dfJob);
             } catch (Exception e) {
@@ -409,7 +411,7 @@ public class FlinkTransformProcessor {
             try {
                 Kafka09AvroTableSource kafkaAvroTableSource =  new Kafka09AvroTableSource(inputTopic, properties);
                 tableEnv.registerTableSource(inputTopic, kafkaAvroTableSource);
-                Table ingest = tableEnv.ingest(inputTopic);
+                Table ingest = tableEnv.scan(inputTopic);
 
                 String className = "dynamic.FlinkScript";
 
@@ -432,7 +434,7 @@ public class FlinkTransformProcessor {
                 DynamicRunner runner = (DynamicRunner) aClass.newInstance();
                 Table result = runner.transTableObj(ingest); // TODO select * support after Flink 1.2
                 Kafka09JsonTableSink json_sink =
-                        new Kafka09JsonTableSink (outputTopic, properties, new FixedPartitioner());
+                        new Kafka09JsonTableSink (outputTopic, properties, new FlinkFixedPartitioner());
                 result.writeToSink(json_sink);
                 JobExecutionResult jres = flinkEnv.executeWithDFObj("DF_FLINK_TRANS_SQL_AVRO_TO_JSON_" + uuid, dfJob);
             } catch (Exception e) {

@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.List;
 
 import com.datafibers.model.DFJobPOPJ;
+
 import org.apache.flink.annotation.Public;
 import org.apache.flink.api.common.InvalidProgramException;
 import org.apache.flink.api.common.JobExecutionResult;
@@ -18,7 +19,6 @@ import org.apache.flink.client.program.JobWithJars;
 import org.apache.flink.client.program.ProgramInvocationException;
 import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
-
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.graph.StreamGraph;
 import org.slf4j.Logger;
@@ -225,7 +225,12 @@ public class DFRemoteStreamEnvironment extends StreamExecutionEnvironment {
             throw new ProgramInvocationException("The program execution failed" + term, e);
         }
         finally {
-            client.shutdown();
+            try {
+				client.shutdown();
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
         }
     }
 

@@ -35,10 +35,6 @@ public class AvroRowSerializationSchema implements SerializationSchema<Row> {
     private static final long serialVersionUID = 4330538776656642780L;
     private static final Logger LOG = Logger.getLogger(AvroRowSerializationSchema.class);
 
-	/**
-	 * Output stream to serialize records into byte array.
-	 */
-	//private transient ByteArrayOutputStream out =  new ByteArrayOutputStream();
 
 	/**
 	 * Low-level class for serialization of Avro values.
@@ -91,7 +87,6 @@ public class AvroRowSerializationSchema implements SerializationSchema<Row> {
         	throw new RuntimeException("Failed to serialize Row.", t);
         }
 
-        return null;
 
     }
 
