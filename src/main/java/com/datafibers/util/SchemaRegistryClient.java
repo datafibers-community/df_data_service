@@ -57,6 +57,44 @@ public class SchemaRegistryClient {
         return null;
     }
 
+    public static Schema getSchemaFromRegistrywithDefault (String schemaUri, String schemaSubject, String schemaVersion) {
+        if(!schemaUri.contains("http")) {
+            schemaUri = "http://" + schemaUri;
+        }
+        if(schemaVersion == null) schemaVersion = "latest";
+        String fullUrl = String.format("%s/subjects/%s/versions/%s", schemaUri, schemaSubject, schemaVersion);
+
+        String schemaString;
+        BufferedReader br = null;
+        try {
+            StringBuilder response = new StringBuilder();
+            String line;
+            br = new BufferedReader(new InputStreamReader(new URL(fullUrl).openStream()));
+            while ((line = br.readLine()) != null) {
+                response.append(line);
+            }
+
+            JsonNode responseJson = new ObjectMapper().readValue(response.toString(), JsonNode.class);
+            schemaString = responseJson.get("schema").getValueAsText();
+
+            try {
+                return new Schema.Parser().parse(schemaString);
+            } catch (SchemaParseException ex) {
+                LOG.error(String.format("Unable to successfully parse schema from: %s", schemaString), ex);
+            }
+        } catch(Exception ex) {
+            ex.printStackTrace();
+        } finally {
+            try {
+                if (br != null)
+                    br.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return null;
+    }
+
     public static Schema getVersionedSchemaFromProperty (Properties properties, String schemaVersion) {
 
         String schemaUri;
@@ -77,6 +115,54 @@ public class SchemaRegistryClient {
         return getSchemaFromRegistry(schemaUri, schemaSubject, schemaVersion);
     }
 
+    public static String getLatestSchemaNodeFromProperty (Properties properties) {
+
+        String schemaUri;
+        String schemaSubject = "";
+
+        if (properties.getProperty("schema.registry") == null) {
+            schemaUri = "http://localhost:8081";
+        } else {
+            schemaUri = "http://" + properties.getProperty("schema.registry");
+        }
+
+        if (properties.getProperty("schema.subject") == null) {
+            LOG.error("schema.subject must be set in the property");
+            //schemaSubject = topic + "-value";
+        } else {
+            schemaSubject = properties.getProperty("schema.subject");
+        }
+
+        String schemaVersion = "latest";
+        String fullUrl = String.format("%s/subjects/%s/versions/%s", schemaUri, schemaSubject, schemaVersion);
+
+        String schemaString="";
+        BufferedReader br = null;
+        try {
+        	StringBuilder response = new StringBuilder();
+        	String line;
+        	br = new BufferedReader(new InputStreamReader(new URL(fullUrl).openStream()));
+        	while ((line = br.readLine()) != null) {
+        		response.append(line);
+        	}
+
+        	JsonNode responseJson = new ObjectMapper().readValue(response.toString(), JsonNode.class);
+        	schemaString = responseJson.get("schema").getValueAsText();
+        	LOG.warn("schemaString: " + schemaString);
+        	return schemaString;
+         } catch(Exception ex) {
+            ex.printStackTrace();
+        } finally {
+            try {
+                if (br != null)
+                    br.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return null;
+        }
+
     public static Schema getLatestSchemaFromProperty (Properties properties) {
 
         String schemaUri;
@@ -96,6 +182,54 @@ public class SchemaRegistryClient {
         }
 
         return getSchemaFromRegistry(schemaUri, schemaSubject, "latest");
+    }
+
+    
+    public static int getLatestSchemaIDFromProperty (Properties properties) {
+
+        String schemaUri;
+        String schemaSubject = "";
+        int schemaId=0;
+
+        if (properties.getProperty("schema.registry") == null) {
+            schemaUri = "http://localhost:8081";
+        } else {
+            schemaUri = "http://" + properties.getProperty("schema.registry");
+        }
+
+        if (properties.getProperty("schema.subject") == null) {
+            LOG.error("schema.subject must be set in the property");
+            //schemaSubject = topic + "-value";
+        } else {
+            schemaSubject = properties.getProperty("output.schema.subject");
+        }
+
+        String schemaVersion = "latest";
+        String fullUrl = String.format("%s/subjects/%s/versions/%s", schemaUri, schemaSubject, schemaVersion);
+
+        BufferedReader br = null;
+        try {
+            StringBuilder response = new StringBuilder();
+            String line;
+            br = new BufferedReader(new InputStreamReader(new URL(fullUrl).openStream()));
+            while ((line = br.readLine()) != null) {
+                response.append(line);
+            }
+
+            JsonNode responseJson = new ObjectMapper().readValue(response.toString(), JsonNode.class);
+            schemaId = responseJson.get("id").getValueAsInt();
+
+         } catch(Exception ex) {
+            ex.printStackTrace();
+        } finally {
+            try {
+                if (br != null)
+                    br.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return schemaId;
     }
 
     public static String[] getFieldNames (Schema schema) {

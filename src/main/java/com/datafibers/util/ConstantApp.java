@@ -91,7 +91,7 @@ public final class ConstantApp {
         TRANSFORM_FLINK_SQL_GENE,     // Flink streaming SQL
         TRANSFORM_FLINK_SQL_A2J,      // Flink streaming SQL from Avro to Json
         TRANSFORM_FLINK_SQL_J2J,      // Flink streaming SQL from Json to Json
-        TRANSFORM_FLINK_JOINS,        // Flink streaming of Data Join
+        TRANSFORM_FLINK_SCRIPT,        // Flink streaming of Table API
         TRANSFORM_FLINK_UDF,          // Flink user defined jar/program
         TRANSFORM_SPARK_SQL,          // Spark streaming SQL
         TRANSFORM_SPARK_BATCH_SQL,    // Spark streaming SQL

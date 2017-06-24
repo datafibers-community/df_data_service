@@ -114,6 +114,7 @@ public class SchemaRegisterProcessor {
         }, res -> {
             Object result = HelpFunc.coalesce(res.result(), ConstantApp.STATUS_CODE_BAD_REQUEST);
             routingContext.response().setStatusCode(Integer.parseInt(result.toString()))
+                    .putHeader("Access-Control-Allow-Origin", "*")
                     .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
                     .end(HelpFunc.stringToJsonFormat(returnString.toString()));
             executor.close();
@@ -173,6 +174,7 @@ public class SchemaRegisterProcessor {
         }, res -> {
             Object result = HelpFunc.coalesce(res.result(), ConstantApp.STATUS_CODE_BAD_REQUEST);
             routingContext.response().setStatusCode(Integer.parseInt(result.toString()))
+                    .putHeader("Access-Control-Allow-Origin", "*")
                     .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
                     .end(HelpFunc.stringToJsonFormat(returnString.toString()));
             executor.close();
@@ -208,6 +210,7 @@ public class SchemaRegisterProcessor {
                     if (rs != null) {
                         LOG.info("Add schema status code " + portRestResponse.statusCode());
                         routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                .putHeader("Access-Control-Allow-Origin", "*")
                                 .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
                                 .end();
                     }
@@ -216,6 +219,7 @@ public class SchemaRegisterProcessor {
 
         postRestClientRequest.exceptionHandler(exception -> {
             routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                    .putHeader("Access-Control-Allow-Origin", "*")
                     .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
                     .end();
         });
@@ -234,6 +238,7 @@ public class SchemaRegisterProcessor {
                 LOG.info("Update Config Compatibility status code " + portRestResponse.statusCode());
                 if (routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_OK) {
                     routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_OK)
+                            .putHeader("Access-Control-Allow-Origin", "*")
                             .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
                             .end();
                 }
@@ -243,6 +248,7 @@ public class SchemaRegisterProcessor {
                 if (routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_CONFLICT
                         && routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_OK) {
                     routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                            .putHeader("Access-Control-Allow-Origin", "*")
                             .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
                             .end();
                 }
@@ -298,6 +304,7 @@ public class SchemaRegisterProcessor {
                         LOG.info("Update schema status code: " + portRestResponse.statusCode());
                         routingContext
                                 .response().setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                .putHeader("Access-Control-Allow-Origin", "*")
                                 .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
                                 .end();
                     }
@@ -306,6 +313,7 @@ public class SchemaRegisterProcessor {
 
         postRestClientRequest.exceptionHandler(exception -> {
             routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                    .putHeader("Access-Control-Allow-Origin", "*")
                     .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
                     .end("Update one schema POST request exception - " + exception.toString());
         });
@@ -324,6 +332,7 @@ public class SchemaRegisterProcessor {
             final RestClientRequest postRestClientRequest2 = rc_schema.put(restURI, portRestResponse -> {
                 if (routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_OK) {
                     routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_OK)
+                            .putHeader("Access-Control-Allow-Origin", "*")
                             .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
                             .end(portRestResponse.statusMessage());
                 }
@@ -333,6 +342,7 @@ public class SchemaRegisterProcessor {
                 if (routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_CONFLICT
                         && routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_OK) {
                     routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                            .putHeader("Access-Control-Allow-Origin", "*")
                             .putHeader(ConstantApp.CONTENT_TYPE, "application/vnd.schemaregistry.v1+json")
                             .end("Update one schema - compatibility POST request exception - " + exception.toString());
                 }

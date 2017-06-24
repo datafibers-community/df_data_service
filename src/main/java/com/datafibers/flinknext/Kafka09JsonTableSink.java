@@ -1,5 +1,5 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
+	 * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
  * regarding copyright ownership.  The ASF licenses this file
@@ -17,17 +17,17 @@
  */
 package com.datafibers.flinknext;
 
+import java.util.Properties;
+
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.table.Row;
-import org.apache.flink.api.table.sinks.TableSink;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer09;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducerBase;
-import org.apache.flink.streaming.connectors.kafka.partitioner.KafkaPartitioner;
+import org.apache.flink.streaming.connectors.kafka.partitioner.FlinkKafkaPartitioner;
 import org.apache.flink.streaming.util.serialization.SerializationSchema;
+import org.apache.flink.table.sinks.TableSink;
+import org.apache.flink.types.Row;
 
 import scala.Option;
-
-import java.util.Properties;
 
 /**
  * Kafka 0.9 {@link KafkaTableSink} that serializes data in JSON format.
@@ -40,12 +40,12 @@ public class Kafka09JsonTableSink extends KafkaJsonTableSink {
 	 * @param properties properties to connect to Kafka
 	 * @param partitioner Kafka partitioner
 	 */
-	public Kafka09JsonTableSink(String topic, Properties properties, KafkaPartitioner<Row> partitioner) {
+	public Kafka09JsonTableSink(String topic, Properties properties, FlinkKafkaPartitioner<Row> partitioner) {
 		super(topic, properties, partitioner);
 	}
 
 	@Override
-	protected FlinkKafkaProducerBase<Row> createKafkaProducer(String topic, Properties properties, SerializationSchema<Row> serializationSchema, KafkaPartitioner<Row> partitioner) {
+	protected FlinkKafkaProducerBase<Row> createKafkaProducer(String topic, Properties properties, SerializationSchema<Row> serializationSchema, FlinkKafkaPartitioner<Row> partitioner) {
 		return new FlinkKafkaProducer09<>(topic, serializationSchema, properties, partitioner);
 	}
 
@@ -57,35 +57,41 @@ public class Kafka09JsonTableSink extends KafkaJsonTableSink {
 	
 	
 	
-	@Override
+	//@Override
 	public TableSink<Row> copy() {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
-	@Override
+	//@Override
 	public Option<String[]> org$apache$flink$api$table$sinks$TableSink$$fieldNames() {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
-	@Override
+	//@Override
 	public void org$apache$flink$api$table$sinks$TableSink$$fieldNames_$eq(
 			Option<String[]> arg0) {
 		// TODO Auto-generated method stub
 		
 	}
 
-	@Override
+	//@Override
 	public Option<TypeInformation<?>[]> org$apache$flink$api$table$sinks$TableSink$$fieldTypes() {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
-	@Override
+	//@Override
 	public void org$apache$flink$api$table$sinks$TableSink$$fieldTypes_$eq(
 			Option<TypeInformation<?>[]> arg0) {
 		// TODO Auto-generated method stub
 		
+	}
+
+	@Override
+	protected SerializationSchema<Row> createSerializationSchema(Properties properties) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 }

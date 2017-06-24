@@ -1,13 +1,12 @@
 package com.datafibers.flinknext;
 
-import com.datafibers.util.SchemaRegistryClient;
-import org.apache.avro.Schema;
-import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.table.sources.StreamTableSource;
-import org.apache.flink.streaming.util.serialization.DeserializationSchema;
-import org.apache.kafka.common.errors.SerializationException;
-
 import java.util.Properties;
+
+import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.streaming.util.serialization.DeserializationSchema;
+import org.apache.flink.table.sources.StreamTableSource;
+
+import com.datafibers.util.SchemaRegistryClient;
 
 /**
  * A version-agnostic Kafka AVRO {@link StreamTableSource}.
