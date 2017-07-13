@@ -19,31 +19,33 @@ package com.datafibers.flinknext;
 
 import java.util.Properties;
 
+import com.datafibers.util.ConstantApp;
 import org.apache.avro.Schema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducerBase;
 import org.apache.flink.streaming.connectors.kafka.partitioner.FlinkKafkaPartitioner;
 import org.apache.flink.streaming.util.serialization.SerializationSchema;
-import org.apache.flink.table.sinks.AppendStreamTableSink;
+import org.apache.flink.table.sinks.UpsertStreamTableSink;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.Preconditions;
 
 import com.datafibers.util.SchemaRegistryClient;
 
 /**
- * A version-agnostic Kafka {@link StreamTableSink}.
+ * A version-agnostic Kafka {@link UpsertStreamTableSink}.
  *
  * <p>The version-specific Kafka consumers need to extend this class and
  * override {@link #createKafkaProducer(String, Properties, SerializationSchema, FlinkKafkaPartitioner)}}.
  */
-public abstract class KafkaTableSink implements AppendStreamTableSink<Row> {
+public abstract class KafkaTableSink implements UpsertStreamTableSink<Row> {
 
 	protected final String topic;
 	protected final Properties properties;
-	protected SerializationSchema<Row> serializationSchema;
-	protected final FlinkKafkaPartitioner<Row> partitioner;
+	protected SerializationSchema<Tuple2<Boolean, Row>> serializationSchema;
+	protected final FlinkKafkaPartitioner<Tuple2<Boolean, Row>> partitioner;
 	protected String[] fieldNames;
 	protected TypeInformation[] fieldTypes;
 	protected Schema schema;
@@ -57,12 +59,15 @@ public abstract class KafkaTableSink implements AppendStreamTableSink<Row> {
 	public KafkaTableSink(
 			String topic,
 			Properties properties,
-			FlinkKafkaPartitioner<Row> partitioner) {
+			FlinkKafkaPartitioner<Tuple2<Boolean, Row>> partitioner) {
 
 		this.topic = Preconditions.checkNotNull(topic, "topic");
 		this.properties = Preconditions.checkNotNull(properties, "properties");
 		this.partitioner = Preconditions.checkNotNull(partitioner, "partitioner");
-		this.schema = SchemaRegistryClient.getLatestSchemaFromProperty(properties);
+		this.schema = SchemaRegistryClient.getLatestSchemaFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT);
+		//setIsAppendOnly(false);
+		setIsAppendOnly(tr);
+		setKeyFields(properties.getProperty("sink.key.fields").split(","));
 	}
 
 	/**
@@ -74,25 +79,20 @@ public abstract class KafkaTableSink implements AppendStreamTableSink<Row> {
 	 * @param partitioner         Partitioner to select Kafka partition.
 	 * @return The version-specific Kafka producer
 	 */
-	protected abstract FlinkKafkaProducerBase<Row> createKafkaProducer(
+	protected abstract FlinkKafkaProducerBase<Tuple2<Boolean, Row>> createKafkaProducer(
 		String topic, Properties properties,
-		SerializationSchema<Row> serializationSchema,
-		FlinkKafkaPartitioner<Row> partitioner);
+		SerializationSchema<Tuple2<Boolean, Row>> serializationSchema,
+		FlinkKafkaPartitioner<Tuple2<Boolean, Row>> partitioner);
 
 	/**
 	 * Create serialization schema for converting table rows into bytes.
 	 *
-	 * @param fieldNames Field names in table rows.
-	 * @return Instance of serialization schema
-	 */
-	protected abstract SerializationSchema<Row> createSerializationSchema(String[] fieldNames);
-	
-	/**
-	 * 
-	 * @param schema
+	 * @param properties
 	 * @return
-	 */
-	protected abstract SerializationSchema<Row> createSerializationSchema(Properties properties) ;
+     */
+
+	protected abstract SerializationSchema<Tuple2<Boolean, Row>> createSerializationSchema(Properties properties) ;
+
 	/**
 	 * Create a deep copy of this sink.
 	 *
@@ -101,14 +101,8 @@ public abstract class KafkaTableSink implements AppendStreamTableSink<Row> {
 	protected abstract KafkaTableSink createCopy();
 
 	@Override
-	public void emitDataStream(DataStream<Row> dataStream) {
-		FlinkKafkaProducerBase<Row> kafkaProducer = createKafkaProducer(topic, properties, serializationSchema, partitioner);
-		dataStream.addSink(kafkaProducer);
-	}
-
-	@Override
-	public TypeInformation<Row> getOutputType() {
-		return new RowTypeInfo(getFieldTypes(), getFieldNames());
+	public void emitDataStream(DataStream<Tuple2<Boolean, Row>> dataStream) {
+		dataStream.addSink(createKafkaProducer(topic, properties, serializationSchema, partitioner));
 	}
 
 	public String[] getFieldNames() {
@@ -121,24 +115,17 @@ public abstract class KafkaTableSink implements AppendStreamTableSink<Row> {
 	}
 
 	@Override
+	public TypeInformation<Row> getRecordType() {
+		return new RowTypeInfo(fieldTypes);
+	}
+
+	@Override
 	public KafkaTableSink configure(String[] fieldNames, TypeInformation<?>[] fieldTypes) {
 		KafkaTableSink copy = createCopy();
-		String sUseAvro = properties.getProperty("useAvro");
-		if(sUseAvro == null || !properties.getProperty("useAvro").equalsIgnoreCase("avro") ) {
-			copy.fieldNames = Preconditions.checkNotNull(fieldNames, "fieldNames");
-			copy.fieldTypes = Preconditions.checkNotNull(fieldTypes, "fieldTypes");
-			Preconditions.checkArgument(fieldNames.length == fieldTypes.length,
-				"Number of provided field names and types does not match.");
-			copy.serializationSchema = createSerializationSchema(fieldNames);
-		} else {//use avro
-			copy.fieldNames = SchemaRegistryClient.getFieldNamesFromProperty(properties);
-			copy.fieldTypes = SchemaRegistryClient.getFieldTypesInfoFromProperty(properties);
-			//Preconditions.checkArgument(fieldNames.length == fieldTypes.length,
-				//"Number of provided field names and types does not match.");
-			copy.serializationSchema = createSerializationSchema(properties);
-		}
+		copy.fieldNames = SchemaRegistryClient.getFieldNamesFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT);
+		copy.fieldTypes = SchemaRegistryClient.getFieldTypesInfoFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT);
+		copy.serializationSchema = createSerializationSchema(properties);
 		return copy;
 	}
-	
 
 }

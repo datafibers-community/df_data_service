@@ -163,6 +163,27 @@ public class SchemaRegistryClient {
         return null;
         }
 
+    public static Schema getLatestSchemaFromProperty (Properties properties, String schemaSubjectAttributeName) {
+
+        String schemaUri;
+        String schemaSubject = "";
+
+        if (properties.getProperty("schema.registry") == null) {
+            schemaUri = "http://localhost:8081";
+        } else {
+            schemaUri = "http://" + properties.getProperty("schema.registry");
+        }
+
+        if (properties.getProperty(schemaSubjectAttributeName) == null) {
+            LOG.error("schema.subject must be set in the property");
+            //schemaSubject = topic + "-value";
+        } else {
+            schemaSubject = properties.getProperty(schemaSubjectAttributeName);
+        }
+
+        return getSchemaFromRegistry(schemaUri, schemaSubject, "latest");
+    }
+
     public static Schema getLatestSchemaFromProperty (Properties properties) {
 
         String schemaUri;
@@ -184,8 +205,7 @@ public class SchemaRegistryClient {
         return getSchemaFromRegistry(schemaUri, schemaSubject, "latest");
     }
 
-    
-    public static int getLatestSchemaIDFromProperty (Properties properties) {
+    public static int getLatestSchemaIDFromProperty (Properties properties, String schemaSubjectAttributeName) {
 
         String schemaUri;
         String schemaSubject = "";
@@ -197,11 +217,11 @@ public class SchemaRegistryClient {
             schemaUri = "http://" + properties.getProperty("schema.registry");
         }
 
-        if (properties.getProperty("schema.subject") == null) {
+        if (properties.getProperty(schemaSubjectAttributeName) == null) {
             LOG.error("schema.subject must be set in the property");
-            //schemaSubject = topic + "-value";
+            return -1;
         } else {
-            schemaSubject = properties.getProperty("output.schema.subject");
+            schemaSubject = properties.getProperty(schemaSubjectAttributeName);
         }
 
         String schemaVersion = "latest";
@@ -246,6 +266,19 @@ public class SchemaRegistryClient {
 
     public static String[] getFieldNamesFromProperty (Properties properties) {
         Schema schema = getLatestSchemaFromProperty(properties);
+
+        List<String> stringList = new ArrayList<String>();
+        if (RECORD.equals(schema.getType()) && schema.getFields() != null && !schema.getFields().isEmpty()) {
+            for (org.apache.avro.Schema.Field field : schema.getFields()) {
+                stringList.add(field.name());
+            }
+        }
+        String[] fieldNames = stringList.toArray( new String[] {} );
+        return fieldNames;
+    }
+
+    public static String[] getFieldNamesFromProperty (Properties properties, String schemaSubjectAttributeName) {
+        Schema schema = getLatestSchemaFromProperty(properties, schemaSubjectAttributeName);
 
         List<String> stringList = new ArrayList<String>();
         if (RECORD.equals(schema.getType()) && schema.getFields() != null && !schema.getFields().isEmpty()) {
@@ -333,9 +366,87 @@ public class SchemaRegistryClient {
         return fieldTypes;
     }
 
+    public static Class<?>[] getFieldTypesFromProperty (Properties properties, String schemaSubjectAttributeName) {
+
+        Schema schema = getLatestSchemaFromProperty(properties, schemaSubjectAttributeName);
+
+        Class<?>[] fieldTypes = new Class[schema.getFields().size()];
+        int index = 0;
+        String typeName;
+
+        try {
+            if (RECORD.equals(schema.getType()) && schema.getFields() != null && !schema.getFields().isEmpty()) {
+                for (org.apache.avro.Schema.Field field : schema.getFields()) {
+                    typeName = field.schema().getType().getName().toLowerCase();
+                    // Mapping Avro type to Java type - TODO Complex type is not supported yet
+                    switch (typeName) {
+                        case "boolean":
+                        case "string":
+                        case "long":
+                        case "float":
+                            fieldTypes[index] = Class.forName("java.lang." + StringUtils.capitalize(typeName));
+                            break;
+                        case "bytes":
+                            fieldTypes[index] = Class.forName("java.lang.Byte");
+                            break;
+                        case "int":
+                            fieldTypes[index] = Class.forName("java.lang.Integer");
+                            break;
+                        default:
+                            fieldTypes[index] = Class.forName("java.lang.String");
+                    }
+                    index ++;
+                }
+            }
+        } catch (ClassNotFoundException cnf) {
+            cnf.printStackTrace();
+        }
+
+        return fieldTypes;
+    }
+
     public static TypeInformation<?>[] getFieldTypesInfoFromProperty (Properties properties) {
 
         Schema schema = getLatestSchemaFromProperty(properties);
+
+        TypeInformation<?>[] fieldTypes = new TypeInformation[schema.getFields().size()];
+        int index = 0;
+        String typeName;
+
+        try {
+            if (RECORD.equals(schema.getType()) && schema.getFields() != null && !schema.getFields().isEmpty()) {
+                for (org.apache.avro.Schema.Field field : schema.getFields()) {
+                    typeName = field.schema().getType().getName().toLowerCase();
+                    // Mapping Avro type to Java type - TODO Complex type is not supported yet
+                    switch (typeName) {
+                        case "boolean":
+                        case "string":
+                        case "long":
+                        case "float":
+                            fieldTypes[index] = TypeInformation.of(Class.forName("java.lang." + StringUtils.capitalize(typeName)));
+                            break;
+                        case "bytes":
+                            fieldTypes[index] = TypeInformation.of(Class.forName("java.lang.Byte"));
+                            break;
+                        case "int":
+                            fieldTypes[index] = TypeInformation.of(Class.forName("java.lang.Integer"));
+                            break;
+                        default:
+                            fieldTypes[index] = TypeInformation.of(Class.forName("java.lang.String"));
+                    }
+                    index ++;
+                }
+            }
+        } catch (ClassNotFoundException cnf) {
+            cnf.printStackTrace();
+        }
+
+        return fieldTypes;
+    }
+
+    public static TypeInformation<?>[] getFieldTypesInfoFromProperty (Properties properties, String schemaSubjectAttributeName) {
+
+        Schema schema = getLatestSchemaFromProperty(properties, schemaSubjectAttributeName);
 
         TypeInformation<?>[] fieldTypes = new TypeInformation[schema.getFields().size()];
         int index = 0;

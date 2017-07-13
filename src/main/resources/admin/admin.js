@@ -81,12 +81,9 @@ customHeaderTemplate =
     connect.creationView().fields([
         nga.field('taskSeq', 'number').format('0o').label('Task Seq'),
         nga.field('name').label('Task Name'),
-        //nga.field('connectUid').attributes({placeholder:'No space allowed and 5 chars min.'}).validation({ required: true, pattern: '[A-Za-z0-9\-]{5,20}' }).label('Connects'),
         nga.field('connectorType', 'choice')
                 .choices([
-                                {value:'CONNECT_KAFKA_SOURCE', label:'Source Flat File'},
                                 {value:'CONNECT_KAFKA_SOURCE_AVRO', label:'Source Avro File'},
-                                {value:'CONNECT_KAFKA_SINK', label:'Sink Flat File'},
                                 {value:'CONNECT_KAFKA_HDFS_SINK', label:'Sink Hadoop|Hive'},
                                 {value:'CONNECT_MONGODB_SINK', label:'Sink MongoDB'}
                          ]).label('Connect Type'),
@@ -94,19 +91,10 @@ customHeaderTemplate =
         nga.field('description', 'text'),
         nga.field('jobConfig','json').defaultValue({}).label('Job Config'),
         nga.field('connectorConfig','json').label('Connect Config')
-		.defaultValue({
-		"config_ignored" : "remove this template marker to submit, /* this is comments */",
-		"connector.class": "org.apache.kafka.connect.file.FileStreamSourceConnector",
-		"file" : "stock.json /* File name for streaming to Kafka. */",
-		"tasks.max" : "1 /* Number of tasks in parallel.*/",
-		"topic" : "stock /* The single Kafka topic name having data streamed. */"
-		})
-		.template('<ma-field ng-if="entry.values.connectorType == \'CONNECT_KAFKA_SOURCE\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true),
-		nga.field('connectorConfig_1','json').label('Connect Config')
         .defaultValue({
 		"config_ignored" : "remove this template marker to submit, /* this is comments */",
         "connector.class" : "com.datafibers.kafka.connect.FileGenericSourceConnector",
-        "file.location" : "/home/vagrant/ /* Folder where to read the files. */",
+        "file.location" : "/home/vagrant/df_data/ /* Folder where to read the files. */",
         "file.glob" : "*.{json,csv} /* File glob to filter file */",
         "file.overwrite" : "true /* Whether over-written file will re-extract */",
         "schema.subject" : "test-value /* The subject name in schema registry */",
@@ -115,16 +103,7 @@ customHeaderTemplate =
         "topic" : "stock /* The single Kafka topic name having data streamed. */"
         })
         .template('<ma-field ng-if="entry.values.connectorType == \'CONNECT_KAFKA_SOURCE_AVRO\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true),
-		nga.field('connectorConfig_2','json').label('Connect Config')
-		.defaultValue({
-		"config_ignored" : "remove this template marker to submit, /* this is comments */",
-		"connector.class" : "org.apache.kafka.connect.file.FileStreamSinkConnector",
-		"file" : "test.txt /* File name to keep the data exported from Kafka. */",
-        "tasks.max" : "1 /* Number of tasks in parallel. */",
-		"topics" : "stock, test /* List of Kafka topics having data streamed out */"
-		})
-		.template('<ma-field ng-if="entry.values.connectorType == \'CONNECT_KAFKA_SINK\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true),
-		nga.field('connectorConfig_3','json').label('Connect Config')
+        nga.field('connectorConfig_1','json').label('Connect Config')
         .defaultValue({
 		"config_ignored" : "remove this template marker to submit, /* this is comments */",
         "connector.class" : "io.confluent.connect.hdfs.HdfsSinkConnector",
@@ -137,7 +116,7 @@ customHeaderTemplate =
         "topics" : "stock, test /* The Kafka topic names having data to sink. */"
         })
         .template('<ma-field ng-if="entry.values.connectorType == \'CONNECT_KAFKA_HDFS_SINK\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true),
-		nga.field('connectorConfig_4','json').label('Connect Config')
+		nga.field('connectorConfig_2','json').label('Connect Config')
         .defaultValue({
 		"config_ignored" : "remove this template marker to submit, /* this is comments */",
         "connector.class" : "org.apache.kafka.connect.mongodb.MongodbSinkConnector",
@@ -159,19 +138,16 @@ customHeaderTemplate =
         nga.field('connectorType').editable(false),
         nga.field('status').editable(false).label('Task Status'),
         nga.field('description', 'text'),
-        //nga.field('jobConfig','json').defaultValue({}).label('Job Config'),
+        nga.field('jobConfig','json').defaultValue({}).label('Job Config'),
         nga.field('connectorConfig','json').label('Connect Config')
     ]);
 
 	transform.creationView().fields([
         nga.field('taskSeq', 'number').label('Task Seq'),
         nga.field('name').label('Task Name'),
-        //nga.field('connectUid').attributes({placeholder:'No space allowed and 5 chars min.'}).validation({ required: true, pattern: '[A-Za-z0-9\-]{5,20}' }).label('Transforms'),
         nga.field('connectorType', 'choice')
                 .choices([
-                                {value:'TRANSFORM_FLINK_SQL_GENE', label:'Flink Streaming SQL (Json/Json String to Json/Json String)'},
-                                {value:'TRANSFORM_FLINK_SQL_A2J', label:'Flink Streaming SQL (Avro to Json)'},
-                                {value:'TRANSFORM_FLINK_SQL_J2J', label:'Flink Streaming SQL (Json to Json)'},
+                                {value:'TRANSFORM_FLINK_SQL_A2A', label:'Flink Streaming SQL'},
                                 {value:'TRANSFORM_FLINK_SCRIPT', label:'Flink Table API'},
                                 {value:'TRANSFORM_FLINK_UDF', label:'Flink User Defined Function'}]).label('Transforms Type'),
         nga.field('udfUpload', 'file').label('Upload Jar').uploadInformation({ 'url': 'http://localhost:8080/api/df/uploaded_files', 'method': 'POST', 'apifilename': 'uploaded_file_name' })
@@ -183,13 +159,13 @@ customHeaderTemplate =
         nga.field('status').editable(false).label('Task Status'),
         nga.field('description', 'text'),
         nga.field('jobConfig','json').defaultValue({}).label('Job Config'),
-        nga.field('connectorConfig_1','json').label('Transform Config')
+        nga.field('connectorConfig','json').label('Transform Config')
         .defaultValue({
 		"config_ignored" : "remove this template marker to submit, /* this is comments */",
         "trans.jar" : "test_flink_udf.jar /* The name of UDF Jar file uploaded */"
         })
         .template('<ma-field ng-if="entry.values.connectorType == \'TRANSFORM_FLINK_UDF\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true),
-        nga.field('connectorConfig_2','json').label('Transforms Config')
+        nga.field('connectorConfig_1','json').label('Transforms Config')
         .defaultValue({
 		"config_ignored" : "remove this template marker to submit, /* this is comments */",
         "group.id" : "fink_table /* Kafka consumer id. */",
@@ -200,43 +176,19 @@ customHeaderTemplate =
         "trans.script" : "select(\"name\") /* The Flink Stream Table API */"
         })
         .template('<ma-field ng-if="entry.values.connectorType == \'TRANSFORM_FLINK_SCRIPT\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true),
-        nga.field('connectorConfig_3','json').label('Transforms Config')
+        nga.field('connectorConfig_2','json').label('Transforms Config')
         .defaultValue({
 		"config_ignored" : "remove this template marker to submit, /* this is comments */",
         "group.id" : "fink_sql /* Kafka consumer id. */",
-        "schema.subject" : "test-value /* The subject name for the schema */",
+        "schema.subject.in" : "test-value /* The subject name for the input schema */",
+        "schema.subject.out" : "test-value /* The subject name for the output schema */",
+        "sink.key.fields":"name /* List of commas separated columns for keys in sink */",
         "schema.version" : "latest /* The version for the schema. This is optional. */",
-        "topic.for.query" : "stock /* The Kafka topic to query data */",
-        "topic.for.result" : "output /* The Kafka topic to output data */",
+        "topic.in" : "stock /* The Kafka topic to query data */",
+        "topic.out" : "output /* The Kafka topic to output data */",
         "trans.sql" : "SELECT name, symbol from stock /* The Flink Stream SQL query.*/"
         })
-        .template('<ma-field ng-if="entry.values.connectorType == \'TRANSFORM_FLINK_SQL_A2J\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true),
-        nga.field('connectorConfig_4','json').label('Transforms Config')
-        .defaultValue({
-		"config_ignored" : "remove this template marker to submit, /* this is comments */",
-        "group.id" : "fink_sql /* Kafka consumer id. */",
-        "column.name.list" : "name, symbol /* The list of Json column names output to Kafka topic.*/",
-        "column.schema.list" : "string, string /* The list of data type for Json data */",
-        "topic.for.query" : "stock /* The Kafka topic to query data */",
-        "topic.for.result" : "output /* The Kafka topic to output data */",
-        "trans.sql" : "SELECT name, symbol from stock /* The Flink Stream SQL query.*/"
-        })
-        .template('<ma-field ng-if="entry.values.connectorType == \'TRANSFORM_FLINK_SQL_J2J\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true),
-        nga.field('connectorConfig','json').label('Transforms Config')
-		.defaultValue({
-		"config_ignored" : "remove this template marker to submit, /* this is comments */",
-		"group.id" : "Kafka consumer id, optional.",
-		"data.format.input" : "json_string /* Can be json_string or json */",
-		"data.format.output" : "json_string /* Can be json_string or json */",
-		"avro.schema.enabled" : "false /* Whether AVRO schema is enabled in Kafka Connect.*/",
-        "column.name.list" : "name, symbol /* The list of Json column names output to Kafka topic.*/",
-        "column.schema.list" : "string, string /* The list of data type for Json data */",
-        "topic.for.query" : "stock /* The Kafka topic to query data */",
-        "topic.for.result" : "output /* The Kafka topic to output data */",
-        "trans.sql" : "SELECT name, symbol from stock /* The Flink Stream SQL query.*/"
-		})
-		.template('<ma-field ng-if="entry.values.connectorType == \'TRANSFORM_FLINK_SQL_GENE\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true)
-
+        .template('<ma-field ng-if="entry.values.connectorType == \'TRANSFORM_FLINK_SQL_A2A\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true)
     ]);
 
 	transform.editionView().fields([
@@ -281,8 +233,6 @@ customHeaderTemplate =
                                                         {value:'BACKWARD', label:'BACKWARD'}
                                                         ]).label('Compatibility')
     ]);
-	// TODO populate default value for each type of transforms/connects as template
-    // use the same fields for the editionView as for the creationView
 
 	schema.editionView().actions(['list']);
 

@@ -1,5 +1,7 @@
 package com.datafibers.processor;
 
+import com.datafibers.flinknext.KafkaAvroTableSource;
+import com.datafibers.util.SchemaRegistryClient;
 import io.vertx.core.Vertx;
 import io.vertx.core.WorkerExecutor;
 import io.vertx.core.json.JsonObject;
@@ -28,9 +30,6 @@ import org.apache.log4j.Logger;
 import com.datafibers.flinknext.DFRemoteStreamEnvironment;
 import com.datafibers.flinknext.Kafka09AvroTableSink;
 import com.datafibers.flinknext.Kafka09AvroTableSource;
-import com.datafibers.flinknext.Kafka09JsonTableSink;
-import com.datafibers.flinknext.Kafka09JsonTableSource;
-import com.datafibers.flinknext.KafkaJsonTableSource;
 import com.datafibers.model.DFJobPOPJ;
 import com.datafibers.util.ConstantApp;
 import com.datafibers.util.DynamicRunner;
@@ -122,16 +121,16 @@ public class FlinkTransformProcessor {
                 }).addSink(new FlinkKafkaProducer09<String>(kafkaHostPort, inputTopic_stage, new SimpleStringSchema()));
                 // Internal covert Json String to Json - End
 
-                KafkaJsonTableSource kafkaTableSource =
-                        new Kafka09JsonTableSource(inputTopic_stage, properties, fieldNames, fieldTypes);
+                KafkaAvroTableSource kafkaTableSource =
+                        new Kafka09AvroTableSource(inputTopic_stage, properties, fieldNames, fieldTypes);
 
                 tableEnv.registerTableSource(inputTopic_stage, kafkaTableSource);
 
                 // run a SQL query on the Table and retrieve the result as a new Table
                 result = tableEnv.sql(transSql.replace(inputTopic, inputTopic_stage));
             } else { // Topic has json data, no transformation needed
-                KafkaJsonTableSource kafkaTableSource =
-                        new Kafka09JsonTableSource(inputTopic, properties, fieldNames, fieldTypes);
+                KafkaAvroTableSource kafkaTableSource =
+                        new Kafka09AvroTableSource(inputTopic, properties, fieldNames, fieldTypes);
 
                 tableEnv.registerTableSource(inputTopic, kafkaTableSource);
 
@@ -143,7 +142,7 @@ public class FlinkTransformProcessor {
 
             if (dfJob.getConnectorConfig().get("data.format.output").trim().toLowerCase().
                     equalsIgnoreCase("json_string")) {
-                Kafka09JsonTableSink sinkJsonString = new Kafka09JsonTableSink (outputTopic_stage, properties, partition);
+                Kafka09AvroTableSink sinkJsonString = new Kafka09AvroTableSink (outputTopic_stage, properties, partition);
                 result.writeToSink(sinkJsonString); // Flink will create the output result topic automatically
 
                 // Internal covert Json to Json String - Begin
@@ -158,7 +157,7 @@ public class FlinkTransformProcessor {
                 }).addSink(new FlinkKafkaProducer09<String>(kafkaHostPort, outputTopic, new SimpleStringSchema()));
                 // Internal covert Json to Json String - End
             } else {
-                Kafka09JsonTableSink sink = new Kafka09JsonTableSink (outputTopic, properties, partition);
+                Kafka09AvroTableSink sink = new Kafka09AvroTableSink (outputTopic, properties, partition);
                 result.writeToSink(sink); // Flink will create the output result topic automatically
             }
 
@@ -252,15 +251,15 @@ public class FlinkTransformProcessor {
     				}
     			}
     			Table result;
-    			KafkaJsonTableSource kafkaTableSource =
-    					new Kafka09JsonTableSource(inputTopic, properties, fieldNames, fieldTypes);
+    			KafkaAvroTableSource kafkaTableSource =
+    					new Kafka09AvroTableSource(inputTopic, properties, fieldNames, fieldTypes);
 
     			LOG.info("registerTableSource:inputTopic:" + inputTopic.toString());
     			tableEnv.registerTableSource(inputTopic, kafkaTableSource);
     			// run a SQL query on the Table and retrieve the result as a new Table
     			LOG.info("Table Env Sql:" + transSql.toString());
     			result = tableEnv.sql(transSql);
-    			Kafka09JsonTableSink sink = new Kafka09JsonTableSink (outputTopic, properties, new FlinkFixedPartitioner());
+    			Kafka09AvroTableSink sink = new Kafka09AvroTableSink (outputTopic, properties, new FlinkFixedPartitioner());
     			result.writeToSink(sink); // Flink will create the output result topic automatically
     		} catch (Exception e) {
     			LOG.error("Flink table register and SQL Exception:" + e.getCause());
@@ -298,53 +297,53 @@ public class FlinkTransformProcessor {
      * @param vertx
      * @param maxRunTime
      * @param flinkEnv
-     * @param zookeeperHostPort
      * @param kafkaHostPort
      * @param groupid
-     * @param inputTopic
-     * @param outputTopic
+     * @param topicIn
+     * @param topicOut
      * @param transSql
      * @param mongoClient
      * @param mongoCOLLECTION
      */
-    public static void submitFlinkSQLA2J(DFJobPOPJ dfJob, Vertx vertx, Integer maxRunTime,
-                                         DFRemoteStreamEnvironment flinkEnv, String zookeeperHostPort,
-                                         String kafkaHostPort, String SchemaRegistryHostPort, String groupid,
-                                         String inputTopic, String outputTopic,
-                                         String transSql, String schemSubject, String staticSchemaString,
+    public static void submitFlinkSQLA2A(DFJobPOPJ dfJob, Vertx vertx, Integer maxRunTime,
+                                         DFRemoteStreamEnvironment flinkEnv, String kafkaHostPort,
+                                         String SchemaRegistryHostPort, String groupid,
+                                         String topicIn, String topicOut, String sinkKeys,
+                                         String transSql, String schemSubjectIn, String schemaSubjectOut,
                                          MongoClient mongoClient, String mongoCOLLECTION) {
 
         String uuid = dfJob.hashCode() + "";
         StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(flinkEnv);
         Properties properties = new Properties();
-        properties.setProperty("bootstrap.servers", kafkaHostPort);
-        properties.setProperty("group.id", groupid);
-        properties.setProperty("schema.subject", schemSubject);
-        properties.setProperty("output.schema.subject", schemSubject);
-        properties.setProperty("schema.registry", SchemaRegistryHostPort);
-        properties.setProperty("static.avro.schema", staticSchemaString);
-        properties.setProperty("useAvro", "avro");
- 
-        
-        //properties.setProperty("output.schema.id", schemSubject);
-        //properties.setProperty("output.schema.string", schemSubject);
-        //properties.setProperty("input.schema.string", schemSubject);
-        //getLatestSchemaNodeFromProperty as string
+        properties.setProperty(ConstantApp.PK_KAFKA_HOST_PORT, kafkaHostPort);
+        properties.setProperty(ConstantApp.PK_KAFKA_CONSUMER_GROURP, groupid);
+        properties.setProperty(ConstantApp.PK_SCHEMA_SUB_INPUT, schemSubjectIn);
+        properties.setProperty(ConstantApp.PK_SCHEMA_SUB_OUTPUT, schemaSubjectOut);
+        properties.setProperty(ConstantApp.PK_KAFKA_SCHEMA_REGISTRY_HOST_PORT, SchemaRegistryHostPort);
+        properties.setProperty(ConstantApp.PK_FLINK_TABLE_SINK_KEYS, sinkKeys);
 
-        LOG.info(HelpFunc.getPropertyAsString(properties));
+        // delivered properties
+        properties.setProperty(ConstantApp.PK_SCHEMA_ID_INPUT,
+                SchemaRegistryClient.getLatestSchemaIDFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_INPUT) + "");
+        properties.setProperty(ConstantApp.PK_SCHEMA_ID_OUTPUT,
+                SchemaRegistryClient.getLatestSchemaIDFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT) + "");
+        properties.setProperty(ConstantApp.PK_SCHEMA_STR_INPUT,
+                SchemaRegistryClient.getLatestSchemaFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_INPUT).toString());
+        properties.setProperty(ConstantApp.PK_SCHEMA_STR_OUTPUT,
+                SchemaRegistryClient.getLatestSchemaFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT).toString());
+
+        LOG.debug(HelpFunc.getPropertyAsString(properties));
 
         WorkerExecutor exec_flink = vertx.createSharedWorkerExecutor(dfJob.getName() + dfJob.hashCode(),ConstantApp.WORKER_POOL_SIZE, ConstantApp.MAX_RUNTIME);
 
         exec_flink.executeBlocking(future -> {
 
             try {
-                Kafka09AvroTableSource kafkaAvroTableSource =  new Kafka09AvroTableSource(inputTopic, properties);
-                tableEnv.registerTableSource(inputTopic, kafkaAvroTableSource);
+                Kafka09AvroTableSource kafkaAvroTableSource =  new Kafka09AvroTableSource(topicIn, properties);
+                tableEnv.registerTableSource(topicIn, kafkaAvroTableSource);
                 Table result = tableEnv.sql(transSql);
-                //Kafka09JsonTableSink json_sink =
-                       // new Kafka09JsonTableSink (outputTopic, properties, new FlinkFixedPartitioner());
                 Kafka09AvroTableSink json_sink =
-                        new Kafka09AvroTableSink (outputTopic, properties, new FlinkFixedPartitioner());
+                        new Kafka09AvroTableSink (topicOut, properties, new FlinkFixedPartitioner());
                result.writeToSink(json_sink);
                JobExecutionResult jres = flinkEnv.executeWithDFObj("DF_FLINK_TRANS_SQL_AVRO_TO_JSON_" + uuid, dfJob);
             } catch (Exception e) {
@@ -356,7 +355,7 @@ public class FlinkTransformProcessor {
             LOG.debug("BLOCKING CODE IS TERMINATE?FINISHED" + res.cause());
         });
 
-        long timerID = vertx.setTimer(8000, id -> {
+        long timerID = vertx.setTimer(maxRunTime, id -> {
             // exec_flink.close();
             LOG.info("Job - DF_FLINK_TRANS_" + uuid +  "'s JobID is - " + dfJob.getFlinkIDFromJobConfig());
             mongoClient.updateCollection(mongoCOLLECTION, new JsonObject().put("_id", dfJob.getId()),
@@ -433,8 +432,8 @@ public class FlinkTransformProcessor {
                 Class aClass = CompilerUtils.CACHED_COMPILER.loadFromJava(className, javaCode);
                 DynamicRunner runner = (DynamicRunner) aClass.newInstance();
                 Table result = runner.transTableObj(ingest); // TODO select * support after Flink 1.2
-                Kafka09JsonTableSink json_sink =
-                        new Kafka09JsonTableSink (outputTopic, properties, new FlinkFixedPartitioner());
+                Kafka09AvroTableSink json_sink =
+                        new Kafka09AvroTableSink (outputTopic, properties, new FlinkFixedPartitioner());
                 result.writeToSink(json_sink);
                 JobExecutionResult jres = flinkEnv.executeWithDFObj("DF_FLINK_TRANS_SQL_AVRO_TO_JSON_" + uuid, dfJob);
             } catch (Exception e) {
@@ -509,7 +508,8 @@ public class FlinkTransformProcessor {
                                        String colSchemaList, String inputTopic, String outputTopic,
                                        String transSql, MongoClient mongoClient, String mongoCOLLECTION,
                                        String jobManagerHostPort, RoutingContext routingContext,
-                                       String SchemaRegistryHostPort, String schemSubject, String staticSchemaString) {
+                                       String SchemaRegistryHostPort, String schemSubject, String schemaSubjectOut,
+                                       String sinkKeys) {
 
         final String id = routingContext.request().getParam("id");
 
@@ -528,9 +528,9 @@ public class FlinkTransformProcessor {
         }
 
         // Submit Flink SQL Avro to Json
-        if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_FLINK_SQL_A2J.name()) {
-            submitFlinkSQLA2J(dfJob, vertx, maxRunTime, flinkEnv, zookeeperHostPort, kafkaHostPort,
-                    SchemaRegistryHostPort, groupid, inputTopic, outputTopic, transSql, schemSubject, staticSchemaString,
+        if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_FLINK_SQL_A2A.name()) {
+            submitFlinkSQLA2A(dfJob, vertx, maxRunTime, flinkEnv, kafkaHostPort,
+                    SchemaRegistryHostPort, groupid, inputTopic, outputTopic, sinkKeys, transSql, schemSubject, schemaSubjectOut,
                     mongoClient, mongoCOLLECTION);
         }
 
@@ -570,7 +570,7 @@ public class FlinkTransformProcessor {
                 kafkaHostPort, groupid, colNameList,
                 colSchemaList, inputTopic, outputTopic,
                 transSql, mongoClient, mongoCOLLECTION,
-                jobManagerHostPort, routingContext, null, null, null);
+                jobManagerHostPort, routingContext, null, null, null, outputTopic);
 
     }
 
