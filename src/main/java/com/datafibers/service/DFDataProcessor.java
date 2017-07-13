@@ -805,8 +805,8 @@ public class DFDataProcessor extends AbstractVerticle {
                         dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_OUTPUT),
                         dfJob.getConnectorConfig().get(ConstantApp.PK_FLINK_TABLE_SINK_KEYS),
                         dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL),
-                        dfJob.getConnectorConfig().get("schema.subject.in"),
-                        dfJob.getConnectorConfig().get("schema.subject.out"),
+                        dfJob.getConnectorConfig().get(ConstantApp.PK_SCHEMA_SUB_INPUT),
+                        dfJob.getConnectorConfig().get(ConstantApp.PK_SCHEMA_SUB_OUTPUT),
                         mongo, COLLECTION);
             }
 

@@ -114,7 +114,6 @@ public final class ConstantApp {
     public static final String COMPATIBILITY = "compatibility";
     public static final String SUBJECT = "subject";
     public static final String COMPATIBILITY_LEVEL = "compatibilityLevel";
-    public static final String COMPATIBILITYLEVEL = "compatibilityLevel";
     public static final int WORKER_POOL_SIZE = 20; // VERT.X Worker pool size
     public static final int MAX_RUNTIME = 6000;  // VERT.X Worker timeout in 6 sec
 
