@@ -17,9 +17,7 @@ public class KafkaConnectProcessor {
 
     private static final Logger LOG = Logger.getLogger(KafkaConnectProcessor.class);
     
-    public KafkaConnectProcessor(){
-
-    }
+    public KafkaConnectProcessor(){}
 
     /**
      * This method first decode the REST POST request to DFJobPOPJ object. Then, it updates its job status and repack

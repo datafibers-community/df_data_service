@@ -782,7 +782,7 @@ public class DFDataProcessor extends AbstractVerticle {
                 HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()), DFJobPOPJ.class);
         dfJob.setStatus(ConstantApp.DF_STATUS.RUNNING.name());
         String mongoId = new ObjectId().toString();
-        dfJob.setConnectUid(mongoId).setId(mongoId).getConnectorConfig().put("cuid", mongoId);
+        dfJob.setConnectUid(mongoId).setId(mongoId).getConnectorConfig().put(ConstantApp.PK_TRANSFORM_CUID, mongoId);
 
         LOG.info("received from UI form - " + HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()));
 
@@ -791,11 +791,17 @@ public class DFDataProcessor extends AbstractVerticle {
             if(dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_FLINK_SQL_GENE.name()) {
                 FlinkTransformProcessor.runFlinkJar(dfJob.getUdfUpload(),
                         this.flink_server_host + ":" + this.flink_server_port);
-            }
+            } else {
+                String engine = "";
+                if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_FLINK_SQL_A2A.name()) {
+                    engine = "SQL_API";
+                }
 
-            // Submit Flink SQL Avro to Avro
-            if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_FLINK_SQL_A2A.name()) {
-                FlinkTransformProcessor.submitFlinkSQLA2A(dfJob, vertx,
+                if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_FLINK_SCRIPT.name()) {
+                    engine = "TABLE_API";
+                }
+
+                FlinkTransformProcessor.submitFlinkJobA2A(dfJob, vertx,
                         config().getInteger("flink.trans.client.timeout", 8000), env,
                         this.kafka_server_host_and_port,
                         this.schema_registry_host_and_port,
@@ -807,27 +813,7 @@ public class DFDataProcessor extends AbstractVerticle {
                         dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL),
                         dfJob.getConnectorConfig().get(ConstantApp.PK_SCHEMA_SUB_INPUT),
                         dfJob.getConnectorConfig().get(ConstantApp.PK_SCHEMA_SUB_OUTPUT),
-                        mongo, COLLECTION);
-            }
-
-            // Submit Flink Script API
-            if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_FLINK_SCRIPT.name()) {
-                FlinkTransformProcessor.submitFlinkScriptA2J(dfJob, vertx,
-                        config().getInteger("flink.trans.client.timeout", 8000), env,
-                        this.zookeeper_server_host_and_port,
-                        this.kafka_server_host_and_port,
-                        this.schema_registry_host_and_port,
-                        HelpFunc.coalesce(dfJob.getConnectorConfig().get("group.id"),
-                                ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
-                        dfJob.getConnectorConfig().get("topic.for.query"),
-                        dfJob.getConnectorConfig().get("topic.for.result"),
-                        dfJob.getConnectorConfig().get("trans.script"),
-                        dfJob.getConnectorConfig().get("schema.subject"),
-                        HelpFunc.coalesce(dfJob.getConnectorConfig().get("static.avro.schema"),
-                                SchemaRegistryClient.getSchemaFromRegistrywithDefault(this.schema_registry_host_and_port,
-                                        dfJob.getConnectorConfig().get("schema.subject"),
-                                        dfJob.getConnectorConfig().get("schema.version")).toString()),
-                        mongo, COLLECTION);
+                        mongo, COLLECTION, engine);
             }
         }
 
@@ -1090,12 +1076,9 @@ public class DFDataProcessor extends AbstractVerticle {
                                 //here update is to cancel exiting job and submit a new one
                                 FlinkTransformProcessor.updateFlinkSQL(dfJob, vertx,
                                         config().getInteger("flink.trans.client.timeout", 8000), env,
-                                        this.zookeeper_server_host_and_port,
                                         this.kafka_server_host_and_port,
                                         HelpFunc.coalesce(dfJob.getConnectorConfig().get("group.id"),
                                                 ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
-                                        dfJob.getConnectorConfig().get("column.name.list"),
-                                        dfJob.getConnectorConfig().get("column.schema.list"),
                                         dfJob.getConnectorConfig().get("topic.for.query"),
                                         dfJob.getConnectorConfig().get("topic.for.result"),
                                         dfJob.getConnectorConfig().get("trans.sql"),

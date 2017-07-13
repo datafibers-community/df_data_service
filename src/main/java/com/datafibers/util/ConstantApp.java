@@ -98,7 +98,7 @@ public final class ConstantApp {
         TRANSFORM_FLINK_SQL_GENE,     // Flink streaming SQL
         TRANSFORM_FLINK_SQL_A2A,      // Flink streaming SQL from Avro to Avro
         TRANSFORM_FLINK_SQL_J2J,      // Flink streaming SQL from Json to Json
-        TRANSFORM_FLINK_SCRIPT,        // Flink streaming of Table API
+        TRANSFORM_FLINK_SCRIPT,       // Flink streaming of Table API
         TRANSFORM_FLINK_UDF,          // Flink user defined jar/program
         TRANSFORM_SPARK_SQL,          // Spark streaming SQL
         TRANSFORM_SPARK_BATCH_SQL,    // Spark streaming SQL
@@ -118,6 +118,9 @@ public final class ConstantApp {
     public static final int MAX_RUNTIME = 6000;  // VERT.X Worker timeout in 6 sec
 
     // Properties keys for UI
+
+    public static final String PK_TRANSFORM_CUID = "cuid";
+
     public static final String PK_SCHEMA_ID_INPUT = "schema.ids.in";
     public static final String PK_SCHEMA_ID_OUTPUT = "schema.ids.out";
     public static final String PK_SCHEMA_STR_INPUT = "schema.string.in";
@@ -133,6 +136,5 @@ public final class ConstantApp {
     public static final String PK_KAFKA_TOPIC_INPUT = "topic.in";
     public static final String PK_KAFKA_TOPIC_OUTPUT = "topic.out";
     public static final String PK_TRANSFORM_SQL = "trans.sql";
-
-    //TODO add more properties
+    public static final String PK_TRANSFORM_SCRIPT = "trans.script";
 }
