@@ -75,6 +75,8 @@ public class FlinkTransformProcessor {
 
         LOG.debug(HelpFunc.getPropertyAsString(properties));
 
+        // validation
+
         WorkerExecutor exec_flink = vertx.createSharedWorkerExecutor(dfJob.getName() + dfJob.hashCode(),ConstantApp.WORKER_POOL_SIZE, ConstantApp.MAX_RUNTIME);
 
         exec_flink.executeBlocking(future -> {
