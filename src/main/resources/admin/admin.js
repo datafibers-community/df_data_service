@@ -249,7 +249,7 @@ customHeaderTemplate =
     processor.listView().title('All Connects and Transforms');
     processor.listView().batchActions([]);
 
-    // set the fields of the connect entity list view // TODO make sort work
+    // set the fields of the connect entity list view
     installed_connects.listView().fields([
         nga.field('name'),
         nga.field('type'),

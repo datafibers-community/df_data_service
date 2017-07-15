@@ -77,12 +77,12 @@ public class DFDataProcessor extends AbstractVerticle {
     public static Boolean transform_engine_flink_enabled;
     private static String flink_server_host;
     private static Integer flink_server_port;
+    private static Integer flink_rest_server_port;
     public static DFRemoteStreamEnvironment env;
 
     // Kafka attributes
     private static String zookeeper_server_host;
     private static Integer zookeeper_server_port;
-    private static String zookeeper_server_host_and_port;
     private static String kafka_server_host;
     private static Integer kafka_server_port;
     public static String kafka_server_host_and_port;
@@ -115,11 +115,11 @@ public class DFDataProcessor extends AbstractVerticle {
         this.transform_engine_flink_enabled = config().getBoolean("transform.engine.flink.enable", Boolean.TRUE);
         this.flink_server_host = config().getString("flink.servers.host", "localhost");
         this.flink_server_port = config().getInteger("flink.servers.port", 6123);
+        this.flink_rest_server_port = config().getInteger("flink.rest.server.port", 8001); // Same to Flink Web Dashboard
 
         // Kafka config
         this.zookeeper_server_host = config().getString("zookeeper.server.host", "localhost");
         this.zookeeper_server_port = config().getInteger("zookeeper.server.port", 2181);
-        this.zookeeper_server_host_and_port = this.zookeeper_server_host + ":" + this.zookeeper_server_port.toString();
         this.kafka_server_host = this.kafka_connect_rest_host;
         this.kafka_server_port = config().getInteger("kafka.server.port", 9092);
         this.kafka_server_host_and_port = this.kafka_server_host + ":" + this.kafka_server_port.toString();
@@ -207,6 +207,7 @@ public class DFDataProcessor extends AbstractVerticle {
         if(this.kafka_connect_enabled) {
             long timerID = vertx.setPeriodic(ConstantApp.REGULAR_REFRESH_STATUS_TO_REPO, id -> {
                 updateKafkaConnectorStatus();
+                updateFlinkJobStatus();
             });
         }
 
@@ -1073,21 +1074,24 @@ public class DFDataProcessor extends AbstractVerticle {
                             // Detect changes in connectConfig
                             if (this.transform_engine_flink_enabled && dfJob.getConnectorType().contains("FLINK") &&
                                     connectorConfigString.compareTo(before_update_connectorConfigString) != 0) {
-                                //here update is to cancel exiting job and submit a new one
-                                FlinkTransformProcessor.updateFlinkSQL(dfJob, vertx,
-                                        config().getInteger("flink.trans.client.timeout", 8000), env,
-                                        this.kafka_server_host_and_port,
-                                        HelpFunc.coalesce(dfJob.getConnectorConfig().get("group.id"),
-                                                ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
-                                        dfJob.getConnectorConfig().get("topic.for.query"),
-                                        dfJob.getConnectorConfig().get("topic.for.result"),
-                                        dfJob.getConnectorConfig().get("trans.sql"),
-                                        mongo, COLLECTION, this.flink_server_host + ":" + this.flink_server_port,
-                                        routingContext, this.schema_registry_host_and_port,
-                                        dfJob.getConnectorConfig().get("schema.subject"),
-                                        dfJob.getConnectorConfig().get("schema.subject"),
-                                        HelpFunc.coalesce(dfJob.getConnectorConfig().get("static.avro.schema"),"empty_schema")
-                                        );
+
+                                // TODO - if running then cancel and resubmit, else resubmit
+
+//                                //here update is to cancel exiting job and submit a new one
+//                                FlinkTransformProcessor.updateFlinkSQL(dfJob, vertx,
+//                                        config().getInteger("flink.trans.client.timeout", 8000), env,
+//                                        this.kafka_server_host_and_port,
+//                                        HelpFunc.coalesce(dfJob.getConnectorConfig().get("group.id"),
+//                                                ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
+//                                        dfJob.getConnectorConfig().get("topic.for.query"),
+//                                        dfJob.getConnectorConfig().get("topic.for.result"),
+//                                        dfJob.getConnectorConfig().get("trans.sql"),
+//                                        mongo, COLLECTION, this.flink_server_host + ":" + this.flink_server_port,
+//                                        routingContext, this.schema_registry_host_and_port,
+//                                        dfJob.getConnectorConfig().get("schema.subject"),
+//                                        dfJob.getConnectorConfig().get("schema.subject"),
+//                                        HelpFunc.coalesce(dfJob.getConnectorConfig().get("static.avro.schema"),"empty_schema")
+//                                        );
 
                             } else { // Where there is no change detected
                                 LOG.info("connectorConfig has NO change. Update in local repository only.");
@@ -1134,7 +1138,7 @@ public class DFDataProcessor extends AbstractVerticle {
      *       "message" : "Delete Request exception - Bad Request."
      *     }
      */
-    private void deleteOneConnects(RoutingContext routingContext) {
+    private void deleteOneConnects(RoutingContext routingContext) { //TODO - TEST Cancel
         String id = routingContext.request().getParam("id");
         
         LOG.info("");
@@ -1175,7 +1179,7 @@ public class DFDataProcessor extends AbstractVerticle {
     }
 
 	
-	   /**
+    /**
      * Connects specific deleteOne End Point for Rest API
      * @param routingContext
      *
@@ -1271,9 +1275,10 @@ public class DFDataProcessor extends AbstractVerticle {
                         return;
                     }
                     DFJobPOPJ dfJob = new DFJobPOPJ(ar.result());
-                    if (this.transform_engine_flink_enabled && dfJob.getConnectorType().contains("FLINK")) {
+                    if (this.transform_engine_flink_enabled && dfJob.getConnectorType().contains("FLINK")
+                            && dfJob.getStatus().equalsIgnoreCase("RUNNING")) {
                         FlinkTransformProcessor.cancelFlinkSQL(this.flink_server_host + ":" + this.flink_server_port,
-                                dfJob.getJobConfig().get("flink.submit.job.id"),
+                                dfJob.getJobConfig().get(ConstantApp.PK_FLINK_SUBMIT_JOB_ID),
                                 mongo, COLLECTION, routingContext);
                     } else {
                         mongo.removeDocument(COLLECTION, new JsonObject().put("_id", id),
@@ -1489,7 +1494,7 @@ public class DFDataProcessor extends AbstractVerticle {
         // Add all Kafka connect TODO add a function to add all connects to List
         HelpFunc.addSpecifiedConnectTypetoList(list, "connect");
 
-        String restURI = "http://" + this.kafka_connect_rest_host+ ":" + this.kafka_connect_rest_port +
+        String restURI = "http://" + this.flink_server_host+ ":" + this.flink_server_port +
                 ConstantApp.KAFKA_CONNECT_REST_URL;
 
         mongo.find(COLLECTION, new JsonObject().put("connectorType", new JsonObject().put("$in", list)), result -> {
@@ -1543,8 +1548,59 @@ public class DFDataProcessor extends AbstractVerticle {
     /**
      * Keep refreshing the active Flink transforms/job status against remote Flink REST Server since v1.2
      */
-    private void updateFlinkJobStatus() {
-        // TODO add implementation against Flink new REST API
+    private void updateFlinkJobStatus() { //TODO - Test status update
+        // Loop existing DF connects in repository and fetch their latest status from Flink Rest Server
+        List<String> list = new ArrayList<String>();
+        // Add all Kafka connect TODO add a function to add all connects to List
+        HelpFunc.addSpecifiedConnectTypetoList(list, "connect");
+
+        String restURI = "http://" + this.flink_server_host + ":" + this.flink_rest_server_port +
+                ConstantApp.FLINK_REST_URL;
+
+        mongo.find(COLLECTION, new JsonObject().put("connectorType", new JsonObject().put("$in", list)), result -> {
+            if (result.succeeded()) {
+                for (JsonObject json : result.result()) {
+                    String statusRepo = json.getString("status");
+                    String jobId = json.getJsonObject("jobConfig").getString(ConstantApp.PK_FLINK_SUBMIT_JOB_ID);
+                    // Get task status
+                    try {
+                        String resStatus;
+                        HttpResponse<JsonNode> resConnectorStatus =
+                                Unirest.get(restURI + "/" + jobId)
+                                        .header("accept", "application/json").asJson();
+                        if(resConnectorStatus.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND) {
+                            // Not find - Mark status as LOST
+                            resStatus = ConstantApp.DF_STATUS.LOST.name();
+                        } else {
+                            resStatus = resConnectorStatus.getBody().getObject().getString("state");
+                        }
+
+                        // Do change detection on status
+                        if (statusRepo.compareToIgnoreCase(resStatus) != 0) { //status changes
+                            DFJobPOPJ updateJob = new DFJobPOPJ(json);
+                            updateJob.setStatus(resStatus);
+
+                            mongo.updateCollection(COLLECTION, new JsonObject().put("_id", updateJob.getId()),
+                                    // The update syntax: {$set, the json object containing the fields to update}
+                                    new JsonObject().put("$set", updateJob.toJson()), v -> {
+                                        if (v.failed()) {
+                                            LOG.error("Update Status - Update status failed", v.cause());
+                                        } else {
+                                            LOG.debug("Update Status - Update status Successfully");
+                                        }
+                                    }
+                            );
+                        } else {
+                            // LOG.info("Refreshing Connects status from Kafka Connect REST Server - No Changes.");
+                        }
+                    } catch (UnirestException ue) {
+                        LOG.error("Refreshing status REST client exception", ue.getCause());
+                    }
+                }
+            } else {
+                LOG.error("Refreshing status Mongo client find active connectors exception", result.cause());
+            }
+        });
     }
 
     /***

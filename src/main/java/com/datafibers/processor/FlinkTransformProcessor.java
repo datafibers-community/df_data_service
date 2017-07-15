@@ -1,5 +1,6 @@
 package com.datafibers.processor;
 
+import com.datafibers.exception.DFPropertyValidationException;
 import com.datafibers.util.SchemaRegistryClient;
 import io.vertx.core.Vertx;
 import io.vertx.core.WorkerExecutor;
@@ -50,38 +51,56 @@ public class FlinkTransformProcessor {
                                          DFRemoteStreamEnvironment flinkEnv, String kafkaHostPort,
                                          String SchemaRegistryHostPort, String groupid,
                                          String topicIn, String topicOut, String sinkKeys,
-                                         String transScript, String schemSubjectIn, String schemaSubjectOut,
+                                         String transScript, String schemaSubjectIn, String schemaSubjectOut,
                                          MongoClient mongoClient, String mongoCOLLECTION, String engine) {
 
         String uuid = dfJob.hashCode() + "";
         StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(flinkEnv);
+
+        // Set all properties. Note, all inputTopic related properties are set later in loop
         Properties properties = new Properties();
         properties.setProperty(ConstantApp.PK_KAFKA_HOST_PORT, kafkaHostPort);
         properties.setProperty(ConstantApp.PK_KAFKA_CONSUMER_GROURP, groupid);
-        properties.setProperty(ConstantApp.PK_SCHEMA_SUB_INPUT, schemSubjectIn);
         properties.setProperty(ConstantApp.PK_SCHEMA_SUB_OUTPUT, schemaSubjectOut);
         properties.setProperty(ConstantApp.PK_KAFKA_SCHEMA_REGISTRY_HOST_PORT, SchemaRegistryHostPort);
         properties.setProperty(ConstantApp.PK_FLINK_TABLE_SINK_KEYS, sinkKeys);
 
         // delivered properties
-        properties.setProperty(ConstantApp.PK_SCHEMA_ID_INPUT,
-                SchemaRegistryClient.getLatestSchemaIDFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_INPUT) + "");
         properties.setProperty(ConstantApp.PK_SCHEMA_ID_OUTPUT,
                 SchemaRegistryClient.getLatestSchemaIDFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT) + "");
-        properties.setProperty(ConstantApp.PK_SCHEMA_STR_INPUT,
-                SchemaRegistryClient.getLatestSchemaFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_INPUT).toString());
         properties.setProperty(ConstantApp.PK_SCHEMA_STR_OUTPUT,
                 SchemaRegistryClient.getLatestSchemaFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT).toString());
 
-        LOG.debug(HelpFunc.getPropertyAsString(properties));
+        // Check and validate properties
+        String[] topicInList = topicIn.split(",");
+        String[] schemaSubjectInList = schemaSubjectIn.split(",");
 
-        WorkerExecutor exec_flink = vertx.createSharedWorkerExecutor(dfJob.getName() + dfJob.hashCode(),ConstantApp.WORKER_POOL_SIZE, ConstantApp.MAX_RUNTIME);
+        if(topicInList.length != schemaSubjectInList.length)
+            throw new DFPropertyValidationException("Number of inputTopic and inputTopicSchema Mismatch.");
+        if(engine.equalsIgnoreCase("tABLE_API") && (topicInList.length > 1 || schemaSubjectInList.length > 1))
+            throw new DFPropertyValidationException("Script/Table API only supports single inputTopic/inputTopicSchema.");
+
+        WorkerExecutor exec_flink = vertx.createSharedWorkerExecutor(dfJob.getName() + dfJob.hashCode(),
+                ConstantApp.WORKER_POOL_SIZE, ConstantApp.MAX_RUNTIME);
 
         exec_flink.executeBlocking(future -> {
 
             try {
-                Kafka09AvroTableSource kafkaAvroTableSource =  new Kafka09AvroTableSource(topicIn, properties);
-                tableEnv.registerTableSource(topicIn, kafkaAvroTableSource);
+                // Support multiple inputTopics by reusing the same property for each topic in the list
+                // TODO - this is an alternative until we redesign the table source to support list of topics
+                for (int i = 0; i < schemaSubjectInList.length; i++) {
+                    // need to override all input meta, such as below
+                    properties.setProperty(ConstantApp.PK_SCHEMA_SUB_INPUT, schemaSubjectInList[i]);
+                    properties.setProperty(ConstantApp.PK_SCHEMA_ID_INPUT,
+                            SchemaRegistryClient.getLatestSchemaIDFromProperty(properties,
+                                    ConstantApp.PK_SCHEMA_SUB_INPUT) + "");
+                    properties.setProperty(ConstantApp.PK_SCHEMA_STR_INPUT,
+                            SchemaRegistryClient.getLatestSchemaFromProperty(properties,
+                                    ConstantApp.PK_SCHEMA_SUB_INPUT).toString());
+                    LOG.debug(HelpFunc.getPropertyAsString(properties));
+
+                    tableEnv.registerTableSource(topicInList[i], new Kafka09AvroTableSource(topicInList[i], properties));
+                }
 
                 Table result = null;
                 switch (engine.toUpperCase()) {
@@ -117,6 +136,7 @@ public class FlinkTransformProcessor {
                 Kafka09AvroTableSink avro_sink =
                         new Kafka09AvroTableSink (topicOut, properties, new FlinkFixedPartitioner());
                 result.writeToSink(avro_sink);
+
                 JobExecutionResult jres = flinkEnv.executeWithDFObj("DF_FLINK_A2A_" + engine.toUpperCase() + uuid, dfJob);
             } catch (Exception e) {
                 LOG.error("Flink Submit Exception:" + e.getCause());
