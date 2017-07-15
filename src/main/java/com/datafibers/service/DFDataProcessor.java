@@ -139,11 +139,12 @@ public class DFDataProcessor extends AbstractVerticle {
 
         // Non-blocking Vertx Rest API Client to talk to Kafka Connect when needed
         if (this.kafka_connect_enabled) {
-            final ObjectMapper objectMapper = new ObjectMapper();
+
+            // For kafka connect rest service
             final List<HttpMessageConverter> httpMessageConverters = ImmutableList.of(
                     new FormHttpMessageConverter(),
                     new StringHttpMessageConverter(),
-                    new JacksonJsonHttpMessageConverter(objectMapper)
+                    new JacksonJsonHttpMessageConverter(new ObjectMapper())
             );
             final RestClientOptions restClientOptions = new RestClientOptions()
                     .setConnectTimeout(ConstantApp.REST_CLIENT_CONNECT_TIMEOUT)
@@ -154,15 +155,15 @@ public class DFDataProcessor extends AbstractVerticle {
                     .setMaxPoolSize(ConstantApp.REST_CLIENT_MAX_POOL_SIZE);
 
             this.rc = RestClient.create(vertx, restClientOptions, httpMessageConverters);
+
             // For query schema registry
-            final ObjectMapper objectMapper2 = new ObjectMapper();
-            final List<HttpMessageConverter> httpMessageConverters2 = ImmutableList.of(
+            final List<HttpMessageConverter> httpMessageConvertersSchemaRegister = ImmutableList.of(
                     new FormHttpMessageConverter(),
                     new StringHttpMessageConverter(),
-                    new JacksonJsonHttpMessageConverter(objectMapper2)
+                    new JacksonJsonHttpMessageConverter(new ObjectMapper())
             );
 
-            final RestClientOptions restClientOptions2 = new RestClientOptions()
+            final RestClientOptions restClientOptionsSchemaRegister = new RestClientOptions()
                     .setConnectTimeout(ConstantApp.REST_CLIENT_CONNECT_TIMEOUT)
                     .setGlobalRequestTimeout(ConstantApp.REST_CLIENT_GLOBAL_REQUEST_TIMEOUT)
                     .setDefaultHost(this.kafka_connect_rest_host)
@@ -170,7 +171,7 @@ public class DFDataProcessor extends AbstractVerticle {
                     .setKeepAlive(ConstantApp.REST_CLIENT_KEEP_LIVE)
                     .setMaxPoolSize(ConstantApp.REST_CLIENT_MAX_POOL_SIZE);
             
-            rc_schema = RestClient.create(vertx, restClientOptions2, httpMessageConverters2);   // TODO: SZ
+            this.rc_schema = RestClient.create(vertx, restClientOptionsSchemaRegister, httpMessageConvertersSchemaRegister);
         }
         // Flink stream environment for data transformation
         if(transform_engine_flink_enabled) {
@@ -197,13 +198,14 @@ public class DFDataProcessor extends AbstractVerticle {
         // Import from remote server. It is blocking at this point.
         if (this.kafka_connect_enabled && this.kafka_connect_import_start) {
             importAllFromKafkaConnect();
+            importAllFromFlinkTransform();
             startMetadataSink();
         }
 
         // Start Core application
         startWebApp((http) -> completeStartup(http, fut));
 
-        // Regular update Kafka connects status
+        // Regular update Kafka connects/Flink transform status
         if(this.kafka_connect_enabled) {
             long timerID = vertx.setPeriodic(ConstantApp.REGULAR_REFRESH_STATUS_TO_REPO, id -> {
                 updateKafkaConnectorStatus();
@@ -1375,7 +1377,8 @@ public class DFDataProcessor extends AbstractVerticle {
     }
 
     /**
-     * Get initial method to import all available|paused|running connectors from Kafka connect.
+     * Get initial method to import all available|paused|running connectors from Kafka connect
+     * according to what's available in repository
      */
     private void importAllFromKafkaConnect() {
         LOG.debug("Starting initial import data from Kafka Connect REST Server.");
@@ -1485,6 +1488,13 @@ public class DFDataProcessor extends AbstractVerticle {
     }
 
     /**
+     * Get initial method to import all available|paused|running connectors from Flink rest server
+     * according to what's available in repository
+     */
+    private void importAllFromFlinkTransform() {
+       // TODO - to be implemented. Could consider merge with above.
+    }
+    /**
      * Keep refreshing the active Kafka connector status against remote Kafka REST Server
      */
     private void updateKafkaConnectorStatus() {
@@ -1498,49 +1508,49 @@ public class DFDataProcessor extends AbstractVerticle {
                 ConstantApp.KAFKA_CONNECT_REST_URL;
 
         mongo.find(COLLECTION, new JsonObject().put("connectorType", new JsonObject().put("$in", list)), result -> {
-                    if (result.succeeded()) {
-                        for (JsonObject json : result.result()) {
-                            String connectName = json.getString("connectUid");
-                            String statusRepo = json.getString("status");
-                            // Get task status
-                            try {
-                                String resStatus;
-                                HttpResponse<JsonNode> resConnectorStatus =
-                                        Unirest.get(restURI + "/" + connectName + "/status")
-                                                .header("accept", "application/json").asJson();
-                                if(resConnectorStatus.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND) {
-                                    // Not find - Mark status as LOST
-                                    resStatus = ConstantApp.DF_STATUS.LOST.name();
-                                } else {
-                                    resStatus = resConnectorStatus.getBody().getObject()
-                                            .getJSONObject("connector").getString("state");
-                                }
-
-                                // Do change detection on status
-                                if (statusRepo.compareToIgnoreCase(resStatus) != 0) { //status changes
-                                    DFJobPOPJ updateJob = new DFJobPOPJ(json);
-                                    updateJob.setStatus(resStatus);
-
-                                    mongo.updateCollection(COLLECTION, new JsonObject().put("_id", updateJob.getId()),
-                                            // The update syntax: {$set, the json object containing the fields to update}
-                                            new JsonObject().put("$set", updateJob.toJson()), v -> {
-                                                if (v.failed()) {
-                                                    LOG.error("Update Status - Update status failed", v.cause());
-                                                } else {
-                                                    LOG.debug("Update Status - Update status Successfully");
-                                                }
-                                            }
-                                    );
-                                } else {
-                                    // LOG.info("Refreshing Connects status from Kafka Connect REST Server - No Changes.");
-                                }
-                            } catch (UnirestException ue) {
-                                LOG.error("Refreshing status REST client exception", ue.getCause());
-                            }
+            if (result.succeeded()) {
+                for (JsonObject json : result.result()) {
+                    String connectName = json.getString("connectUid");
+                    String statusRepo = json.getString("status");
+                    // Get task status
+                    try {
+                        String resStatus;
+                        HttpResponse<JsonNode> resConnectorStatus =
+                                Unirest.get(restURI + "/" + connectName + "/status")
+                                        .header("accept", "application/json").asJson();
+                        if (resConnectorStatus.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND) {
+                            // Not find - Mark status as LOST
+                            resStatus = ConstantApp.DF_STATUS.LOST.name();
+                        } else {
+                            resStatus = resConnectorStatus.getBody().getObject()
+                                    .getJSONObject("connector").getString("state");
                         }
-                    } else {
-                        LOG.error("Refreshing status Mongo client find active connectors exception", result.cause());
+
+                        // Do change detection on status
+                        if (statusRepo.compareToIgnoreCase(resStatus) != 0) { //status changes
+                            DFJobPOPJ updateJob = new DFJobPOPJ(json);
+                            updateJob.setStatus(resStatus);
+
+                            mongo.updateCollection(COLLECTION, new JsonObject().put("_id", updateJob.getId()),
+                                    // The update syntax: {$set, the json object containing the fields to update}
+                                    new JsonObject().put("$set", updateJob.toJson()), v -> {
+                                        if (v.failed()) {
+                                            LOG.error("Update Status - Update status failed", v.cause());
+                                        } else {
+                                            LOG.debug("Update Status - Update status Successfully");
+                                        }
+                                    }
+                            );
+                        } else {
+                            // LOG.info("Refreshing Connects status from Kafka Connect REST Server - No Changes.");
+                        }
+                    } catch (UnirestException ue) {
+                        LOG.error("Refreshing status REST client exception", ue.getCause());
                     }
+                }
+            } else {
+                LOG.error("Refreshing status Mongo client find active connectors exception", result.cause());
+            }
         });
         // LOG.info("Refreshing Connects status from Kafka Connect REST Server - Complete.");
     }
@@ -1548,7 +1558,7 @@ public class DFDataProcessor extends AbstractVerticle {
     /**
      * Keep refreshing the active Flink transforms/job status against remote Flink REST Server since v1.2
      */
-    private void updateFlinkJobStatus() { //TODO - Test status update
+    private void updateFlinkJobStatus() { //TODO - Test status update abd merge to above
         // Loop existing DF connects in repository and fetch their latest status from Flink Rest Server
         List<String> list = new ArrayList<String>();
         // Add all Kafka connect TODO add a function to add all connects to List
@@ -1566,8 +1576,7 @@ public class DFDataProcessor extends AbstractVerticle {
                     try {
                         String resStatus;
                         HttpResponse<JsonNode> resConnectorStatus =
-                                Unirest.get(restURI + "/" + jobId)
-                                        .header("accept", "application/json").asJson();
+                                Unirest.get(restURI + "/" + jobId).header("accept", "application/json").asJson();
                         if(resConnectorStatus.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND) {
                             // Not find - Mark status as LOST
                             resStatus = ConstantApp.DF_STATUS.LOST.name();
