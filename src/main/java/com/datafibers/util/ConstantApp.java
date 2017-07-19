@@ -20,6 +20,13 @@ public final class ConstantApp {
     public static final String DF_CONNECTS_REST_URL_WILD = "/api/df/ps*";
     public static final String DF_CONNECTS_REST_URL_WITH_ID = DF_CONNECTS_REST_URL + "/:id";
 
+    // New
+    public static final String DF_CONNECTS_REST_URL2 = "/api/df/ps/new";
+    public static final String DF_CONNECTS_REST_URL_WITH_ID2 = DF_CONNECTS_REST_URL2 + "/:id";
+    
+    public static final String DF_CONNECTS_REST_START_URL_WITH_ID = "/api/df/ps/new/start" + "/:id";
+    
+    
     // DF Transforms REST endpoint URLs
     public static final String DF_TRANSFORMS_REST_URL = "/api/df/tr";
     public static final String DF_TRANSFORMS_INSTALLED_TRANSFORMS_REST_URL = "/api/df/installed_transforms";
@@ -45,6 +52,10 @@ public final class ConstantApp {
 
     // Kafka Other default settings
     public static String DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK = "df_trans_flink_group_id";
+
+    // Flink Rest
+    public static final String FLINK_REST_URL = "/jobs";
+    public static final String FLINK_DUMMY_JOB_ID = "00000000000000000000000000000000";
 
     // HTTP req/res constants
     public static final String CONTENT_TYPE = "content-type";
@@ -89,9 +100,9 @@ public final class ConstantApp {
         CONNECT_MONGODB_SOURCE,       // The plugin import data into mongodb
         CONNECT_MONGODB_SINK,         // The plugin export data out of mongodb
         TRANSFORM_FLINK_SQL_GENE,     // Flink streaming SQL
-        TRANSFORM_FLINK_SQL_A2J,      // Flink streaming SQL from Avro to Json
+        TRANSFORM_FLINK_SQL_A2A,      // Flink streaming SQL from Avro to Avro
         TRANSFORM_FLINK_SQL_J2J,      // Flink streaming SQL from Json to Json
-        TRANSFORM_FLINK_SCRIPT,        // Flink streaming of Table API
+        TRANSFORM_FLINK_SCRIPT,       // Flink streaming of Table API
         TRANSFORM_FLINK_UDF,          // Flink user defined jar/program
         TRANSFORM_SPARK_SQL,          // Spark streaming SQL
         TRANSFORM_SPARK_BATCH_SQL,    // Spark streaming SQL
@@ -106,7 +117,29 @@ public final class ConstantApp {
     public static final String SCHEMA = "schema";
     public static final String COMPATIBILITY = "compatibility";
     public static final String SUBJECT = "subject";
-    public static final String COMPATIBILITYLEVEL = "compatibilityLevel";
+    public static final String COMPATIBILITY_LEVEL = "compatibilityLevel";
     public static final int WORKER_POOL_SIZE = 20; // VERT.X Worker pool size
     public static final int MAX_RUNTIME = 6000;  // VERT.X Worker timeout in 6 sec
+
+    // Properties keys for UI
+
+    public static final String PK_TRANSFORM_CUID = "cuid";
+    public static final String PK_FLINK_SUBMIT_JOB_ID = "flink.submit.job.id";
+
+    public static final String PK_SCHEMA_ID_INPUT = "schema.ids.in";
+    public static final String PK_SCHEMA_ID_OUTPUT = "schema.ids.out";
+    public static final String PK_SCHEMA_STR_INPUT = "schema.string.in";
+    public static final String PK_SCHEMA_STR_OUTPUT = "schema.string.out";
+    public static final String PK_SCHEMA_SUB_INPUT = "schema.subject.in";
+    public static final String PK_SCHEMA_SUB_OUTPUT = "schema.subject.out";
+
+    public static final String PK_KAFKA_HOST_PORT = "bootstrap.servers";
+    public static final String PK_KAFKA_CONSUMER_GROURP = "group.id";
+    public static final String PK_KAFKA_SCHEMA_REGISTRY_HOST_PORT = "schema.registry";
+    public static final String PK_FLINK_TABLE_SINK_KEYS = "sink.key.fields";
+
+    public static final String PK_KAFKA_TOPIC_INPUT = "topic.in";
+    public static final String PK_KAFKA_TOPIC_OUTPUT = "topic.out";
+    public static final String PK_TRANSFORM_SQL = "trans.sql";
+    public static final String PK_TRANSFORM_SCRIPT = "trans.script";
 }

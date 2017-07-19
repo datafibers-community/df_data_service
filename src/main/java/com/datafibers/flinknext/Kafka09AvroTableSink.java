@@ -19,10 +19,16 @@ package com.datafibers.flinknext;
 
 import java.util.Properties;
 
+import com.datafibers.util.ConstantApp;
+import com.datafibers.util.SchemaRegistryClient;
+import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.api.java.typeutils.RowTypeInfo;
+import org.apache.flink.api.java.typeutils.TupleTypeInfo;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer09;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducerBase;
 import org.apache.flink.streaming.connectors.kafka.partitioner.FlinkKafkaPartitioner;
 import org.apache.flink.streaming.util.serialization.SerializationSchema;
+import org.apache.flink.table.api.Types;
 import org.apache.flink.types.Row;
 
 /**
@@ -36,12 +42,15 @@ public class Kafka09AvroTableSink extends KafkaAvroTableSink {
 	 * @param properties properties to connect to Kafka
 	 * @param partitioner Kafka partitioner
 	 */
-	public Kafka09AvroTableSink(String topic, Properties properties, FlinkKafkaPartitioner<Row> partitioner) {
+
+	private Boolean isAppendOnly;
+
+	public Kafka09AvroTableSink(String topic, Properties properties, FlinkKafkaPartitioner<Tuple2<Boolean, Row>> partitioner) {
 		super(topic, properties, partitioner);
 	}
 
 	@Override
-	protected FlinkKafkaProducerBase<Row> createKafkaProducer(String topic, Properties properties, SerializationSchema<Row> serializationSchema, FlinkKafkaPartitioner<Row> partitioner) {
+	protected FlinkKafkaProducerBase<Tuple2<Boolean, Row>> createKafkaProducer(String topic, Properties properties, SerializationSchema<Tuple2<Boolean, Row>> serializationSchema, FlinkKafkaPartitioner<Tuple2<Boolean, Row>> partitioner) {
 		return new FlinkKafkaProducer09<>(topic, serializationSchema, properties, partitioner);
 	}
 
@@ -52,10 +61,24 @@ public class Kafka09AvroTableSink extends KafkaAvroTableSink {
 
 	
 	@Override
-	protected SerializationSchema<Row> createSerializationSchema(
-			String[] fieldNames) {
+	protected SerializationSchema<Tuple2<Boolean, Row>> createSerializationSchema(Properties properties) {
 		// TODO Auto-generated method stub
-		return new JsonRowSerializationSchema(fieldNames);
-		//return null;
+		return new AvroRowSerializationSchema(properties);
+	}
+
+	@Override
+	public void setKeyFields(String[] keys) {
+
+	}
+
+	@Override
+	public void setIsAppendOnly(Boolean isAppendOnly) {
+		this.isAppendOnly = isAppendOnly;
+	}
+
+	@Override
+	public TupleTypeInfo<Tuple2<Boolean, Row>> getOutputType() {
+		return new TupleTypeInfo(Types.BOOLEAN(),
+				new RowTypeInfo(SchemaRegistryClient.getFieldTypesInfoFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT)));
 	}
 }

@@ -378,7 +378,7 @@ public class SchemaRegisterProcessor {
                 if (res.getBody().indexOf("40401") > 0) {
                 } else {
                     JSONObject jason = new JSONObject(res.getBody().toString());
-                    compatibility = jason.getString(ConstantApp.COMPATIBILITYLEVEL);
+                    compatibility = jason.getString(ConstantApp.COMPATIBILITY_LEVEL);
                 }
             }
         } catch (UnirestException e) {

@@ -63,7 +63,7 @@ public class AvroRowDeserializationSchema implements DeserializationSchema<Row> 
     public AvroRowDeserializationSchema(String[] fieldNames, Class<?>[] fieldTypes, Properties properties) {
 
         this.properties = Preconditions.checkNotNull(properties, "properties");
-        static_avro_schema = properties.getProperty("static.avro.schema");
+        static_avro_schema = properties.getProperty(ConstantApp.PK_SCHEMA_STR_INPUT);
 
         this.fieldNames = Preconditions.checkNotNull(fieldNames, "Field names");
         this.fieldTypes = new TypeInformation[fieldTypes.length];
@@ -84,7 +84,7 @@ public class AvroRowDeserializationSchema implements DeserializationSchema<Row> 
     public AvroRowDeserializationSchema(String[] fieldNames, TypeInformation<?>[] fieldTypes, Properties properties) {
 
         this.properties = Preconditions.checkNotNull(properties, "properties");
-        static_avro_schema = properties.getProperty("static.avro.schema");
+        static_avro_schema = properties.getProperty(ConstantApp.PK_SCHEMA_STR_INPUT);
 
         this.fieldNames = Preconditions.checkNotNull(fieldNames, "Field names");
         this.fieldTypes = Preconditions.checkNotNull(fieldTypes, "Field types");
@@ -112,21 +112,9 @@ public class AvroRowDeserializationSchema implements DeserializationSchema<Row> 
             }
             
             JsonNode root;
-            if(static_avro_schema.contains("empty".toLowerCase())) {
-            	String schemaString = SchemaRegistryClient.getLatestSchemaNodeFromProperty(properties);
-            	LOG.warn("AvroRowDeserializationSchema::schemaString: " + schemaString);
-            	reader = new GenericDatumReader<>(
-            			new Schema.Parser().parse(schemaString));
-            } else {
-            	reader = new GenericDatumReader<>(
-            			new Schema.Parser().parse(static_avro_schema)
-            			); // TODO get row level schema
-            }
+            reader = new GenericDatumReader<>(new Schema.Parser().parse(static_avro_schema));//TODO get row level schema
             GenericRecord gr = reader.read(null, decoder);
-
             root = objectMapper.readTree(gr.toString());
-            
-
             Row row = new Row(fieldNames.length);
             for (int i = 0; i < fieldNames.length; i++) {
                 JsonNode node = root.get(fieldNames[i]);

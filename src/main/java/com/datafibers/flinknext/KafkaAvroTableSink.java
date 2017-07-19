@@ -20,6 +20,7 @@ package com.datafibers.flinknext;
 
 import java.util.Properties;
 
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.connectors.kafka.partitioner.FlinkKafkaPartitioner;
 import org.apache.flink.streaming.util.serialization.SerializationSchema;
 import org.apache.flink.types.Row;
@@ -36,13 +37,11 @@ public abstract class KafkaAvroTableSink extends KafkaTableSink {
 	 * @param properties properties to connect to Kafka
 	 * @param partitioner Kafka partitioner
 	 */
-	public KafkaAvroTableSink(String topic, Properties properties, FlinkKafkaPartitioner<Row> partitioner) {
+	public KafkaAvroTableSink(String topic, Properties properties, FlinkKafkaPartitioner<Tuple2<Boolean, Row>> partitioner) {
 		super(topic, properties, partitioner);
 	}
 
-
-	protected SerializationSchema<Row> createSerializationSchema(Properties properties) {
+	protected SerializationSchema<Tuple2<Boolean, Row>> createSerializationSchema(Properties properties) {
 		return new AvroRowSerializationSchema(properties);
-
 	}
 }

@@ -168,10 +168,10 @@ public class HelpFunc {
     /**
      * Loop the enum of ConnectType to add all connects to the list by l
      */
-    public static void addSpecifiedConnectTypetoList(List<String> list, String type) {
+    public static void addSpecifiedConnectTypetoList(List<String> list, String type_regx) {
 
         for (ConstantApp.DF_CONNECT_TYPE item : ConstantApp.DF_CONNECT_TYPE.values()) {
-            if(item.name().contains(type.toUpperCase())) list.add(item.name());
+            if(item.name().matches(type_regx)) list.add(item.name());
         }
 
     }

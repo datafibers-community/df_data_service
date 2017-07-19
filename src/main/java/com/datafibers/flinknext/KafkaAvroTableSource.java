@@ -2,6 +2,7 @@ package com.datafibers.flinknext;
 
 import java.util.Properties;
 
+import com.datafibers.util.ConstantApp;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.streaming.util.serialization.DeserializationSchema;
 import org.apache.flink.table.sources.StreamTableSource;
@@ -43,12 +44,12 @@ public abstract class KafkaAvroTableSource extends KafkaTableSource {
     KafkaAvroTableSource(String topic, Properties properties) {
         super(topic, properties,
                 createDeserializationSchema(
-                        SchemaRegistryClient.getFieldNamesFromProperty(properties),
-                        SchemaRegistryClient.getFieldTypesFromProperty(properties),
+                        SchemaRegistryClient.getFieldNamesFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_INPUT),
+                        SchemaRegistryClient.getFieldTypesFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_INPUT),
                         properties
                 ),
-                SchemaRegistryClient.getFieldNamesFromProperty(properties),
-                SchemaRegistryClient.getFieldTypesFromProperty(properties)
+                SchemaRegistryClient.getFieldNamesFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_INPUT),
+                SchemaRegistryClient.getFieldTypesFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_INPUT)
         );
     }
 

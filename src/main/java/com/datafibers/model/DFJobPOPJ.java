@@ -268,14 +268,14 @@ public class DFJobPOPJ {
     }
 
     public DFJobPOPJ setFlinkIDToJobConfig(String jobID) {
-        this.jobConfig.put("flink.submit.job.id", jobID);
+        this.jobConfig.put(ConstantApp.PK_FLINK_SUBMIT_JOB_ID, jobID);
         return this;
     }
 
     @JsonIgnore
     public String getFlinkIDFromJobConfig() {
         if (this.jobConfig != null)
-            return this.jobConfig.get("flink.submit.job.id");
+            return this.jobConfig.get(ConstantApp.PK_FLINK_SUBMIT_JOB_ID);
         return "flink.submit.job.id is null";
     }
 

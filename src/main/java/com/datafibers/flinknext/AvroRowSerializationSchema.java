@@ -10,6 +10,7 @@ import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.*;
 import org.apache.avro.util.Utf8;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.util.serialization.SerializationSchema;
 import org.apache.flink.types.Row;
 import org.apache.log4j.Logger;
@@ -30,7 +31,7 @@ import java.util.Properties;
  *
  * <p>Failure during deserialization are forwarded as wrapped IOExceptions.
  */
-public class AvroRowSerializationSchema implements SerializationSchema<Row> {
+public class AvroRowSerializationSchema implements SerializationSchema<Tuple2<Boolean, Row>> {
 
     private static final long serialVersionUID = 4330538776656642780L;
     private static final Logger LOG = Logger.getLogger(AvroRowSerializationSchema.class);
@@ -59,22 +60,19 @@ public class AvroRowSerializationSchema implements SerializationSchema<Row> {
         this.properties = properties;
     }
     @Override
-    public byte[] serialize(Row row) {
+    public byte[] serialize(Tuple2<Boolean, Row> row) {
         try {
-            int schemaId = SchemaRegistryClient.getLatestSchemaIDFromProperty(properties);
+            int schemaId = Integer.parseInt(properties.get(ConstantApp.PK_SCHEMA_ID_OUTPUT).toString());
 
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             out.write(ConstantApp.MAGIC_BYTE);
             out.write(ByteBuffer.allocate(ConstantApp.idSize).putInt(schemaId).array());
 
-
-            //JsonEncoder encoder = EncoderFactory.get().jsonEncoder(schema, out);
             BinaryEncoder encoder = EncoderFactory.get().directBinaryEncoder(out, null);
-            Schema schema = SchemaRegistryClient.getLatestSchemaFromProperty(properties);
+            Schema schema = new Schema.Parser().parse(properties.get(ConstantApp.PK_SCHEMA_STR_OUTPUT).toString());
 
             DatumWriter<Object> writer = new GenericDatumWriter<Object>(schema);
-
-            writer.write(convertToRecord(schema, row), encoder);
+            writer.write(convertToRecord(schema, row.f1), encoder); //TODO TO CHECK
             encoder.flush();
 
             byte[] bytes = out.toByteArray();
