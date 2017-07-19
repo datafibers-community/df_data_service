@@ -169,10 +169,10 @@ customHeaderTemplate =
         .defaultValue({
 		"config_ignored" : "remove this template marker to submit, /* this is comments */",
         "group.id" : "fink_table /* Kafka consumer id. */",
-        "schema.subject" : "test-value /* The subject name for the schema */",
-        "schema.version" : "latest /* The version for the schema. This is optional. */",
-        "topic.for.query" : "stock /* The Kafka topic to query data */",
-        "topic.for.result" : "output /* The Kafka topic to output data */",
+        "topic.in" : "stock /* The Kafka topic to query data */",
+        "topic.out" : "output /* The Kafka topic to output data */",
+        "schema.subject.in" : "stock-value /* The schema subject name for the topic input */",
+        "schema.subject.out" : "output-value /* The schema subject name for the topic output */",
         "trans.script" : "select(\"name\") /* The Flink Stream Table API */"
         })
         .template('<ma-field ng-if="entry.values.connectorType == \'TRANSFORM_FLINK_SCRIPT\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true),
@@ -180,12 +180,11 @@ customHeaderTemplate =
         .defaultValue({
 		"config_ignored" : "remove this template marker to submit, /* this is comments */",
         "group.id" : "fink_sql /* Kafka consumer id. */",
-        "schema.subject.in" : "test-value /* The subject name for the input schema */",
-        "schema.subject.out" : "test-value /* The subject name for the output schema */",
-        "sink.key.fields":"name /* List of commas separated columns for keys in sink */",
-        "schema.version" : "latest /* The version for the schema. This is optional. */",
         "topic.in" : "stock /* The Kafka topic to query data */",
         "topic.out" : "output /* The Kafka topic to output data */",
+        "schema.subject.in" : "stock-value /* The schema subject name for the topic input */",
+        "schema.subject.out" : "output-value /* The schema subject name for the topic output */",
+        "sink.key.fields":"name /* List of commas separated columns for keys in sink */",
         "trans.sql" : "SELECT name, symbol from stock /* The Flink Stream SQL query.*/"
         })
         .template('<ma-field ng-if="entry.values.connectorType == \'TRANSFORM_FLINK_SQL_A2A\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true)
@@ -249,7 +248,7 @@ customHeaderTemplate =
     processor.listView().title('All Connects and Transforms');
     processor.listView().batchActions([]);
 
-    // set the fields of the connect entity list view // TODO make sort work
+    // set the fields of the connect entity list view
     installed_connects.listView().fields([
         nga.field('name'),
         nga.field('type'),

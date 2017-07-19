@@ -53,6 +53,10 @@ public final class ConstantApp {
     // Kafka Other default settings
     public static String DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK = "df_trans_flink_group_id";
 
+    // Flink Rest
+    public static final String FLINK_REST_URL = "/jobs";
+    public static final String FLINK_DUMMY_JOB_ID = "00000000000000000000000000000000";
+
     // HTTP req/res constants
     public static final String CONTENT_TYPE = "content-type";
     public static final String APPLICATION_JSON_CHARSET_UTF_8 = "application/json; charset=utf-8";
@@ -120,6 +124,7 @@ public final class ConstantApp {
     // Properties keys for UI
 
     public static final String PK_TRANSFORM_CUID = "cuid";
+    public static final String PK_FLINK_SUBMIT_JOB_ID = "flink.submit.job.id";
 
     public static final String PK_SCHEMA_ID_INPUT = "schema.ids.in";
     public static final String PK_SCHEMA_ID_OUTPUT = "schema.ids.out";
