@@ -55,6 +55,7 @@ public final class ConstantApp {
 
     // Flink Rest
     public static final String FLINK_REST_URL = "/jobs";
+    public static final String FLINK_DUMMY_JOB_ID = "00000000000000000000000000000000";
 
     // HTTP req/res constants
     public static final String CONTENT_TYPE = "content-type";
