@@ -212,11 +212,11 @@ public class DFDataProcessor extends AbstractVerticle {
         }
 
         // Regular update Kafka connects/Flink transform status
-        if(this.transform_engine_flink_enabled) {
-            vertx.setPeriodic(ConstantApp.REGULAR_REFRESH_STATUS_TO_REPO, id -> {
-                updateFlinkJobStatus();
-            });
-        }
+//        if(this.transform_engine_flink_enabled) {
+//            vertx.setPeriodic(ConstantApp.REGULAR_REFRESH_STATUS_TO_REPO, id -> {
+//                updateFlinkJobStatus();
+//            });
+//        }
 
         LOG.info("********* DataFibers Services is started :) *********");
     }
@@ -1690,11 +1690,12 @@ public class DFDataProcessor extends AbstractVerticle {
                     // Get task status
                     try {
                         String resStatus;
-                        HttpResponse<String> resConnectorStatus =
-                                Unirest.post(restURI + "/" + jobId).asString();
+                        // TODO - Blocked by Invalid Content-Encoding Header - https://issues.apache.org/jira/browse/FLINK-7226
+                        HttpResponse<JsonNode> resConnectorStatus =
+                                Unirest.get(restURI + "/" + jobId).header("accept", "application/json").asJson();
                         resStatus = resConnectorStatus.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND ?
                             ConstantApp.DF_STATUS.LOST.name():// Not find - Mark status as LOST
-                            resConnectorStatus.getBody();//.getString("state");
+                            new JSONObject(resConnectorStatus.getBody()).getString("state");
 
                         LOG.debug("resStatus=" + resStatus);
 
