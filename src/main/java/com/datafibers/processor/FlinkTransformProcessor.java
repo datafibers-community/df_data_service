@@ -109,7 +109,7 @@ public class FlinkTransformProcessor {
                         break;
                     }
 
-                    case "TABLE_API": {
+                    case "TABLE_API": { // TODO - does not support multiple input topics
                         Table ingest = tableEnv.scan(topicIn);
                         String className = "dynamic.FlinkScript";
                         String header = "package dynamic;\n" +
