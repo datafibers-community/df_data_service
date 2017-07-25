@@ -7,6 +7,7 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpServer;
+import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -313,6 +314,20 @@ public class DFDataProcessor extends AbstractVerticle {
     }
 
     /**
+     * This is mainly to bypass security control for response.
+     * @param response
+     */
+    public HttpServerResponse responseCorsHandleAddOn(HttpServerResponse response) {
+        return response
+                .putHeader("Access-Control-Allow-Origin", "*")
+                .putHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
+                .putHeader("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, X-Total-Count")
+                .putHeader("Access-Control-Expose-Headers", "X-Total-Count")
+                .putHeader("Access-Control-Max-Age", "60")
+                .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8);
+    }
+
+    /**
      * Generic getOne method for REST API End Point.
      * @param routingContext
      *
@@ -472,9 +487,8 @@ public class DFDataProcessor extends AbstractVerticle {
         mongo.find(COLLECTION, new JsonObject(), results -> {
             List<JsonObject> objects = results.result();
             List<DFJobPOPJ> jobs = objects.stream().map(DFJobPOPJ::new).collect(Collectors.toList());
-            routingContext.response()
-                    .putHeader("Access-Control-Allow-Origin", "*")
-                    .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+            responseCorsHandleAddOn(routingContext.response())
+                    .putHeader("X-Total-Count", objects.size() + "")
                     .end(Json.encodePrettily(jobs));
         });
     }
@@ -1647,7 +1661,7 @@ public class DFDataProcessor extends AbstractVerticle {
                                     }
                             );
                         } else {
-                            LOG.info("Refreshing Connects status from Kafka Connect Resr Server - No Changes.");
+                            // LOG.info("Refreshing Connects status from Kafka Connect Resr Server - No Changes.");
                         }
                     } catch (UnirestException ue) {
                         LOG.error("Refreshing status REST client exception", ue.getCause());
