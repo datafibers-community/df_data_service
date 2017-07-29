@@ -1,5 +1,6 @@
 package com.datafibers.util;
 
+import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 
@@ -16,6 +17,8 @@ import java.util.List;
 import java.util.Properties;
 import java.util.Random;
 
+import io.vertx.ext.mongo.FindOptions;
+import io.vertx.ext.web.RoutingContext;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.node.ArrayNode;
 import org.json.JSONObject;
@@ -100,16 +103,46 @@ public class HelpFunc {
     }
 
     /**
-     * Print error message in better JSON format
+     * Prepare response message in better JSON format
      *
-     * @param error_code
-     * @param msg
-     * @return ErrorMessage
+     * @param responseCode
+     * @return ResponseMsg
      */
-    public static String errorMsg(int error_code, String msg) {
+    public static String responseMsg(int responseCode) {
+        String responseMsg;
+        switch(responseCode) {
+            case 1000: responseMsg = "INFO - CREATED";
+                break;
+            case 1001: responseMsg = "INFO - UPDATED";
+                break;
+            case 1002: responseMsg = "INFO - DELETED";
+                break;
+            case 9000: responseMsg = "ERROR - ID_IS_NULL_IN_REQUEST";
+                break;
+            case 9001: responseMsg = "ERROR - ID_NOT_FOUND_IN_REPO";
+                break;
+            case 9002: responseMsg = "ERROR - ID_SEARCH_EXCEPTION_IN_REPO";
+                break;
+            case 9003: responseMsg = "ERROR - ID_UPDATE_EXCEPTION_IN_REPO";
+                break;
+            case 9004: responseMsg = "ERROR - ID_DELETE_EXCEPTION_IN_REPO";
+                break;
+            case 9005: responseMsg = "ERROR - ID_INSERT_EXCEPTION_IN_REPO";
+                break;
+            case 9006: responseMsg = "ERROR - POST_CLIENT_EXCEPTION";
+                break;
+            case 9007: responseMsg = "ERROR - ID_NOT_FOUND_IN_KAFKA_CONNECT";
+                break;
+            default: responseMsg = "ERROR - INVALID_RESPONSE_CODE_PARAMETER";
+                break;
+        }
         return Json.encodePrettily(new JsonObject()
-                .put("code", String.format("%06d", error_code))
-                .put("message", msg));
+                .put("code", String.format("%06d", responseCode))
+                .put("message", responseMsg));
+    }
+
+    public static String responseMsg(String responseKey, String responseVal) {
+        return Json.encodePrettily(new JsonObject().put(responseKey, responseVal));
     }
 
     /**
@@ -173,7 +206,6 @@ public class HelpFunc {
         for (ConstantApp.DF_CONNECT_TYPE item : ConstantApp.DF_CONNECT_TYPE.values()) {
             if(item.name().matches(type_regx)) list.add(item.name());
         }
-
     }
 
     /**
@@ -187,5 +219,38 @@ public class HelpFunc {
         // where the origin schema show as "schema":"\"string\"" == replace as ==> "schema":""string""
         // Then, replace as "schema":"string"
         return srcStr.replace("\"{", "{").replace("}\"", "}").replace("\\\"", "\"").replace("\"\"", "\"");
+    }
+
+    /**
+     * This is mainly to bypass security control for response.
+     * @param response
+     */
+    public static HttpServerResponse responseCorsHandleAddOn(HttpServerResponse response) {
+        return response
+                .putHeader("Access-Control-Allow-Origin", "*")
+                .putHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
+                .putHeader("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, X-Total-Count")
+                .putHeader("Access-Control-Expose-Headers", "X-Total-Count")
+                .putHeader("Access-Control-Max-Age", "60")
+                .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8);
+    }
+
+    /**
+     * Find mongo sorting options
+     * @param routingContext
+     * @param sortField
+     * @param sortOrderField
+     * @return
+     */
+    public static FindOptions getMongoSortFindOption(RoutingContext routingContext, String sortField, String sortOrderField) {
+        String sortName = HelpFunc.coalesce(routingContext.request().getParam(sortField), "_id");
+        if(sortName.equalsIgnoreCase("id")) sortName = "_" + sortName; //Mongo use _id
+        int sortOrder = HelpFunc.strCompare(
+                HelpFunc.coalesce(routingContext.request().getParam(sortOrderField), "ASC"), "ASC", 1, -1);
+        return new FindOptions().setSort(new JsonObject().put(sortName, sortOrder));
+    }
+
+    public static FindOptions getMongoSortFindOption(RoutingContext routingContext) {
+        return getMongoSortFindOption(routingContext, "_sort", "_order");
     }
 }

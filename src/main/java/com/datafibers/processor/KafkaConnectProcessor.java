@@ -44,18 +44,16 @@ public class KafkaConnectProcessor {
                     LOG.info("received response from Kafka server: " + portRestResponse.statusCode());
 
                     // Once REST API forward is successful, add the record to the local repository
-                    mongoClient.insert(mongoCOLLECTION, dfJobResponsed.toJson(), r -> routingContext
-                            .response().setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
-                            .putHeader("Access-Control-Allow-Origin", "*")
-                            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                            .end(Json.encodePrettily(dfJobResponsed)));
+                    mongoClient.insert(mongoCOLLECTION, dfJobResponsed.toJson(), r ->
+                            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                    .setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
+                                    .end(Json.encodePrettily(dfJobResponsed)));
                 });
 
         postRestClientRequest.exceptionHandler(exception -> {
-            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                    .putHeader("Access-Control-Allow-Origin", "*")
-                    .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                    .end(errorMsg(10, "POST Request exception - " + exception.toString()));
+            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                    .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                    .end(HelpFunc.responseMsg(9006));
         });
 
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
@@ -101,7 +99,7 @@ public class KafkaConnectProcessor {
             routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
                     .putHeader("Access-Control-Allow-Origin", "*")
                     .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                    .end(errorMsg(10, "POST Request exception - " + exception.toString()));
+                    .end(HelpFunc.responseMsg(9006));
         });
 
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
@@ -137,10 +135,9 @@ public class KafkaConnectProcessor {
                         });
 
         postRestClientRequest.exceptionHandler(exception -> {
-            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                    .putHeader("Access-Control-Allow-Origin", "*")
-                    .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                    .end(errorMsg(31, "POST Request exception - " + exception.toString()));
+            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                    .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                    .end(HelpFunc.responseMsg(9003));
         });
 
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
@@ -151,13 +148,11 @@ public class KafkaConnectProcessor {
                 // The update syntax: {$set, the json object containing the fields to update}
                 new JsonObject().put("$set", dfJobResponsed.toJson()), v -> {
                     if (v.failed()) {
-                        routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
-                                .end(errorMsg(32, "updateOne to repository is failed."));
-                    } else {
                         routingContext.response()
-                                .putHeader("Access-Control-Allow-Origin", "*")
-                                .putHeader(ConstantApp.CONTENT_TYPE,
-                                        ConstantApp.APPLICATION_JSON_CHARSET_UTF_8).end();
+                                .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
+                                .end(HelpFunc.responseMsg(9003));
+                    } else {
+                        HelpFunc.responseCorsHandleAddOn(routingContext.response()).end();
                     }
                 });
     }
@@ -189,10 +184,9 @@ public class KafkaConnectProcessor {
                         });
 
         postRestClientRequest.exceptionHandler(exception -> {
-            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                    .putHeader("Access-Control-Allow-Origin", "*")
-                    .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                    .end(errorMsg(31, "POST Request exception - " + exception.toString()));
+            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                    .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                    .end(HelpFunc.responseMsg(9006));
         });
 
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
@@ -203,13 +197,11 @@ public class KafkaConnectProcessor {
                 // The update syntax: {$set, the json object containing the fields to update}
                 new JsonObject().put("$set", dfJobResponsed.toJson()), v -> {
                     if (v.failed()) {
-                        routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
-                                .end(errorMsg(32, "updateOne to repository is failed."));
-                    } else {
                         routingContext.response()
-                                .putHeader("Access-Control-Allow-Origin", "*")
-                                .putHeader(ConstantApp.CONTENT_TYPE,
-                                        ConstantApp.APPLICATION_JSON_CHARSET_UTF_8).end();
+                                .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
+                                .end(HelpFunc.responseMsg(9003));
+                    } else {
+                        HelpFunc.responseCorsHandleAddOn(routingContext.response()).end();
                     }
                 });
     }
@@ -247,20 +239,14 @@ public class KafkaConnectProcessor {
 
             // Once REST API forward is successful, delete the record to the local repository
             mongoClient.removeDocument(mongoCOLLECTION, new JsonObject().put("_id", id),
-                    ar -> routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                            .putHeader("Access-Control-Allow-Origin", "*")
-                            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                            .end(errorMsg(40, "Not Found in KAFKA Connect, " +
-                                    "But delete from repository. The not found exception - " + exception.toString())));
+                    ar -> HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                            .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                            .end(HelpFunc.responseMsg(9007)));
             LOG.info("Cannot find the connector name in DELETE request in Kafka Connect. Remove from local repo only.");
         });
 
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
         postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
         postRestClientRequest.end("");
-    }
-    
-    public static String errorMsg(int error_code, String msg) {
-        return HelpFunc.errorMsg(error_code, msg);
     }
 }

@@ -243,12 +243,9 @@ public class FlinkTransformProcessor {
                 new JsonObject().put("$set", dfJob.toJson()), v -> {
                     if (v.failed()) {
                         routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
-                                .end(HelpFunc.errorMsg(133, "updateOne to repository is failed."));
+                                .end(HelpFunc.responseMsg(9003));
                     } else {
-                        routingContext.response()
-                                .putHeader("Access-Control-Allow-Origin", "*")
-                                .putHeader(ConstantApp.CONTENT_TYPE,
-                                ConstantApp.APPLICATION_JSON_CHARSET_UTF_8).end();
+                        HelpFunc.responseCorsHandleAddOn(routingContext.response()).end();
                     }
                 }
         );

@@ -81,8 +81,6 @@ public class DFDataProcessor extends AbstractVerticle {
     public static DFRemoteStreamEnvironment env;
 
     // Kafka attributes
-    private static String zookeeper_server_host;
-    private static Integer zookeeper_server_port;
     private static String kafka_server_host;
     private static Integer kafka_server_port;
     public static String kafka_server_host_and_port;
@@ -118,8 +116,6 @@ public class DFDataProcessor extends AbstractVerticle {
         this.flink_rest_server_port = config().getInteger("flink.rest.server.port", 8001); // Same to Flink Web Dashboard
 
         // Kafka config
-        this.zookeeper_server_host = config().getString("zookeeper.server.host", "localhost");
-        this.zookeeper_server_port = config().getInteger("zookeeper.server.port", 2181);
         this.kafka_server_host = this.kafka_connect_rest_host;
         this.kafka_server_port = config().getInteger("kafka.server.port", 9092);
         this.kafka_server_host_and_port = this.kafka_server_host + ":" + this.kafka_server_port.toString();
@@ -314,20 +310,6 @@ public class DFDataProcessor extends AbstractVerticle {
     }
 
     /**
-     * This is mainly to bypass security control for response.
-     * @param response
-     */
-    public HttpServerResponse responseCorsHandleAddOn(HttpServerResponse response) {
-        return response
-                .putHeader("Access-Control-Allow-Origin", "*")
-                .putHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
-                .putHeader("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, X-Total-Count")
-                .putHeader("Access-Control-Expose-Headers", "X-Total-Count")
-                .putHeader("Access-Control-Max-Age", "60")
-                .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8);
-    }
-
-    /**
      * Generic getOne method for REST API End Point.
      * @param routingContext
      *
@@ -355,24 +337,26 @@ public class DFDataProcessor extends AbstractVerticle {
     private void getOne(RoutingContext routingContext) {
         final String id = routingContext.request().getParam("id");
         if (id == null) {
-            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
-                    .end(HelpFunc.errorMsg(20, "id is null in your request."));
+            routingContext.response()
+                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                    .end(HelpFunc.responseMsg(9000));
         } else {
             mongo.findOne(COLLECTION, new JsonObject().put("_id", id), null, ar -> {
                 if (ar.succeeded()) {
                     if (ar.result() == null) {
-                        routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
-                                .end(HelpFunc.errorMsg(21, "id cannot find in repository."));
+                        routingContext.response()
+                                .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
+                                .end(HelpFunc.responseMsg(9001));
                         return;
                     }
                     DFJobPOPJ dfJob = new DFJobPOPJ(ar.result());
-                    routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_OK)
-                            .putHeader("Access-Control-Allow-Origin", "*")
-                            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                            .setStatusCode(ConstantApp.STATUS_CODE_OK)
                             .end(Json.encodePrettily(dfJob));
                 } else {
-                    routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
-                            .end(HelpFunc.errorMsg(22, "Search id in repository failed."));
+                    routingContext.response()
+                            .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
+                            .end(HelpFunc.responseMsg(9002));
                 }
             });
         }
@@ -410,11 +394,10 @@ public class DFDataProcessor extends AbstractVerticle {
         Set<FileUpload> fileUploadSet = routingContext.fileUploads();
 
         Iterator<FileUpload> fileUploadIterator = fileUploadSet.iterator();
-        String fileName = "";
+        String fileName;
         
         while (fileUploadIterator.hasNext()) {
             FileUpload fileUpload = fileUploadIterator.next();
-            // String fileName = fileUpload.uploadedFileName();
             
 			try {
 				fileName = URLDecoder.decode(fileUpload.fileName(), "UTF-8");
@@ -422,23 +405,19 @@ public class DFDataProcessor extends AbstractVerticle {
 				String jarPath = new HelpFunc().getCurrentJarRunnigFolder();
 				String currentDir = config().getString("upload.dest", jarPath);
 				String fileToBeCopied = currentDir + HelpFunc.generateUniqueFileName(fileName);
-	            LOG.debug("UPLOADED FILE NAME (decode): " + currentDir + fileName + ", fileUpload.uploadedFileName(): " + fileUpload.uploadedFileName());
 	            LOG.debug("===== fileToBeCopied: " + fileToBeCopied);
 	            
 	            vertx.fileSystem().copy(fileUpload.uploadedFileName(), fileToBeCopied, res -> {
 	                if (res.succeeded()) {
 	                    LOG.info("FILE COPIED GOOD ==> " + fileToBeCopied);
-	                    
-	                    routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_OK)
-                                .putHeader("Access-Control-Allow-Origin", "*")
-	                    .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-	                    .end(Json.encodePrettily(new JsonObject().put("uploaded_file_name", fileToBeCopied)));
+	                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                .end(HelpFunc.responseMsg("uploaded_file_name", fileToBeCopied));
 	                } else {
 	                    // Something went wrong
-	                	routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
-                                .putHeader("Access-Control-Allow-Origin", "*")
-                                .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-	                    .end(Json.encodePrettily(new JsonObject().put("uploaded_file_name", "Failed")));
+                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                .end( HelpFunc.responseMsg("uploaded_file_name", "Failed"));
 	                }
 	            });
 			} catch (UnsupportedEncodingException e) {
@@ -452,19 +431,19 @@ public class DFDataProcessor extends AbstractVerticle {
      * @param routingContext
      */
     private void getAll(RoutingContext routingContext, String connectorCategoryFilter) {
-        String sortName = HelpFunc.coalesce(routingContext.request().getParam("_sortField"), "name");
-        int sortOrder = HelpFunc.strCompare(
-                HelpFunc.coalesce(routingContext.request().getParam("_sortDir"), "ASC"), "ASC", 1, -1);
-        FindOptions options = new FindOptions().setSort(new JsonObject().put(sortName, sortOrder));
 
-        mongo.findWithOptions(COLLECTION, new JsonObject().put("connectorCategory", connectorCategoryFilter), options,
+        JsonObject searchCondition;
+        if (connectorCategoryFilter.equalsIgnoreCase("all")) {
+            searchCondition = new JsonObject();
+        } else {
+            searchCondition = new JsonObject().put("connectorCategory", connectorCategoryFilter);
+        }
+
+        mongo.findWithOptions(COLLECTION, searchCondition, HelpFunc.getMongoSortFindOption(routingContext),
                 results -> {
                     List<JsonObject> objects = results.result();
                     List<DFJobPOPJ> jobs = objects.stream().map(DFJobPOPJ::new).collect(Collectors.toList());
-                    routingContext.response()
-                            .putHeader("Access-Control-Allow-Origin", "*")
-                            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                            .putHeader("Access-Control-Expose-Headers", "X-Total-Count")
+                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
                             .putHeader("X-Total-Count", jobs.size() + "" )
                             .end(Json.encodePrettily(jobs));
         });
@@ -484,13 +463,7 @@ public class DFDataProcessor extends AbstractVerticle {
      * @apiSampleRequest http://localhost:8080/api/df/processor
      */
     private void getAllProcessor(RoutingContext routingContext) {
-        mongo.find(COLLECTION, new JsonObject(), results -> {
-            List<JsonObject> objects = results.result();
-            List<DFJobPOPJ> jobs = objects.stream().map(DFJobPOPJ::new).collect(Collectors.toList());
-            responseCorsHandleAddOn(routingContext.response())
-                    .putHeader("X-Total-Count", objects.size() + "")
-                    .end(Json.encodePrettily(jobs));
-        });
+        getAll(routingContext, "ALL");
     }
 
     /**
@@ -536,7 +509,7 @@ public class DFDataProcessor extends AbstractVerticle {
      * @apiSampleRequest http://localhost:8080/api/df/ps
      */
     private void getAllConnects(RoutingContext routingContext) {
-        this.getAll(routingContext, "CONNECT");
+        getAll(routingContext, "CONNECT");
     }
 
     /**
@@ -579,7 +552,7 @@ public class DFDataProcessor extends AbstractVerticle {
      * @apiSampleRequest http://localhost:8080/api/df/tr
      */
     private void getAllTransforms(RoutingContext routingContext) {
-        this.getAll(routingContext, "TRANSFORM");
+        getAll(routingContext, "TRANSFORM");
     }
 
     /**
@@ -614,14 +587,12 @@ public class DFDataProcessor extends AbstractVerticle {
 
         // TODO Set default registry url for DF Generic connect for Avro
 
-        // Set mongoid to _id, connect, cid in connectConfig
+        // Set MongoId to _id, connect, cid in connectConfig
         String mongoId = new ObjectId().toString();
         dfJob.setConnectUid(mongoId).setId(mongoId).getConnectorConfig().put("cuid", mongoId);
 
-        LOG.info("kafka_connect_enabled: " + kafka_connect_enabled + ", dfJob.getConnectorType(): " + dfJob.getConnectorType());
+        LOG.info("kafka_connect_enabled: " + kafka_connect_enabled + " connectorType: " + dfJob.getConnectorType());
         LOG.info("repack for kafka is:" + dfJob.toKafkaConnectJson().toString());
-        LOG.info("========================================================");
-        LOG.info("");
         
         // Start Kafka Connect REST API Forward only if Kafka is enabled and Connector type is Kafka Connect
         if (this.kafka_connect_enabled && dfJob.getConnectorType().contains("CONNECT")) {
@@ -632,11 +603,10 @@ public class DFDataProcessor extends AbstractVerticle {
             }
             KafkaConnectProcessor.forwardPOSTAsAddOne(routingContext, rc, mongo, COLLECTION, dfJob);
         } else {
-            mongo.insert(COLLECTION, dfJob.toJson(), r -> routingContext
-                    .response().setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
-                    .putHeader("Access-Control-Allow-Origin", "*")
-                    .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                    .end(Json.encodePrettily(dfJob)));
+            mongo.insert(COLLECTION, dfJob.toJson(), r ->
+                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                            .setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
+                            .end(Json.encodePrettily(dfJob)));
         }
     }
     
@@ -725,45 +695,20 @@ public class DFDataProcessor extends AbstractVerticle {
      */
     private void DF_startOneConnect(RoutingContext routingContext) {
         String id = routingContext.request().getParam("id");
-        
-        LOG.info("");
-    	LOG.info("========================================================");
-        LOG.info("DF_deleteOneConnect: received the body is:" + routingContext.getBodyAsString());
-        LOG.info("---------------------------------------------------------");
-        LOG.info("clean up connectConfig to: " + HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()));
-        LOG.info("COLLECTION: " + COLLECTION);
-        LOG.info("id: " + id);
-        LOG.info("========================================================");
-        LOG.info("");
-        
         if (id == null) {
             routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
-                    .end(HelpFunc.errorMsg(40, "id is null in your request."));
+                    .end(HelpFunc.responseMsg(9000));
         } else {
             mongo.findOne(COLLECTION, new JsonObject().put("_id", id), null, ar -> {
                 if (ar.succeeded()) {
                     if (ar.result() == null) {
-                    	  
-                        LOG.info("========================================================");
-                    	LOG.info("----> DF_startOneConnect, 0. ar.result() == null, ar.succeeded() = " + ar.succeeded());
-                    	LOG.info("========================================================");
-                    	
-                        routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
-                                .end(HelpFunc.errorMsg(41, "id cannot find in repository."));
+                        routingContext.response()
+                                .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
+                                .end(HelpFunc.responseMsg(9001));
                         return;
                     }
                   
                     DFJobPOPJ dfJob = new DFJobPOPJ(ar.result());
-                    System.out.println("DELETE OBJ" + dfJob.toJson());
-                    
-                    LOG.info("kafka_connect_enabled: " + kafka_connect_enabled + ", dfJob.getConnectorType(): " + dfJob.getConnectorType());
-                    LOG.info("");
-                    
-                    
-                    LOG.info("========================================================");
-                	LOG.info("----> DF_startOneConnect, 1. ar.succeeded() = " + ar.succeeded());
-                	LOG.info("========================================================");
-                	
                 	
                     if (this.kafka_connect_enabled && (dfJob.getConnectorType().contains("CONNECT"))){
                     	KafkaConnectProcessor.DF_forwardPOSTAsAddOne(routingContext, rc, mongo, COLLECTION, dfJob);
@@ -839,11 +784,10 @@ public class DFDataProcessor extends AbstractVerticle {
             }
         }
 
-        mongo.insert(COLLECTION, dfJob.toJson(), r -> routingContext
-                .response().setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
-                .putHeader("Access-Control-Allow-Origin", "*")
-                .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                .end(Json.encodePrettily(dfJob)));
+        mongo.insert(COLLECTION, dfJob.toJson(), r ->
+                HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                        .setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
+                        .end(Json.encodePrettily(dfJob)));
     }
 
     /**
@@ -875,8 +819,9 @@ public class DFDataProcessor extends AbstractVerticle {
         JsonObject json = dfJob.toJson();
 
         if (id == null || json == null) {
-            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
-                    .end(HelpFunc.errorMsg(30, "id is null in your request."));
+            routingContext.response()
+                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                    .end(HelpFunc.responseMsg(9000));
         } else {
             // Implement connectConfig change detection to decide if we need REST API forwarding
             mongo.findOne(COLLECTION, new JsonObject().put("_id", id),
@@ -888,18 +833,17 @@ public class DFDataProcessor extends AbstractVerticle {
                             connectorConfigString.compareTo(before_update_connectorConfigString) != 0) {
                        KafkaConnectProcessor.forwardPUTAsUpdateOne(routingContext, rc, mongo, COLLECTION, dfJob);
                     } else { // Where there is no change detected
-                        LOG.info("connectorConfig has NO change. Update in local repository only.");
+                        LOG.info("INFO - NO_CHANGE_DETECTED_ONLY_UPDATE_REPO");
                         mongo.updateCollection(COLLECTION, new JsonObject().put("_id", id), // Select a unique document
                                 // The update syntax: {$set, the json object containing the fields to update}
                                 new JsonObject().put("$set", dfJob.toJson()), v -> {
                                     if (v.failed()) {
-                                        routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
-                                                .end(HelpFunc.errorMsg(33, "updateOne to repository is failed."));
-                                    } else {
                                         routingContext.response()
-                                                .putHeader("Access-Control-Allow-Origin", "*")
-                                                .putHeader(ConstantApp.CONTENT_TYPE,
-                                                        ConstantApp.APPLICATION_JSON_CHARSET_UTF_8).end();
+                                                .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
+                                                .end(HelpFunc.responseMsg(9003));
+                                    } else {
+                                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                                .end(HelpFunc.responseMsg(1001));
                                     }
                                 }
                         );
@@ -955,7 +899,7 @@ public class DFDataProcessor extends AbstractVerticle {
         
         if (id == null || json == null) {
             routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
-                    .end(HelpFunc.errorMsg(30, "id is null in your request."));
+                    .end(HelpFunc.responseMsg(9000));
         } else {
         	// If status is running, update connector first at Kafka connect rest server, then mongodb.
         	if (dfJob.getStatus() != null && dfJob.getStatus().equalsIgnoreCase("RUNNING")) {
@@ -992,7 +936,7 @@ public class DFDataProcessor extends AbstractVerticle {
                                     new JsonObject().put("$set", dfJob.toJson()), v -> {
                                         if (v.failed()) {
                                             routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
-                                                    .end(HelpFunc.errorMsg(33, "updateOne to repository is failed."));
+                                                    .end(HelpFunc.responseMsg(9003));
                                         } else {
                                             routingContext.response().putHeader(ConstantApp.CONTENT_TYPE,
                                                             ConstantApp.APPLICATION_JSON_CHARSET_UTF_8).end();
@@ -1038,7 +982,7 @@ public class DFDataProcessor extends AbstractVerticle {
                                     new JsonObject().put("$set", dfJob.toJson()), v -> {
                                         if (v.failed()) {
                                             routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
-                                                    .end(HelpFunc.errorMsg(33, "updateOne to repository is failed."));
+                                                    .end(HelpFunc.responseMsg(9003));
                                         } else {
                                             routingContext.response().putHeader(ConstantApp.CONTENT_TYPE,
                                                             ConstantApp.APPLICATION_JSON_CHARSET_UTF_8).end();
@@ -1084,8 +1028,9 @@ public class DFDataProcessor extends AbstractVerticle {
         JsonObject json = dfJob.toJson();
 
         if (id == null || json == null) {
-            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
-                    .end(HelpFunc.errorMsg(130, "id is null in your request."));
+            routingContext.response()
+                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                    .end(HelpFunc.responseMsg(9000));
         } else {
             // Implement connectConfig change detection to decide if we need REST API forwarding
             mongo.findOne(COLLECTION, new JsonObject().put("_id", id),
@@ -1121,12 +1066,10 @@ public class DFDataProcessor extends AbstractVerticle {
                                         new JsonObject().put("$set", dfJob.toJson()), v -> {
                                             if (v.failed()) {
                                                 routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
-                                                        .end(HelpFunc.errorMsg(133, "updateOne to repository is failed."));
+                                                        .end(HelpFunc.responseMsg(9003));
                                             } else {
-                                                routingContext.response()
-                                                        .putHeader("Access-Control-Allow-Origin", "*")
-                                                        .putHeader(ConstantApp.CONTENT_TYPE,
-                                                        ConstantApp.APPLICATION_JSON_CHARSET_UTF_8).end();
+                                                HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                                        .end(HelpFunc.responseMsg(1001));
                                             }
                                         }
                                 );
@@ -1162,30 +1105,20 @@ public class DFDataProcessor extends AbstractVerticle {
     private void deleteOneConnects(RoutingContext routingContext) {
         String id = routingContext.request().getParam("id");
         
-        LOG.info("");
-    	LOG.info("========================================================");
-        LOG.info("DF_deleteOneConnect: received the body is:" + routingContext.getBodyAsString());
-        LOG.info("---------------------------------------------------------");
-        LOG.info("clean up connectConfig to: " + HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()));
-        LOG.info("COLLECTION: " + COLLECTION);
-        LOG.info("id: " + id);
-        
         if (id == null) {
             routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
-                    .end(HelpFunc.errorMsg(40, "id is null in your request."));
+                    .end(HelpFunc.responseMsg(9000));
         } else {
             mongo.findOne(COLLECTION, new JsonObject().put("_id", id), null, ar -> {
                 if (ar.succeeded()) {
                     if (ar.result() == null) {
                         routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
-                                .end(HelpFunc.errorMsg(41, "id cannot find in repository."));
+                                .end(HelpFunc.responseMsg(9001));
                         return;
                     }
                     DFJobPOPJ dfJob = new DFJobPOPJ(ar.result());
-                    System.out.println("DELETE OBJ" + dfJob.toJson());
                     
-                    LOG.info("kafka_connect_enabled: " + kafka_connect_enabled + ", dfJob.getConnectorType(): " + dfJob.getConnectorType());
-                    LOG.info("");
+                    LOG.info("connectorType: " + dfJob.getConnectorType());
                     
                     if (this.kafka_connect_enabled &&
                             (dfJob.getConnectorType().contains("CONNECT"))){
@@ -1222,39 +1155,32 @@ public class DFDataProcessor extends AbstractVerticle {
      *     }
      */
     private void DF_deleteOneConnect(RoutingContext routingContext) {
-    	LOG.info("");
-    	LOG.info("========================================================");
-        LOG.info("DF_deleteOneConnect: received the body is:" + routingContext.getBodyAsString());
-        LOG.info("---------------------------------------------------------");
-        LOG.info("clean up connectConfig to: " + HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()));
-        LOG.info("COLLECTION: " + COLLECTION);
-        
+
         String id = routingContext.request().getParam("id");
         LOG.info("id: " + id);
         
         if (id == null) {
             routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
-                    .end(HelpFunc.errorMsg(40, "id is null in your request."));
+                    .end(HelpFunc.responseMsg(9000));
         } else {
             mongo.findOne(COLLECTION, new JsonObject().put("_id", id), null, ar -> {
                 if (ar.succeeded()) {
                     if (ar.result() == null) {
                         routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
-                                .end(HelpFunc.errorMsg(41, "id cannot find in repository."));
+                                .end(HelpFunc.responseMsg(9001));
                         return;
                     }
                     DFJobPOPJ dfJob = new DFJobPOPJ(ar.result());
-                    System.out.println("DELETE OBJ" + dfJob.toJson());
                     
-                    LOG.info("kafka_connect_enabled: " + kafka_connect_enabled + ", dfJob.getConnectorType(): " + dfJob.getConnectorType());
-                    LOG.info("");
+                    LOG.info("dfJob.getConnectorType(): " + dfJob.getConnectorType());
                     
                     if (this.kafka_connect_enabled &&
                             (dfJob.getConnectorType().contains("CONNECT"))){
                         // KafkaConnectProcessor.forwardDELETEAsDeleteOne(routingContext, rc, mongo, COLLECTION, dfJob);
                     } else {
                         mongo.removeDocument(COLLECTION, new JsonObject().put("_id", id),
-                                remove -> routingContext.response().end(id + " is deleted from repository."));
+                                remove -> routingContext.response()
+                                        .end(HelpFunc.responseMsg(1003)));
                     }
                 }
             });
@@ -1285,14 +1211,16 @@ public class DFDataProcessor extends AbstractVerticle {
     private void deleteOneTransforms(RoutingContext routingContext) {// TODO - use flink rest API for instead
         String id = routingContext.request().getParam("id");
         if (id == null) {
-            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
-                    .end(HelpFunc.errorMsg(140, "id is null in your request."));
+            routingContext.response()
+                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                    .end(HelpFunc.responseMsg(9000));
         } else {
             mongo.findOne(COLLECTION, new JsonObject().put("_id", id), null, ar -> {
                 if (ar.succeeded()) {
                     if (ar.result() == null) {
-                        routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
-                                .end(HelpFunc.errorMsg(141, "id cannot find in repository."));
+                        routingContext.response()
+                                .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
+                                .end(HelpFunc.responseMsg(9001));
                         return;
                     }
                     DFJobPOPJ dfJob = new DFJobPOPJ(ar.result());
@@ -1303,7 +1231,8 @@ public class DFDataProcessor extends AbstractVerticle {
                                 mongo, COLLECTION, routingContext);
                     } else {
                         mongo.removeDocument(COLLECTION, new JsonObject().put("_id", id),
-                                remove -> routingContext.response().end(id + " is deleted from repository."));
+                                remove -> routingContext.response()
+                                        .end(HelpFunc.responseMsg(1003)));
                     }
                 }
             });
@@ -1793,10 +1722,8 @@ public class DFDataProcessor extends AbstractVerticle {
                                 }
 
                                 if (res.succeeded()) {
-                                    routingContext
-                                            .response().setStatusCode(ConstantApp.STATUS_CODE_OK)
-                                            .putHeader("Access-Control-Allow-Origin", "*")
-                                            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+                                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                            .setStatusCode(ConstantApp.STATUS_CODE_OK)
                                             .end(Json.encodePrettily(
                                                     res.result().toString()=="[]"?
                                                             portRestResponse.getBody():res.result()
@@ -1806,10 +1733,9 @@ public class DFDataProcessor extends AbstractVerticle {
                             });
                         });
         postRestClientRequest.exceptionHandler(exception -> {
-            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                    .putHeader("Access-Control-Allow-Origin", "*")
-                    .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                    .end(HelpFunc.errorMsg(31, "POST Request exception - " + exception.toString()));
+            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                    .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                    .end(HelpFunc.responseMsg(9006));
         });
 
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
