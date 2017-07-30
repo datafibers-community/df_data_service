@@ -152,7 +152,7 @@ public class KafkaConnectProcessor {
                                 .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
                                 .end(HelpFunc.responseMsg(9003));
                     } else {
-                        HelpFunc.responseCorsHandleAddOn(routingContext.response()).end();
+                        HelpFunc.responseCorsHandleAddOn(routingContext.response()).end(HelpFunc.responseMsg(1000));
                     }
                 });
     }

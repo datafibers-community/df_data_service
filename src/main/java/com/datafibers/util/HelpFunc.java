@@ -12,10 +12,7 @@ import java.io.StringWriter;
 import java.net.ConnectException;
 import java.net.URL;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.List;
-import java.util.Properties;
-import java.util.Random;
+import java.util.*;
 
 import io.vertx.ext.mongo.FindOptions;
 import io.vertx.ext.web.RoutingContext;
@@ -220,6 +217,57 @@ public class HelpFunc {
         // Then, replace as "schema":"string"
         return srcStr.replace("\"{", "{").replace("}\"", "}").replace("\\\"", "\"").replace("\"\"", "\"");
     }
+
+    /**
+     * Cleanup Json response string to the proper format that rest-on-admin accept
+     * Remove null
+     * Remove . from keys
+     * Covert all nest json
+     * @param srcStr
+     * @return
+     */
+    public static String jsonStringD2U(String srcStr) {
+        String cleaned;
+        cleaned = jsonCleanSpecificFileds(srcStr, "connectorConfig", ".", "_");
+        cleaned = jsonCleanSpecificFileds(cleaned, "jobConfig", ".", "_");
+        return cleaned;
+    }
+
+    /**
+     * Cleanup Json response string to the proper format that rest-on-admin accept
+     * Remove null
+     * Remove . from keys
+     * Covert all nest json
+     * @param srcStr
+     * @return
+     */
+    public static String jsonStringU2D(String srcStr) {
+        String cleaned;
+        cleaned = jsonCleanSpecificFileds(srcStr, "connectorConfig", "_", ".");
+        cleaned = jsonCleanSpecificFileds(cleaned, "jobConfig", "_", ".");
+        return cleaned;
+    }
+
+    public static String jsonCleanSpecificFileds(String srcStr, String cleaningField,
+                                                 String replaceFrom, String replaceTo) {
+
+        JsonObject jobJsonObj = new JsonObject(srcStr);
+
+        if(jobJsonObj.containsKey(cleaningField)) {
+            JsonObject configObj = jobJsonObj.getJsonObject(cleaningField);
+            JsonObject newConfigObj = new JsonObject();
+
+            for(String key : configObj.fieldNames()) {
+                newConfigObj.put(key.replace(replaceFrom, replaceTo), configObj.getValue(key)); // assign it to new key
+            }
+
+            jobJsonObj.put(cleaningField, newConfigObj);
+
+        }
+
+        return Json.encodePrettily(jobJsonObj);
+    }
+
 
     /**
      * This is mainly to bypass security control for response.
