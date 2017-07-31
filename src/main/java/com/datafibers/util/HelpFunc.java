@@ -100,49 +100,6 @@ public class HelpFunc {
     }
 
     /**
-     * Prepare response message in better JSON format
-     *
-     * @param responseCode
-     * @return ResponseMsg
-     */
-    public static String responseMsg(int responseCode) {
-        String responseMsg;
-        switch(responseCode) {
-            case 1000: responseMsg = "INFO - CREATED";
-                break;
-            case 1001: responseMsg = "INFO - UPDATED";
-                break;
-            case 1002: responseMsg = "INFO - DELETED";
-                break;
-            case 9000: responseMsg = "ERROR - ID_IS_NULL_IN_REQUEST";
-                break;
-            case 9001: responseMsg = "ERROR - ID_NOT_FOUND_IN_REPO";
-                break;
-            case 9002: responseMsg = "ERROR - ID_SEARCH_EXCEPTION_IN_REPO";
-                break;
-            case 9003: responseMsg = "ERROR - ID_UPDATE_EXCEPTION_IN_REPO";
-                break;
-            case 9004: responseMsg = "ERROR - ID_DELETE_EXCEPTION_IN_REPO";
-                break;
-            case 9005: responseMsg = "ERROR - ID_INSERT_EXCEPTION_IN_REPO";
-                break;
-            case 9006: responseMsg = "ERROR - POST_CLIENT_EXCEPTION";
-                break;
-            case 9007: responseMsg = "ERROR - ID_NOT_FOUND_IN_KAFKA_CONNECT";
-                break;
-            default: responseMsg = "ERROR - INVALID_RESPONSE_CODE_PARAMETER";
-                break;
-        }
-        return Json.encodePrettily(new JsonObject()
-                .put("code", String.format("%06d", responseCode))
-                .put("message", responseMsg));
-    }
-
-    public static String responseMsg(String responseKey, String responseVal) {
-        return Json.encodePrettily(new JsonObject().put(responseKey, responseVal));
-    }
-
-    /**
      * This function will search JSONSTRING to find patterned keys_1..n. If it has key_ignored_mark subkey, the element
      * will be removed. For example {"connectorConfig_1":{"config_ignored":"test"}, "connectorConfig_2":{"test":"test"}}
      * will be cleaned as {"connectorConfig":{"test":"test"}}

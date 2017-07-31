@@ -1,7 +1,7 @@
 package com.datafibers.processor;
 
 import com.datafibers.exception.DFPropertyValidationException;
-import com.datafibers.util.SchemaRegistryClient;
+import com.datafibers.util.*;
 import io.vertx.core.Vertx;
 import io.vertx.core.WorkerExecutor;
 import io.vertx.core.json.JsonObject;
@@ -21,9 +21,6 @@ import com.datafibers.flinknext.DFRemoteStreamEnvironment;
 import com.datafibers.flinknext.Kafka09AvroTableSink;
 import com.datafibers.flinknext.Kafka09AvroTableSource;
 import com.datafibers.model.DFJobPOPJ;
-import com.datafibers.util.ConstantApp;
-import com.datafibers.util.DynamicRunner;
-import com.datafibers.util.HelpFunc;
 
 public class FlinkTransformProcessor {
     private static final Logger LOG = Logger.getLogger(FlinkTransformProcessor.class);
@@ -243,7 +240,7 @@ public class FlinkTransformProcessor {
                 new JsonObject().put("$set", dfJob.toJson()), v -> {
                     if (v.failed()) {
                         routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
-                                .end(HelpFunc.responseMsg(9003));
+                                .end(DFAPIMessage.getResponseMessage(9003));
                     } else {
                         HelpFunc.responseCorsHandleAddOn(routingContext.response()).end();
                     }

@@ -20,13 +20,11 @@ public final class ConstantApp {
     public static final String DF_CONNECTS_REST_URL_WILD = "/api/df/ps*";
     public static final String DF_CONNECTS_REST_URL_WITH_ID = DF_CONNECTS_REST_URL + "/:id";
 
-    // New
+    // TODO - This is for API POC - Can be removed later
     public static final String DF_CONNECTS_REST_URL2 = "/api/df/ps/new";
     public static final String DF_CONNECTS_REST_URL_WITH_ID2 = DF_CONNECTS_REST_URL2 + "/:id";
-    
     public static final String DF_CONNECTS_REST_START_URL_WITH_ID = "/api/df/ps/new/start" + "/:id";
-    
-    
+
     // DF Transforms REST endpoint URLs
     public static final String DF_TRANSFORMS_REST_URL = "/api/df/tr";
     public static final String DF_TRANSFORMS_INSTALLED_TRANSFORMS_REST_URL = "/api/df/installed_transforms";
@@ -45,6 +43,11 @@ public final class ConstantApp {
     public static final String DF_PROCESS_HIST_REST_URL = "/api/df/hist";
     public static final String DF_PROCESS_HIST_URL_WILD = "/api/df/hist*";
 
+    // DF default configuration endpoint URLs
+    public static final String DF_PROCESS_DEFAULT_CONFIG_REST_URL = "/api/df/default_config";
+    public static final String DF_PROCESS_DEFAULT_CONFIG_URL_WILD = "/api/df/default_config*";
+    public static final String DF_PROCESS_DEFAULT_CONFIG_REST_URL_WITH_ID = DF_PROCESS_DEFAULT_CONFIG_REST_URL + "/:id";
+
     // Kafka Connect endpoint URLs
     public static final String KAFKA_CONNECT_REST_URL = "/connectors";
     public static final String KAFKA_CONNECT_PLUGIN_REST_URL = "/connector-plugins";
@@ -53,7 +56,7 @@ public final class ConstantApp {
     // Kafka Other default settings
     public static String DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK = "df_trans_flink_group_id";
 
-    // Flink Rest
+    // Flink rest api setting
     public static final String FLINK_REST_URL = "/jobs";
     public static final String FLINK_DUMMY_JOB_ID = "00000000000000000000000000000000";
 
@@ -83,10 +86,10 @@ public final class ConstantApp {
         NONE
     }
 
-    /**
-     * IF contains SOURCE or SINK, it is CONNECT, else TRANSFORM
-     * Convention: CATEGORY_TYPE
-     */
+    /*
+     Type to differ from connect or transform. We delivered the ConnectorCategory field from the word before 1st _
+     The pattern here is [ConnectorCategory]_[Engine]_[Details]
+      */
     public enum DF_CONNECT_TYPE {
         CONNECT_KAFKA_SOURCE,       // Kafka Connector import data into Kafka
         CONNECT_KAFKA_SOURCE_AVRO,  // DF Generic Avro source
@@ -122,7 +125,6 @@ public final class ConstantApp {
     public static final int MAX_RUNTIME = 6000;  // VERT.X Worker timeout in 6 sec
 
     // Properties keys for UI
-
     public static final String PK_TRANSFORM_CUID = "cuid";
     public static final String PK_FLINK_SUBMIT_JOB_ID = "flink.submit.job.id";
 

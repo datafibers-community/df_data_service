@@ -40,7 +40,7 @@ public class DFCusterClient extends ClusterClient {
     @Override
     public void waitForClusterToBeReady() {}
 
-
+    @SuppressWarnings( "deprecation" )
     @Override
     public String getWebInterfaceURL() {
         String host = this.getJobManagerAddress().getHostString();
