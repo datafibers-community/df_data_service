@@ -113,9 +113,9 @@ public class SchemaRegisterProcessor {
             future.complete(status_code);
         }, res -> {
             Object result = HelpFunc.coalesce(res.result(), ConstantApp.STATUS_CODE_BAD_REQUEST);
-            routingContext.response().setStatusCode(Integer.parseInt(result.toString()))
-                    .putHeader("Access-Control-Allow-Origin", "*")
-                    .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                    .setStatusCode(Integer.parseInt(result.toString()))
+                    .putHeader("X-Total-Count", "3" )
                     .end(HelpFunc.stringToJsonFormat(returnString.toString()));
             executor.close();
         });
