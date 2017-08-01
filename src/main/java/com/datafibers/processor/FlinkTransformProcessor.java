@@ -136,7 +136,7 @@ public class FlinkTransformProcessor {
 
                 JobExecutionResult jres = flinkEnv.executeWithDFObj("DF_FLINK_A2A_" + engine.toUpperCase() + uuid, dfJob);
             } catch (Exception e) {
-                LOG.error("Flink Submit Exception:" + e.getCause());
+                LOG.error(DFAPIMessage.logResponseMessage(9010, dfJob.getId()));
                 e.printStackTrace();
             }
 
@@ -146,11 +146,11 @@ public class FlinkTransformProcessor {
 
         long timerID = vertx.setTimer(maxRunTime, id -> {
             // exec_flink.close();
-            LOG.info("Job - DF_FLINK_TRANS_" + uuid +  "'s JobID is - " + dfJob.getFlinkIDFromJobConfig());
+            LOG.info(DFAPIMessage.logResponseMessage(1005, "id-" + dfJob.getId() + " flink_job_id-" + dfJob.getFlinkIDFromJobConfig()));
             mongoClient.updateCollection(mongoCOLLECTION, new JsonObject().put("_id", dfJob.getId()),
                     new JsonObject().put("$set", dfJob.toJson()), v -> {
                         if (v.failed()) {
-                            LOG.error("update Flink JOB_ID Failed.", v.cause());
+                            LOG.error(DFAPIMessage.logResponseMessage(1001, dfJob.getId()));
                         }
                     }
             );
@@ -173,27 +173,25 @@ public class FlinkTransformProcessor {
 
     	try {
     		if (jobID == null || jobID.trim().equalsIgnoreCase("")) {
-    			LOG.warn("Flink job ID is empty or null in cancelFlinkSQL() ");
+    			LOG.error(DFAPIMessage.logResponseMessage(9000, id));
     		} 
-    		//else {
+    		else {
     			String cancelCMD = "cancel;-m;" + jobManagerHostPort + ";" + jobID;
-    			LOG.info("Flink job " + jobID + " cancel CMD: " + cancelCMD);
     			//CliFrontend cli = new CliFrontend("conf/flink-conf.yaml");
     			CliFrontend cli = new CliFrontend("conf");
     			int retCode = cli.parseParameters(cancelCMD.split(";"));
-    			LOG.info("Flink job " + jobID + " is canceled " + ((retCode == 0)? "successful.":"failed."));
-
-    			String respMsg = (retCode == 0)? " is deleted from repository.":
-    				" is deleted from repository, but Job_ID is not found.";
+    			String respMsg = (retCode == 0)?
+                        " is deleted from repository." : " is deleted from repository, but Job_ID is not found.";
+                LOG.info(DFAPIMessage.logResponseMessage(1006, "flink_job_id-" + jobID + respMsg));
     			if(cancelRepoAndSendResp) {
     				mongoClient.removeDocument(mongoCOLLECTION, new JsonObject().put("_id", id),
-    						remove -> routingContext.response().end(id + respMsg));
+    						remove -> routingContext.response().end(DFAPIMessage.getResponseMessage(1002)));
     			}
-    		//}
+    		}
     	} catch (IllegalArgumentException ire) {
-    		LOG.warn("No Flink job found with ID for cancellation");
+    		LOG.warn(DFAPIMessage.logResponseMessage(9011, "flink_job_id-" + jobID));
     	} catch (Throwable t) {
-    		LOG.error("Fatal error while running command line interface.", t.getCause());
+    		LOG.error(DFAPIMessage.logResponseMessage(9012, "flink_job_id-" + jobID));
     	}
     }
 
@@ -241,8 +239,11 @@ public class FlinkTransformProcessor {
                     if (v.failed()) {
                         routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
                                 .end(DFAPIMessage.getResponseMessage(9003));
+                        LOG.error(DFAPIMessage.logResponseMessage(9003, id));
                     } else {
-                        HelpFunc.responseCorsHandleAddOn(routingContext.response()).end();
+                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                .end(DFAPIMessage.getResponseMessage(1001));
+                        LOG.info(DFAPIMessage.logResponseMessage(1001, id));
                     }
                 }
         );
@@ -263,16 +264,13 @@ public class FlinkTransformProcessor {
             int retCode = cli.parseParameters(runCMD.split(";"));
             String respMsg = (retCode == 0)? "Flink job is submitted for Jar UDF at " :
                     "Flink job is failed to submit for Jar UDF at " + jarFile;
-            LOG.info(respMsg);
-
+            LOG.info(DFAPIMessage.logResponseMessage(9013, "respMsg-" + respMsg));
         } catch (IllegalArgumentException ire) {
-            LOG.error("No Flink job found with ID for cancellation");
+            LOG.error(DFAPIMessage.logResponseMessage(9013, "jarFile-" + jarFile));
         } catch (ProgramInvocationException t) {
-            LOG.error("Fatal error while running the jar file.", t.getCause());
+            LOG.error(DFAPIMessage.logResponseMessage(9013, "jarFile-" + jarFile));
         } catch (Exception e) {
-            LOG.error("Flink submit UDF Jar run-time exception.");
+            LOG.error(DFAPIMessage.logResponseMessage(9013, "jarFile-" + jarFile));
         }
-
-
     }
 }

@@ -705,6 +705,7 @@ public class DFDataProcessor extends AbstractVerticle {
             routingContext.response()
                     .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
                     .end(DFAPIMessage.getResponseMessage(9000));
+            LOG.error(DFAPIMessage.getResponseMessage(9000, id));
         } else {
             mongo.findOne(COLLECTION, new JsonObject().put("_id", id), null, ar -> {
                 if (ar.succeeded()) {
@@ -712,16 +713,20 @@ public class DFDataProcessor extends AbstractVerticle {
                         routingContext.response()
                                 .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
                                 .end(DFAPIMessage.getResponseMessage(9001));
+                        LOG.error(DFAPIMessage.logResponseMessage(9001, id));
                         return;
                     }
                     DFJobPOPJ dfJob = new DFJobPOPJ(ar.result());
                     HelpFunc.responseCorsHandleAddOn(routingContext.response())
                             .setStatusCode(ConstantApp.STATUS_CODE_OK)
                             .end(HelpFunc.jsonStringD2U(Json.encodePrettily(dfJob)));
+                    LOG.info(DFAPIMessage.logResponseMessage(1003, id));
+
                 } else {
                     routingContext.response()
                             .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
                             .end(DFAPIMessage.getResponseMessage(9002));
+                    LOG.error(DFAPIMessage.logResponseMessage(9002, id));
                 }
             });
         }
@@ -771,29 +776,23 @@ public class DFDataProcessor extends AbstractVerticle {
      *     }
      */
     private void addOneConnects(RoutingContext routingContext) {
-        LOG.info("received the body is:" + routingContext.getBodyAsString());
-        LOG.info("clean uo connectConfig to: " + HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()));
-        // Get request as object
+
         final DFJobPOPJ dfJob = Json.decodeValue(
                 HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()), DFJobPOPJ.class);
         // Set initial status for the job
         dfJob.setStatus(ConstantApp.DF_STATUS.UNASSIGNED.name());
-
         // TODO Set default registry url for DF Generic connect for Avro
-
         // Set MongoId to _id, connect, cid in connectConfig
         String mongoId = new ObjectId().toString();
         dfJob.setConnectUid(mongoId).setId(mongoId).getConnectorConfig().put("cuid", mongoId);
 
-        LOG.info("kafka_connect_enabled: " + kafka_connect_enabled + " connectorType: " + dfJob.getConnectorType());
-        LOG.info("repack for kafka is:" + dfJob.toKafkaConnectJson().toString());
-        
         // Start Kafka Connect REST API Forward only if Kafka is enabled and Connector type is Kafka Connect
         if (this.kafka_connect_enabled && dfJob.getConnectorType().contains("CONNECT")) {
             // Auto fix "name" in Connect Config when mismatch with Connector Name
             if (!dfJob.getConnectUid().equalsIgnoreCase(dfJob.getConnectorConfig().get("name")) &&
                     dfJob.getConnectorConfig().get("name") != null) {
                 dfJob.getConnectorConfig().put("name", dfJob.getConnectUid());
+                LOG.info(DFAPIMessage.logResponseMessage(1004, dfJob.getConnectUid()));
             }
             KafkaConnectProcessor.forwardPOSTAsAddOne(routingContext, rc, mongo, COLLECTION, dfJob);
         } else {
@@ -801,6 +800,7 @@ public class DFDataProcessor extends AbstractVerticle {
                     HelpFunc.responseCorsHandleAddOn(routingContext.response())
                             .setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
                             .end(Json.encodePrettily(dfJob)));
+            LOG.warn(DFAPIMessage.logResponseMessage(9008, mongoId));
         }
     }
     
@@ -831,8 +831,6 @@ public class DFDataProcessor extends AbstractVerticle {
         dfJob.setStatus(ConstantApp.DF_STATUS.RUNNING.name());
         String mongoId = new ObjectId().toString();
         dfJob.setConnectUid(mongoId).setId(mongoId).getConnectorConfig().put(ConstantApp.PK_TRANSFORM_CUID, mongoId);
-
-        LOG.info("received from UI form - " + HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()));
 
         if (this.transform_engine_flink_enabled) {
             // Submit Flink UDF
@@ -869,6 +867,7 @@ public class DFDataProcessor extends AbstractVerticle {
                 HelpFunc.responseCorsHandleAddOn(routingContext.response())
                         .setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
                         .end(Json.encodePrettily(dfJob)));
+        LOG.warn(DFAPIMessage.logResponseMessage(9009, dfJob.getId()));
     }
 
     /** Add one schema to schema registry
@@ -917,9 +916,9 @@ public class DFDataProcessor extends AbstractVerticle {
      */
     private void updateOneConnects(RoutingContext routingContext) {
         final String id = routingContext.request().getParam("id");
-        final DFJobPOPJ dfJob = Json.decodeValue(HelpFunc.jsonStringU2D(routingContext.getBodyAsString()),
-                DFJobPOPJ.class);
-        LOG.debug("received the body is from updateOne:" + routingContext.getBodyAsString());
+        final DFJobPOPJ dfJob = Json.decodeValue(
+                HelpFunc.jsonStringU2D(routingContext.getBodyAsString()),DFJobPOPJ.class);
+
         String connectorConfigString = dfJob.mapToJsonString(dfJob.getConnectorConfig());
         JsonObject json = dfJob.toJson();
 
@@ -927,6 +926,7 @@ public class DFDataProcessor extends AbstractVerticle {
             routingContext.response()
                     .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
                     .end(DFAPIMessage.getResponseMessage(9000));
+            LOG.error(DFAPIMessage.logResponseMessage(9000, id));
         } else {
             // Implement connectConfig change detection to decide if we need REST API forwarding
             mongo.findOne(COLLECTION, new JsonObject().put("_id", id),

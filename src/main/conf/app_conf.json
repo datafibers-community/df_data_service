@@ -3,9 +3,10 @@
   "rest.port.df.processor":8080,
   "http.port.df.processor":8000,
 
-  "db.name":"df",
+  "db.name":"DEFAULT_DB",
   "db.collection.name":"df_processor",
   "db.metadata.collection.name":"df_meta",
+  "db.log.collection.name":"df_log",
   "repo.connection.string":"mongodb://localhost:27017",
 
   "kafka.server.port":9092,

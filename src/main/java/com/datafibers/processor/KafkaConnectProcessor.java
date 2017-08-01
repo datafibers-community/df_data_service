@@ -41,20 +41,22 @@ public class KafkaConnectProcessor {
                     LOG.debug("json object name: " + jo.getString("name"));
                     LOG.debug("json object config: " + jo.getJsonObject("config"));
                     LOG.debug("json object tasks: " + jo.getMap().get("tasks"));
-                    LOG.info("received response from Kafka server: " + portRestResponse.statusMessage());
-                    LOG.info("received response from Kafka server: " + portRestResponse.statusCode());
+                    LOG.debug("received response from Kafka server: " + portRestResponse.statusMessage());
+                    LOG.debug("received response from Kafka server: " + portRestResponse.statusCode());
 
                     // Once REST API forward is successful, add the record to the local repository
                     mongoClient.insert(mongoCOLLECTION, dfJobResponsed.toJson(), r ->
                             HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                     .setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
                                     .end(Json.encodePrettily(dfJobResponsed)));
+                    LOG.info(DFAPIMessage.logResponseMessage(1000, dfJobResponsed.getId()));
                 });
 
         postRestClientRequest.exceptionHandler(exception -> {
             HelpFunc.responseCorsHandleAddOn(routingContext.response())
                     .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
                     .end(DFAPIMessage.getResponseMessage(9006));
+            LOG.error(DFAPIMessage.logResponseMessage(9006, dfJobResponsed.getId()));
         });
 
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
