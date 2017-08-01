@@ -265,9 +265,6 @@ public class DFDataProcessor extends AbstractVerticle {
         // Get all installed connect or transform
         router.get(ConstantApp.DF_CONNECTS_INSTALLED_CONNECTS_REST_URL).handler(this::getAllInstalledConnects);
 
-        // Get all default connect or transform task configurations
-        router.get(ConstantApp.DF_CONNECTS_INSTALLED_CONNECTS_REST_URL).handler(this::getAllInstalledConnects);
-
         // Process History
         router.options(ConstantApp.DF_PROCESS_HIST_REST_URL).handler(this::corsHandle);
         router.get(ConstantApp.DF_PROCESS_HIST_REST_URL).handler(this::getAllProcessHistory);
