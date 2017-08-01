@@ -51,6 +51,7 @@ import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
+import org.log4mongo.MongoDbAppender;
 
 /**
  * DF Producer is used to route producer service to kafka connect rest or lunch locally.
@@ -126,11 +127,23 @@ public class DFDataProcessor extends AbstractVerticle {
         /**
          * Create all application client
          **/
-        // Mongo client for metadata repository
+        // MongoDB client for metadata repository
         JsonObject mongoConfig = new JsonObject()
                 .put("connection_string", config().getString("repo.connection.string", "mongodb://localhost:27017"))
                 .put("db_name", config().getString("db.name", "DEFAULT_DB"));
         mongo = MongoClient.createShared(vertx, mongoConfig);
+
+        // Set dynamic logging to MongoDB
+        MongoDbAppender mongoAppender = new MongoDbAppender();
+        mongoAppender.setDatabaseName(config().getString("db.name", "DEFAULT_DB"));
+        mongoAppender.setCollectionName(config().getString("db.log.collection.name", "df_log"));
+        String mongoConnectionString = config()
+                .getString("repo.connection.string", "mongodb://localhost:27017")
+                .replace("//", "");
+        mongoAppender.setHostname(mongoConnectionString.split(":")[1]);
+        mongoAppender.setPort(mongoConnectionString.split(":")[2]);
+        mongoAppender.activateOptions();
+        Logger.getRootLogger().addAppender(mongoAppender);
 
         // Non-blocking Vertx Rest API Client to talk to Kafka Connect when needed
         if (this.kafka_connect_enabled) {

@@ -9,7 +9,7 @@ import java.util.Map;
 /**
  * Class to keep all API response message
  */
-public class DFAPIMessage {
+public final class DFAPIMessage {
 
     private static final Map<Integer, String> messageMap;
 
