@@ -92,7 +92,7 @@ public class CLIParser {
 
 
         } catch (ParseException e) {
-            LOG.warn("Failed to parse command line properties", e);
+            LOG.warn(DFAPIMessage.logResponseMessage(9020, "exception - " + e.getCause()));
             help();
         }
         return null;

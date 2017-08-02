@@ -11,7 +11,6 @@ import io.vertx.core.http.HttpServer;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.mongo.FindOptions;
 import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.FileUpload;
 import io.vertx.ext.web.Router;
@@ -937,7 +936,7 @@ public class DFDataProcessor extends AbstractVerticle {
                             connectorConfigString.compareTo(before_update_connectorConfigString) != 0) {
                        KafkaConnectProcessor.forwardPUTAsUpdateOne(routingContext, rc, mongo, COLLECTION, dfJob);
                     } else { // Where there is no change detected
-                        LOG.info("INFO - NO_CHANGE_DETECTED_ONLY_UPDATE_REPO");
+                        LOG.info(DFAPIMessage.logResponseMessage(1007, id));
                         mongo.updateCollection(COLLECTION, new JsonObject().put("_id", id), // Select a unique document
                                 // The update syntax: {$set, the json object containing the fields to update}
                                 new JsonObject().put("$set", dfJob.toJson()), v -> {
@@ -945,15 +944,18 @@ public class DFDataProcessor extends AbstractVerticle {
                                         routingContext.response()
                                                 .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
                                                 .end(DFAPIMessage.getResponseMessage(9003));
+                                        LOG.error(DFAPIMessage.logResponseMessage(9003, id));
                                     } else {
                                         HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                                 .end(DFAPIMessage.getResponseMessage(1001));
+                                        LOG.info(DFAPIMessage.logResponseMessage(1001, id));
                                     }
                                 }
                         );
                     }
                 } else {
-                    LOG.error("Mongo client response exception", res.cause());
+                    LOG.error(DFAPIMessage.
+                            logResponseMessage(9014, id + " details - " + res.cause()));
                 }
             });
         }
@@ -982,9 +984,7 @@ public class DFDataProcessor extends AbstractVerticle {
      */
     private void updateOneTransforms(RoutingContext routingContext) {
         final String id = routingContext.request().getParam("id");
-        LOG.debug("Body received:" + routingContext.getBodyAsString());
         final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(), DFJobPOPJ.class);
-        LOG.debug("received the body is from updateOne:" + routingContext.getBodyAsString());
         String connectorConfigString = dfJob.mapToJsonString(dfJob.getConnectorConfig());
         JsonObject json = dfJob.toJson();
 
@@ -992,6 +992,7 @@ public class DFDataProcessor extends AbstractVerticle {
             routingContext.response()
                     .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
                     .end(DFAPIMessage.getResponseMessage(9000));
+            LOG.error(DFAPIMessage.logResponseMessage(9000, id));
         } else {
             // Implement connectConfig change detection to decide if we need REST API forwarding
             mongo.findOne(COLLECTION, new JsonObject().put("_id", id),
@@ -1021,22 +1022,25 @@ public class DFDataProcessor extends AbstractVerticle {
 //                                        );
 
                             } else { // Where there is no change detected
-                                LOG.info("connectorConfig has NO change. Update in local repository only.");
+                                LOG.info(DFAPIMessage.logResponseMessage(1007, id));
                                 mongo.updateCollection(COLLECTION, new JsonObject().put("_id", id), // Select a unique document
                                         // The update syntax: {$set, the json object containing the fields to update}
                                         new JsonObject().put("$set", dfJob.toJson()), v -> {
                                             if (v.failed()) {
                                                 routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
                                                         .end(DFAPIMessage.getResponseMessage(9003));
+                                                LOG.error(DFAPIMessage.logResponseMessage(9003, id));
                                             } else {
                                                 HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                                         .end(DFAPIMessage.getResponseMessage(1001));
+                                                LOG.info(DFAPIMessage.logResponseMessage(1001, id));
                                             }
                                         }
                                 );
                             }
                         } else {
-                            LOG.error("Mongo client response exception", res.cause());
+                            LOG.error(DFAPIMessage.
+                                    logResponseMessage(9014, id + " details - " + res.cause()));
                         }
                     });
         }
@@ -1092,24 +1096,25 @@ public class DFDataProcessor extends AbstractVerticle {
         if (id == null) {
             routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
                     .end(DFAPIMessage.getResponseMessage(9000));
+            LOG.error(DFAPIMessage.logResponseMessage(9000, id));
         } else {
             mongo.findOne(COLLECTION, new JsonObject().put("_id", id), null, ar -> {
                 if (ar.succeeded()) {
                     if (ar.result() == null) {
                         routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
                                 .end(DFAPIMessage.getResponseMessage(9001));
+                        LOG.error(DFAPIMessage.logResponseMessage(9001, id));
                         return;
                     }
                     DFJobPOPJ dfJob = new DFJobPOPJ(ar.result());
-                    
-                    LOG.info("connectorType: " + dfJob.getConnectorType());
-                    
                     if (this.kafka_connect_enabled &&
                             (dfJob.getConnectorType().contains("CONNECT"))){
                         KafkaConnectProcessor.forwardDELETEAsDeleteOne(routingContext, rc, mongo, COLLECTION, dfJob);
                     } else {
                         mongo.removeDocument(COLLECTION, new JsonObject().put("_id", id),
-                                remove -> routingContext.response().end(id + " is deleted from repository."));
+                                remove -> routingContext.response()
+                                        .end(DFAPIMessage.getResponseMessage(1002, id)));
+                        LOG.info(DFAPIMessage.logResponseMessage(1002, id));
                     }
                 }
             });
@@ -1143,6 +1148,7 @@ public class DFDataProcessor extends AbstractVerticle {
             routingContext.response()
                     .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
                     .end(DFAPIMessage.getResponseMessage(9000));
+            LOG.error(DFAPIMessage.logResponseMessage(9000, id));
         } else {
             mongo.findOne(COLLECTION, new JsonObject().put("_id", id), null, ar -> {
                 if (ar.succeeded()) {
@@ -1150,6 +1156,7 @@ public class DFDataProcessor extends AbstractVerticle {
                         routingContext.response()
                                 .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
                                 .end(DFAPIMessage.getResponseMessage(9001));
+                        LOG.error(DFAPIMessage.logResponseMessage(9001, id));
                         return;
                     }
                     DFJobPOPJ dfJob = new DFJobPOPJ(ar.result());
@@ -1162,6 +1169,7 @@ public class DFDataProcessor extends AbstractVerticle {
                         mongo.removeDocument(COLLECTION, new JsonObject().put("_id", id),
                                 remove -> routingContext.response()
                                         .end(DFAPIMessage.getResponseMessage(1003)));
+                        LOG.info(DFAPIMessage.logResponseMessage(1003, id));
                     }
                 }
             });
@@ -1183,9 +1191,8 @@ public class DFDataProcessor extends AbstractVerticle {
                 .replace("//", "").split(":")[2];
         String metaDBName = config().getString("db.name", "DEFAULT_DB");
 
-        //Create meta-database is it is not exist
+        // Create meta-database is it is not exist
         new MongoAdminClient(metaDBHost, Integer.parseInt(metaDBPort), metaDBName).createCollection(this.COLLECTION_META);
-
 
         String metaSinkConnect = new JSONObject().put("name", "metadata_sink_connect").put("config",
                 new JSONObject().put("connector.class", "org.apache.kafka.connect.mongodb.MongodbSinkConnector")
@@ -1205,7 +1212,7 @@ public class DFDataProcessor extends AbstractVerticle {
                         .body(metaSinkConnect).asString();
             }
 
-            // TODO add the avro schema for metadata as well
+            // Add the avro schema for metadata as well
             String dfMetaSchemaSubject = config().getString("kafka.topic.df.metadata", "df_meta") + "-value";
             String schemaRegistryRestURL = "http://" + this.schema_registry_host_and_port + "/subjects/" +
                     dfMetaSchemaSubject + "/versions";
@@ -1215,7 +1222,6 @@ public class DFDataProcessor extends AbstractVerticle {
                     .asString();
 
             if(schmeaRes.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND) { // Add the meta sink schema
-                LOG.info("Metadata schema is not available, so create it.");
                 Unirest.post(schemaRegistryRestURL)
                         .header("accept", ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
                         .header("Content-Type", ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
@@ -1237,21 +1243,22 @@ public class DFDataProcessor extends AbstractVerticle {
                                         "{\"name\": \"status\", \"type\": \"string\"}]}"
                                 )).toString()
                         ).asString();
+                LOG.info(DFAPIMessage.logResponseMessage(1008, "META_DATA_SCHEMA_REGISTRATION"));
             } else {
-                LOG.info("Metadata schema is available and continue starting.");
+                LOG.info(DFAPIMessage.logResponseMessage(1009, "META_DATA_SCHEMA_REGISTRATION"));
             }
 
             JSONObject resObj = new JSONObject(res.getBody());
+            String status = "Unknown";
             if (resObj.has("connector")) {
-                LOG.info("The metadata sink @topic:df_meta is started with status: "
-                        + resObj.getJSONObject("connector").get("state"));
-            } else {
-                LOG.info("The metadata sink @topic:df_meta is started with status: Unknown.");
-                LOG.info("Check the latest status in Web UI -> ALL view.");
+                status = resObj.getJSONObject("connector").get("state").toString();
             }
 
+            LOG.info(DFAPIMessage.logResponseMessage(1010, "topic:df_meta, status:" + status));
+
         } catch (UnirestException ue) {
-            LOG.error("Starting adding MetadataSink connector exception", ue);
+            LOG.error(DFAPIMessage
+                    .logResponseMessage(9015, "exception details - " + ue.getCause()));
         }
     }
 
@@ -1265,10 +1272,10 @@ public class DFDataProcessor extends AbstractVerticle {
                 ConstantApp.KAFKA_CONNECT_REST_URL;
         try {
             HttpResponse<String> res = Unirest.get(restURI)
-                    .header("accept", "application/json")
-                    .asString();
+                    .header("accept", "application/json").asString();
             String resStr = res.getBody();
-            LOG.debug("Import All get: " + resStr);
+            LOG.info(DFAPIMessage.logResponseMessage(1011, resStr));
+
             if (resStr.compareToIgnoreCase("[]") != 0 && !resStr.equalsIgnoreCase("[null]")) { //Has active connectors
                 for (String connectName: resStr.substring(2,resStr.length()-2).split("\",\"")) {
                     if (connectName.equalsIgnoreCase("null")) continue;
@@ -1313,9 +1320,12 @@ public class DFDataProcessor extends AbstractVerticle {
                                 );
                                 mongo.insert(COLLECTION, insertJob.toJson(), ar -> {
                                     if (ar.failed()) {
-                                        LOG.error("IMPORT Status - failed", ar.cause());
+                                        LOG.error(DFAPIMessage
+                                                .logResponseMessage(9016,
+                                                        "exception_details - " + ar.cause()));
                                     } else {
-                                        LOG.debug("IMPORT Status - successfully");
+                                        LOG.debug(DFAPIMessage
+                                                .logResponseMessage(1012, "CONNECT_IMPORT"));
                                     }
                                 });
                             } else { // Update the connectConfig portion from Kafka import
@@ -1329,8 +1339,8 @@ public class DFDataProcessor extends AbstractVerticle {
                                                                 new TypeReference<HashMap<String, String>>(){}));
 
                                             } catch (IOException ioe) {
-                                                LOG.error("IMPORT Status - Read Connector Config as Map failed",
-                                                        ioe.getCause());
+                                                LOG.error(DFAPIMessage.logResponseMessage(9017,
+                                                                        "CONNECT_IMPORT - " + ioe.getCause()));
                                             }
 
                                         mongo.updateCollection(COLLECTION,
@@ -1338,39 +1348,45 @@ public class DFDataProcessor extends AbstractVerticle {
                                                 // The update syntax: {$set, json object containing fields to update}
                                                 new JsonObject().put("$set", updateJob.toJson()), v -> {
                                                     if (v.failed()) {
-                                                        LOG.error("IMPORT Status - Update Connect Config Failed",
-                                                                v.cause());
+                                                        LOG.error(DFAPIMessage.logResponseMessage(9003,
+                                                                "CONNECT_IMPORT - " + updateJob.getId()
+                                                                        + "-" + v.cause()));
                                                     } else {
-                                                        LOG.debug("IMPORT Status - Update Connect Config Successfully");
+                                                        LOG.info(DFAPIMessage.logResponseMessage(1001,
+                                                                "CONNECT_IMPORT - " + updateJob.getId()));
                                                     }
                                                 }
                                         );
 
                                     } else {
-                                        LOG.error("IMPORT-UPDATE failed", findidRes.cause());
+                                            LOG.error(DFAPIMessage
+                                                    .logResponseMessage(9002,
+                                                            "CONNECT_IMPORT - " + findidRes.cause()));
                                     }
                                 });
                             }
                         } else {
                             // report the error
-                            LOG.error("count failed",count.cause());
+                            LOG.error(DFAPIMessage
+                                    .logResponseMessage(9018,
+                                            "exception_details - " + connectName + " - " + count.cause()));
                         }
                     });
                 }
             } else {
-                LOG.info("There is no active connects in Kafka Connect REST Server.");
+                LOG.info(DFAPIMessage.logResponseMessage(1013, "CONNECT_IMPORT"));
             }
         } catch (UnirestException ue) {
-            LOG.error("Importing from Kafka Connect Server exception", ue);
+            LOG.error(DFAPIMessage.logResponseMessage(9006, "CONNECT_IMPORT - " + ue.getCause()));
         }
-        LOG.info("Completed initial import data from Kafka Connect REST Server.");
+        LOG.info(DFAPIMessage.logResponseMessage(1014, "CONNECT_IMPORT"));
     }
 
     /**
      * Get initial method to import all available|paused|running connectors from Flink rest server
      * according to what's available in repository
      */
-    private void importAllFromFlinkTransform() {// TODO - implement
+    private void importAllFromFlinkTransform() {// TODO - Working on it once Flink rest api issues are fixed
         LOG.debug("Starting initial import data from Flink REST Server.");
         String restURI = "http://" + this.flink_server_host+ ":" + this.flink_rest_server_port +
                 "/joboverview";
@@ -1482,7 +1498,6 @@ public class DFDataProcessor extends AbstractVerticle {
      */
     private void updateKafkaConnectorStatus() {
         // Loop existing KAFKA connectors in repository and fetch their latest status from Kafka Server
-        // LOG.info("Refreshing Connects status from Kafka Connect Rest Server - Start.");
         List<String> list = new ArrayList<String>();
         // Add all Kafka connect TODO add a function to add all connects to List
         HelpFunc.addSpecifiedConnectTypetoList(list, "(?i:.*connect.*)"); // case insensitive matching
@@ -1524,11 +1539,13 @@ public class DFDataProcessor extends AbstractVerticle {
                             // LOG.info("Refreshing Connects status from Kafka Connect Resr Server - No Changes.");
                         }
                     } catch (UnirestException ue) {
-                        LOG.error("Refreshing status REST client exception", ue.getCause());
+                        LOG.error(DFAPIMessage.logResponseMessage(9006,
+                                "CONNECT_STATUS_REFRESH - " + ue.getCause()));
                     }
                 }
             } else {
-                LOG.error("Refreshing status Mongo client find active connectors exception", result.cause());
+                LOG.error(DFAPIMessage.logResponseMessage(9002, "CONNECT_STATUS_REFRESH - " +
+                result.cause()));
             }
         });
         // LOG.info("Refreshing Connects status from Kafka Connect REST Server - Complete.");
@@ -1537,7 +1554,7 @@ public class DFDataProcessor extends AbstractVerticle {
     /**
      * Keep refreshing the active Flink transforms/job status against remote Flink REST Server since v1.2
      */
-    private void updateFlinkJobStatus() { //TODO - Test it
+    private void updateFlinkJobStatus() { //TODO - Working on it once Flink rest api issues are fixed
         // Loop existing DF connects in repository and fetch their latest status from Flink Rest Server
         LOG.debug("Refreshing Connects status from Flink Rest Server - Start.");
         List<String> list = new ArrayList<String>();

@@ -1,24 +1,13 @@
 package com.datafibers.util;
 
 import io.vertx.core.http.HttpServerResponse;
-import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.net.ConnectException;
-import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.*;
-
 import io.vertx.ext.mongo.FindOptions;
 import io.vertx.ext.web.RoutingContext;
-import org.apache.log4j.Logger;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.node.ArrayNode;
 import org.json.JSONObject;
 
 /**

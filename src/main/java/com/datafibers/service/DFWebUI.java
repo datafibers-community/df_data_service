@@ -1,5 +1,6 @@
 package com.datafibers.service;
 
+import com.datafibers.util.DFAPIMessage;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.StaticHandler;
@@ -32,7 +33,8 @@ public class DFWebUI extends AbstractVerticle {
             LOG.info("DataFibers Welcome You @ http://" + InetAddress.getLocalHost().getHostAddress() + ":" +
                     config().getInteger("http.port.df.processor", 8000));
         } catch (UnknownHostException e) {
-            LOG.error("NetworkHostException", e.getCause());
+            LOG.error(DFAPIMessage.logResponseMessage(9019,
+                    "NetworkHostException - "  + e.getCause()));
         }
     }
 }

@@ -38,11 +38,8 @@ public class KafkaConnectProcessor {
                 portRestResponse -> {
                     String rs = portRestResponse.getBody();
                     JsonObject jo = new JsonObject(rs);
-                    LOG.debug("json object name: " + jo.getString("name"));
-                    LOG.debug("json object config: " + jo.getJsonObject("config"));
-                    LOG.debug("json object tasks: " + jo.getMap().get("tasks"));
-                    LOG.debug("received response from Kafka server: " + portRestResponse.statusMessage());
-                    LOG.debug("received response from Kafka server: " + portRestResponse.statusCode());
+                    LOG.debug("KAFKA_SERVER_ACK: " + portRestResponse.statusMessage() + " "
+                            + portRestResponse.statusCode());
 
                     // Once REST API forward is successful, add the record to the local repository
                     mongoClient.insert(mongoCOLLECTION, dfJobResponsed.toJson(), r ->
@@ -79,21 +76,23 @@ public class KafkaConnectProcessor {
     public static void forwardPUTAsUpdateOne (RoutingContext routingContext, RestClient restClient, MongoClient mongoClient,
                                          String mongoCOLLECTION, DFJobPOPJ dfJobResponsed) {
         final String id = routingContext.request().getParam("id");
-        LOG.info("connectorConfig has change. Will forward to Kafka Connect.");
+        LOG.info(DFAPIMessage.logResponseMessage(1016, id));
 
         final RestClientRequest postRestClientRequest =
                 restClient.put(
                         ConstantApp.KAFKA_CONNECT_PLUGIN_CONFIG.
                                 replace("CONNECTOR_NAME_PLACEHOLDER", dfJobResponsed.getConnectUid()),
                         String.class, portRestResponse -> {
-                            LOG.info("received response from Kafka server: " + portRestResponse.statusMessage());
-                            LOG.info("received response from Kafka server: " + portRestResponse.statusCode());
+                            LOG.debug("KAFKA_SERVER_ACK: " + portRestResponse.statusMessage() + " "
+                                    + portRestResponse.statusCode());
                         });
 
         postRestClientRequest.exceptionHandler(exception -> {
             HelpFunc.responseCorsHandleAddOn(routingContext.response())
                     .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                    .end(DFAPIMessage.getResponseMessage(9003));
+                    .end(DFAPIMessage.getResponseMessage(9021));
+            LOG.error(DFAPIMessage.logResponseMessage(9021,
+                    "UPDATE_IN_KAFKA_CONNECT_SERVER_FAILED"));
         });
 
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
@@ -107,8 +106,11 @@ public class KafkaConnectProcessor {
                         routingContext.response()
                                 .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
                                 .end(DFAPIMessage.getResponseMessage(9003));
+                        LOG.error(DFAPIMessage.logResponseMessage(9003, id));
                     } else {
-                        HelpFunc.responseCorsHandleAddOn(routingContext.response()).end(DFAPIMessage.getResponseMessage(1000));
+                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                .end(DFAPIMessage.getResponseMessage(1000));
+                        LOG.info(DFAPIMessage.logResponseMessage(1000, id));
                     }
                 });
     }
@@ -131,14 +133,17 @@ public class KafkaConnectProcessor {
         final RestClientRequest postRestClientRequest = restClient.delete(ConstantApp.KAFKA_CONNECT_REST_URL + "/" +
                         dfJobResponsed.getConnectUid(), String.class,
                 portRestResponse -> {
-                    LOG.info("received response from Kafka server: " + portRestResponse.statusMessage());
-                    LOG.info("received response from Kafka server: " + portRestResponse.statusCode());
+                    LOG.debug("KAFKA_SERVER_ACK: " + portRestResponse.statusMessage() + " "
+                            + portRestResponse.statusCode());
                     if(portRestResponse.statusCode() == ConstantApp.STATUS_CODE_OK_NO_CONTENT) {
                         // Once REST API forward is successful, delete the record to the local repository
                         mongoClient.removeDocument(mongoCOLLECTION, new JsonObject().put("_id", id),
-                                ar -> routingContext.response().end(id + " is deleted from repository."));
+                                ar -> routingContext.response()
+                                        .end(DFAPIMessage.getResponseMessage(1002, id)));
+                        LOG.info(DFAPIMessage.logResponseMessage(1002,
+                                "FOUND_CONNECT_NAME_IN_KAFKA_CONNECT"));
                     } else {
-                        LOG.error("DELETE conflict and rebalance is in process.");
+                        LOG.error(DFAPIMessage.logResponseMessage(9022, id));
                     }
                 });
 
@@ -149,7 +154,8 @@ public class KafkaConnectProcessor {
                     ar -> HelpFunc.responseCorsHandleAddOn(routingContext.response())
                             .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
                             .end(DFAPIMessage.getResponseMessage(9007)));
-            LOG.info("Cannot find the connector name in DELETE request in Kafka Connect. Remove from local repo only.");
+            LOG.info(DFAPIMessage.logResponseMessage(1002,
+                    "CANNOT_FIND_CONNECT_NAME_IN_KAFKA_CONNECT"));
         });
 
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
@@ -167,12 +173,6 @@ public class KafkaConnectProcessor {
                 portRestResponse -> {
                     String rs = portRestResponse.getBody();
                     JsonObject jo = new JsonObject(rs);
-                    LOG.debug("json object name: " + jo.getString("name"));
-                    LOG.debug("json object config: " + jo.getJsonObject("config"));
-                    LOG.debug("json object tasks: " + jo.getMap().get("tasks"));
-                    LOG.info("received response from Kafka server: " + portRestResponse.statusMessage());
-                    LOG.info("received response from Kafka server: " + portRestResponse.statusCode());
-
                     // Once REST API forward is successful, add the record to the local repository
                     /*mongoClient.insert(mongoCOLLECTION, dfJobResponsed.toJson(), r -> routingContext
                             .response().setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
@@ -207,8 +207,6 @@ public class KafkaConnectProcessor {
                         ConstantApp.KAFKA_CONNECT_PLUGIN_CONFIG.
                                 replace("CONNECTOR_NAME_PLACEHOLDER", dfJobResponsed.getConnectUid()),
                         String.class, portRestResponse -> {
-                            LOG.info("received response from Kafka server: " + portRestResponse.statusMessage());
-                            LOG.info("received response from Kafka server: " + portRestResponse.statusCode());
                         });
 
         postRestClientRequest.exceptionHandler(exception -> {
