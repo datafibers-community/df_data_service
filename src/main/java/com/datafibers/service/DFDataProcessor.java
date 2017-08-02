@@ -719,7 +719,7 @@ public class DFDataProcessor extends AbstractVerticle {
                     DFJobPOPJ dfJob = new DFJobPOPJ(ar.result());
                     HelpFunc.responseCorsHandleAddOn(routingContext.response())
                             .setStatusCode(ConstantApp.STATUS_CODE_OK)
-                            .end(HelpFunc.jsonStringD2U(Json.encodePrettily(dfJob)));
+                            .end(Json.encodePrettily(dfJob));
                     LOG.info(DFAPIMessage.logResponseMessage(1003, id));
 
                 } else {
@@ -916,8 +916,7 @@ public class DFDataProcessor extends AbstractVerticle {
      */
     private void updateOneConnects(RoutingContext routingContext) {
         final String id = routingContext.request().getParam("id");
-        final DFJobPOPJ dfJob = Json.decodeValue(
-                HelpFunc.jsonStringU2D(routingContext.getBodyAsString()),DFJobPOPJ.class);
+        final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(),DFJobPOPJ.class);
 
         String connectorConfigString = dfJob.mapToJsonString(dfJob.getConnectorConfig());
         JsonObject json = dfJob.toJson();

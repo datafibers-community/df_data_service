@@ -348,7 +348,7 @@ public class DFServicePOC extends AbstractVerticle {
                     DFJobPOPJ dfJob = new DFJobPOPJ(ar.result());
                     HelpFunc.responseCorsHandleAddOn(routingContext.response())
                             .setStatusCode(ConstantApp.STATUS_CODE_OK)
-                            .end(HelpFunc.jsonStringD2U(Json.encodePrettily(dfJob)));
+                            .end(Json.encodePrettily(dfJob));
                 } else {
                     routingContext.response()
                             .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
@@ -815,7 +815,7 @@ public class DFServicePOC extends AbstractVerticle {
      */
     private void updateOneConnects(RoutingContext routingContext) {
         final String id = routingContext.request().getParam("id");
-        final DFJobPOPJ dfJob = Json.decodeValue(HelpFunc.jsonStringU2D(routingContext.getBodyAsString()),
+        final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(),
                 DFJobPOPJ.class);
         LOG.debug("received the body is from updateOne:" + routingContext.getBodyAsString());
         String connectorConfigString = dfJob.mapToJsonString(dfJob.getConnectorConfig());
