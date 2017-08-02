@@ -63,6 +63,11 @@ public class DFDataProcessor extends AbstractVerticle {
     public static String COLLECTION;
     public static String COLLECTION_INSTALLED;
     public static String COLLECTION_META;
+    public static String COLLECTION_LOG;
+    private static String repo_conn_str;
+    private static String repo_hostname;
+    private static String repo_port;
+    private static String repo_db;
     private MongoClient mongo;
     private RestClient rc;
     private RestClient rc_schema;
@@ -101,6 +106,13 @@ public class DFDataProcessor extends AbstractVerticle {
         this.COLLECTION = config().getString("db.collection.name", "df_processor");
         this.COLLECTION_INSTALLED = config().getString("db.collection_installed.name", "df_installed");
         this.COLLECTION_META = config().getString("db.metadata.collection.name", "df_meta");
+        this.COLLECTION_LOG = config().getString("db.log.collection.name", "df_log");
+        this.repo_db = config().getString("db.name", "DEFAULT_DB");
+        this.repo_conn_str = config()
+                .getString("repo.connection.string", "mongodb://localhost:27017")
+                .replace("//", "");
+        this.repo_hostname = repo_conn_str.replace("//", "").split(":")[1];
+        this.repo_port = repo_conn_str.replace("//", "").split(":")[2];
 
         // Get Connects config
         this.kafka_connect_enabled = config().getBoolean("kafka.connect.enable", Boolean.TRUE);
@@ -127,20 +139,19 @@ public class DFDataProcessor extends AbstractVerticle {
          * Create all application client
          **/
         // MongoDB client for metadata repository
-        JsonObject mongoConfig = new JsonObject()
-                .put("connection_string", config().getString("repo.connection.string", "mongodb://localhost:27017"))
-                .put("db_name", config().getString("db.name", "DEFAULT_DB"));
+        JsonObject mongoConfig = new JsonObject().put("connection_string", repo_conn_str).put("db_name", repo_db);
         mongo = MongoClient.createShared(vertx, mongoConfig);
+
+        // Cleanup Log in mongodb
+        if (config().getBoolean("db.log.cleanup.on.start", Boolean.TRUE))
+            new MongoAdminClient(repo_hostname, repo_port, repo_db).truncateCollection(COLLECTION_LOG);
 
         // Set dynamic logging to MongoDB
         MongoDbAppender mongoAppender = new MongoDbAppender();
-        mongoAppender.setDatabaseName(config().getString("db.name", "DEFAULT_DB"));
-        mongoAppender.setCollectionName(config().getString("db.log.collection.name", "df_log"));
-        String mongoConnectionString = config()
-                .getString("repo.connection.string", "mongodb://localhost:27017")
-                .replace("//", "");
-        mongoAppender.setHostname(mongoConnectionString.split(":")[1]);
-        mongoAppender.setPort(mongoConnectionString.split(":")[2]);
+        mongoAppender.setDatabaseName(repo_db);
+        mongoAppender.setCollectionName(COLLECTION_LOG);
+        mongoAppender.setHostname(repo_hostname);
+        mongoAppender.setPort(repo_port);
         mongoAppender.activateOptions();
         Logger.getRootLogger().addAppender(mongoAppender);
 

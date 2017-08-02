@@ -7,6 +7,7 @@
   "db.collection.name":"df_processor",
   "db.metadata.collection.name":"df_meta",
   "db.log.collection.name":"df_log",
+  "db.log.cleanup.on.start":"true",
   "repo.connection.string":"mongodb://localhost:27017",
 
   "kafka.server.port":9092,

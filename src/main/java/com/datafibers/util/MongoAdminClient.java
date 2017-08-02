@@ -4,9 +4,10 @@ import com.mongodb.MongoClient;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.MongoIterable;
+import org.bson.Document;
 
 /**
- * Created by DUW3 on 11/17/2016.
+ * MongoDB Client
  */
 public class MongoAdminClient {
     private MongoClient mongoClient;
@@ -16,10 +17,21 @@ public class MongoAdminClient {
     public MongoAdminClient(String hostname, int port, String database) {
         this.mongoClient = new MongoClient(hostname, port );
         this.database = this.mongoClient.getDatabase(database);
+    }
 
+    public MongoAdminClient(String hostname, String port, String database) {
+        this.mongoClient = new MongoClient(hostname, Integer.parseInt(port));
+        this.database = this.mongoClient.getDatabase(database);
+    }
+
+    public MongoAdminClient truncateCollection(String colName) {
+        if(collectionExists(colName))
+        this.database.getCollection(colName).deleteMany(new Document());
+        return this;
     }
 
     public MongoAdminClient dropCollection(String colName) {
+        if(collectionExists(colName))
         this.database.getCollection(colName).drop();
         return this;
     }
