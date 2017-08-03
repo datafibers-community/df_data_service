@@ -27,12 +27,12 @@ public final class DFAPIMessage {
         messageMap.put(1007, "INFO - NO_CHANGES_IN_CONFIG");
         messageMap.put(1008, "INFO - DF_META_SCHEMA_CREATED_IN_SCHEMA_REGISTRY");
         messageMap.put(1009, "INFO - DF_META_SCHEMA_EXISTED_IN_SCHEMA_REGISTRY");
-        messageMap.put(1010, "INFO - DF_METADATA_SINK_STARTED_SUCCESSFULLY");
+        messageMap.put(1010, "INFO - DF_META_SINK_STARTED_SUCCESSFULLY");
         messageMap.put(1011, "INFO - CONNECTS_TO_IMPORT_FROM_KAFKA_CONNECT");
         messageMap.put(1012, "INFO - IMPORT_CONNECTS_TO_REPO_SUCCESSFULLY");
         messageMap.put(1013, "INFO - NO_ACTIVE_CONNECTS_TO_IMPORT");
-        messageMap.put(1014, "INFO - IMPORT_ACTIVE_CONNECTS_COMPLETE_AT_STARTUP");
-        messageMap.put(1015, "INFO - IMPORT_ACTIVE_CONNECTS_COMPLETE_AT_STARTUP");
+        messageMap.put(1014, "INFO - IMPORT_ACTIVE_CONNECTS_COMPLETED_AT_STARTUP");
+        messageMap.put(1015, "INFO - IMPORT_ACTIVE_CONNECTS_STARTED_AT_STARTUP");
         messageMap.put(1016, "INFO - FOUND_CHANGES_IN_CONFIG");
         messageMap.put(1017, "INFO - SCHEMA_IS_UPDATED");
         messageMap.put(9000, "EXCP - ID_IS_NULL_IN_REQUEST");
@@ -76,7 +76,7 @@ public final class DFAPIMessage {
             message = "EXCP - INVALID_RESPONSE_CODE_PARAMETER";
         }
 
-        response.put("code", String.format("%06d", code)).put("message", messageMap.get(responseCode));
+        response.put("code", String.format("%04d", code)).put("message", messageMap.get(responseCode));
         if (!comments.equalsIgnoreCase("")) response.put("comments", comments);
 
         return Json.encodePrettily(response);

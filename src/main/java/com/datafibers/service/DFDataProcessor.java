@@ -108,9 +108,7 @@ public class DFDataProcessor extends AbstractVerticle {
         this.COLLECTION_META = config().getString("db.metadata.collection.name", "df_meta");
         this.COLLECTION_LOG = config().getString("db.log.collection.name", "df_log");
         this.repo_db = config().getString("db.name", "DEFAULT_DB");
-        this.repo_conn_str = config()
-                .getString("repo.connection.string", "mongodb://localhost:27017")
-                .replace("//", "");
+        this.repo_conn_str = config().getString("repo.connection.string", "mongodb://localhost:27017");
         this.repo_hostname = repo_conn_str.replace("//", "").split(":")[1];
         this.repo_port = repo_conn_str.replace("//", "").split(":")[2];
 
@@ -1278,7 +1276,7 @@ public class DFDataProcessor extends AbstractVerticle {
      * according to what's available in repository
      */
     private void importAllFromKafkaConnect() {
-        LOG.debug("Starting initial import data from Kafka Connect REST Server.");
+        LOG.info(DFAPIMessage.logResponseMessage(1015, "CONNECT_IMPORT"));
         String restURI = "http://" + this.kafka_connect_rest_host+ ":" + this.kafka_connect_rest_port +
                 ConstantApp.KAFKA_CONNECT_REST_URL;
         try {
@@ -1311,8 +1309,12 @@ public class DFDataProcessor extends AbstractVerticle {
                     // Get task status
                     HttpResponse<JsonNode> resConnectorStatus = Unirest.get(restURI + "/" + connectName + "/status")
                             .header("accept", "application/json").asJson();
-                    String resStatus = resConnectorStatus.getBody().getObject().getJSONObject("connector")
-                            .getString("state");
+
+                    // Sometime, the status is still missing for active connectors (active <> running)
+                    String resStatus = (resConnectorStatus.getStatus() == 200) ?
+                            resConnectorStatus.getBody().getObject().getJSONObject("connector")
+                                    .getString("state") :
+                            ConstantApp.DF_STATUS.LOST.name();
 
                     mongo.count(COLLECTION, new JsonObject().put("connectUid", connectName), count -> {
                         if (count.succeeded()) {
