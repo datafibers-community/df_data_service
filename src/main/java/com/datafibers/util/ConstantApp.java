@@ -1,5 +1,8 @@
 package com.datafibers.util;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public final class ConstantApp {
 
     // DF Service generic settings
@@ -47,6 +50,11 @@ public final class ConstantApp {
     public static final String DF_PROCESS_DEFAULT_CONFIG_REST_URL = "/api/df/default_config";
     public static final String DF_PROCESS_DEFAULT_CONFIG_URL_WILD = "/api/df/default_config*";
     public static final String DF_PROCESS_DEFAULT_CONFIG_REST_URL_WITH_ID = DF_PROCESS_DEFAULT_CONFIG_REST_URL + "/:id";
+
+    // DF log endpoint URLs
+    public static final String DF_LOGGING_REST_URL = "/api/df/default_config";
+    public static final String DF_LOGGING_REST_URL_WILD = "/api/df/default_config*";
+    public static final String DF_LOGGING_REST_URL_WITH_ID = DF_LOGGING_REST_URL + "/:id";
 
     // Kafka Connect endpoint URLs
     public static final String KAFKA_CONNECT_REST_URL = "/connectors";
@@ -117,6 +125,20 @@ public final class ConstantApp {
         NONE
     }
 
+    // Mapping connectType to connector.class for CONNECT
+    public static final  Map<String, String> connectorClassMap = new HashMap<>();
+    static
+    {
+        Map<String, String> connectorClassMap = new HashMap<>();
+        connectorClassMap.put(DF_CONNECT_TYPE.CONNECT_KAFKA_SOURCE_AVRO.name(),
+                "com.datafibers.kafka.connect.FileGenericSourceConnector");
+        connectorClassMap.put(DF_CONNECT_TYPE.CONNECT_MONGODB_SINK.name(),
+                "org.apache.kafka.connect.mongodb.MongodbSinkConnector");
+        connectorClassMap.put(DF_CONNECT_TYPE.CONNECT_KAFKA_HDFS_SINK.name(),
+                "io.confluent.connect.hdfs.HdfsSinkConnector");
+    }
+
+    // Schema registry properties
     public static final String SCHEMA = "schema";
     public static final String COMPATIBILITY = "compatibility";
     public static final String SUBJECT = "subject";

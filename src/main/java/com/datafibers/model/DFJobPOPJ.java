@@ -80,6 +80,7 @@ public class DFJobPOPJ {
         this.connectorConfig = null;
     }
 
+    // Used by
     public DFJobPOPJ(JsonObject json) {
         this.taskSeq = json.getString("taskSeq");
         this.name = json.getString("name");
@@ -109,6 +110,10 @@ public class DFJobPOPJ {
                 this.connectorConfig = new ObjectMapper().readValue(connectorConfig,
                         new TypeReference<HashMap<String, String>>() {
                         });
+                // Check if connector.class is available, or else set from default.
+                if(!this.connectorConfig.containsKey("connector.class"))
+                    this.connectorConfig
+                            .put("connector.class", ConstantApp.connectorClassMap.get(connectorType.name()));
             }
 
         } catch (IOException ioe) {

@@ -283,6 +283,12 @@ public class DFDataProcessor extends AbstractVerticle {
         router.put(ConstantApp.DF_SCHEMA_REST_URL_WITH_ID).handler(this::updateOneSchema); // Schema Registry Forward
         router.delete(ConstantApp.DF_SCHEMA_REST_URL_WITH_ID).handler(this::deleteOneConnects); // Schema Registry Forward
 
+        // Logging Rest API definition
+        router.options(ConstantApp.DF_LOGGING_REST_URL_WITH_ID).handler(this::corsHandle);
+        router.options(ConstantApp.DF_LOGGING_REST_URL).handler(this::corsHandle);
+        router.get(ConstantApp.DF_TRANSFORMS_REST_URL).handler(this::getAllLogs);
+        router.get(ConstantApp.DF_TRANSFORMS_REST_URL_WITH_ID).handler(this::getOneLog);
+
         // Get all installed connect or transform
         router.get(ConstantApp.DF_CONNECTS_INSTALLED_CONNECTS_REST_URL).handler(this::getAllInstalledConnects);
 
@@ -537,6 +543,74 @@ public class DFDataProcessor extends AbstractVerticle {
      */
     public void getAllSchemas(RoutingContext routingContext) {
         SchemaRegisterProcessor.forwardGetAllSchemas(vertx, routingContext, schema_registry_host_and_port);
+    }
+
+    /**
+     * Get all DF connects
+     *
+     * @param routingContext
+     *
+     * @api {get} /ps 1.List all connects task
+     * @apiVersion 0.1.1
+     * @apiName getAllConnects
+     * @apiGroup Connect
+     * @apiPermission none
+     * @apiDescription This is where we get data for all active connects.
+     * @apiSuccess	{JsonObject[]}	connects    List of connect task profiles.
+     *
+     * @apiSuccessExample {json} Success-Response:
+     *     HTTP/1.1 200 OK
+     *     [ {
+     *          "id" : "58471d13bba4a429f8a272b6",
+     *          "taskSeq" : "1",
+     *          "name" : "tesavro",
+     *          "connectUid" : "58471d13bba4a429f8a272b6",
+     *          "jobUid" : "reserved for job level tracking",
+     *          "connectorType" : "CONNECT_KAFKA_SOURCE_AVRO",
+     *          "connectorCategory" : "CONNECT",
+     *          "description" : "task description",
+     *          "status" : "LOST",
+     *          "udfUpload" : null,
+     *          "jobConfig" : null,
+     *          "connectorConfig" : {
+     *              "connector.class" : "com.datafibers.kafka.connect.FileGenericSourceConnector",
+     *              "schema.registry.uri" : "http://localhost:8081",
+     *              "cuid" : "58471d13bba4a429f8a272b6",
+     *              "file.location" : "/home/vagrant/df_data/",
+     *              "tasks.max" : "1",
+     *              "file.glob" : "*.{json,csv}",
+     *              "file.overwrite" : "true",
+     *              "schema.subject" : "test-value",
+     *              "topic" : "testavro"
+     *          }
+     *       }
+     *     ]
+     * @apiSampleRequest http://localhost:8080/api/df/ps
+     */
+    private void getAllLogs(RoutingContext routingContext) {
+        getAll(routingContext, "CONNECT");
+        JsonObject searchCondition;
+        String connectorCategoryFilter;
+        if (connectorCategoryFilter.equalsIgnoreCase("all")) {
+            searchCondition = new JsonObject();
+        } else {
+
+            String searchKeywords = routingContext.request().getParam("q");
+            searchCondition = new JsonObject().put("$and",
+                    new JsonArray()
+                            .add(new JsonObject().put("$where", "JSON.stringify(this).indexOf('" + searchKeywords + "') != -1"))
+                            .add(new JsonObject().put("connectorCategory", connectorCategoryFilter))
+            );
+        }
+
+        mongo.findWithOptions(COLLECTION_LOG, searchCondition, HelpFunc.getMongoSortFindOption(routingContext),
+                results -> {
+                    List<JsonObject> objects = results.result();
+                    List<DFJobPOPJ> jobs = objects.stream().map(DFJobPOPJ::new).collect(Collectors.toList());
+                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                            .putHeader("X-Total-Count", jobs.size() + "" )
+                            .end(Json.encodePrettily(jobs));
+                });
     }
 
     /**
