@@ -52,8 +52,8 @@ public final class ConstantApp {
     public static final String DF_PROCESS_DEFAULT_CONFIG_REST_URL_WITH_ID = DF_PROCESS_DEFAULT_CONFIG_REST_URL + "/:id";
 
     // DF log endpoint URLs
-    public static final String DF_LOGGING_REST_URL = "/api/df/default_config";
-    public static final String DF_LOGGING_REST_URL_WILD = "/api/df/default_config*";
+    public static final String DF_LOGGING_REST_URL = "/api/df/logs";
+    public static final String DF_LOGGING_REST_URL_WILD = "/api/df/logs*";
     public static final String DF_LOGGING_REST_URL_WITH_ID = DF_LOGGING_REST_URL + "/:id";
 
     // Kafka Connect endpoint URLs

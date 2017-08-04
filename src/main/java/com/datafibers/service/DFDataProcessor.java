@@ -286,8 +286,7 @@ public class DFDataProcessor extends AbstractVerticle {
         // Logging Rest API definition
         router.options(ConstantApp.DF_LOGGING_REST_URL_WITH_ID).handler(this::corsHandle);
         router.options(ConstantApp.DF_LOGGING_REST_URL).handler(this::corsHandle);
-        router.get(ConstantApp.DF_TRANSFORMS_REST_URL).handler(this::getAllLogs);
-        router.get(ConstantApp.DF_TRANSFORMS_REST_URL_WITH_ID).handler(this::getOneLog);
+        router.get(ConstantApp.DF_LOGGING_REST_URL_WITH_ID).handler(this::getAllLogs);
 
         // Get all installed connect or transform
         router.get(ConstantApp.DF_CONNECTS_INSTALLED_CONNECTS_REST_URL).handler(this::getAllInstalledConnects);
@@ -550,67 +549,79 @@ public class DFDataProcessor extends AbstractVerticle {
      *
      * @param routingContext
      *
-     * @api {get} /ps 1.List all connects task
+     * @api {get} /ps 1.List all logging information for specific df task
      * @apiVersion 0.1.1
-     * @apiName getAllConnects
-     * @apiGroup Connect
+     * @apiName getAllLogs
+     * @apiGroup All
      * @apiPermission none
-     * @apiDescription This is where we get data for all active connects.
-     * @apiSuccess	{JsonObject[]}	connects    List of connect task profiles.
+     * @apiDescription This is where we get data for all log information.
+     * @apiSuccess	{JsonObject[]}	logs    List of all log information.
      *
      * @apiSuccessExample {json} Success-Response:
      *     HTTP/1.1 200 OK
      *     [ {
-     *          "id" : "58471d13bba4a429f8a272b6",
-     *          "taskSeq" : "1",
-     *          "name" : "tesavro",
-     *          "connectUid" : "58471d13bba4a429f8a272b6",
-     *          "jobUid" : "reserved for job level tracking",
-     *          "connectorType" : "CONNECT_KAFKA_SOURCE_AVRO",
-     *          "connectorCategory" : "CONNECT",
-     *          "description" : "task description",
-     *          "status" : "LOST",
-     *          "udfUpload" : null,
-     *          "jobConfig" : null,
-     *          "connectorConfig" : {
-     *              "connector.class" : "com.datafibers.kafka.connect.FileGenericSourceConnector",
-     *              "schema.registry.uri" : "http://localhost:8081",
-     *              "cuid" : "58471d13bba4a429f8a272b6",
-     *              "file.location" : "/home/vagrant/df_data/",
-     *              "tasks.max" : "1",
-     *              "file.glob" : "*.{json,csv}",
-     *              "file.overwrite" : "true",
-     *              "schema.subject" : "test-value",
-     *              "topic" : "testavro"
+     *          "_id" : ObjectId("59827ca37985374c290c0bfd"),
+     *          "timestamp" : ISODate("2017-08-03T01:30:11.720Z"),
+     *          "level" : "INFO",
+     *          "thread" : "vert.x-eventloop-thread-0",
+     *          "message" : "{\"code\":\"1015\",\"message\":\"INFO - IMPORT_ACTIVE_CONNECTS_STARTED_AT_STARTUP\",\"comments\":\"CONNECT_IMPORT\"}",
+     *          "loggerName" : {
+     *          "fullyQualifiedClassName" : "com.datafibers.service.DFDataProcessor",
+     *          "package" : [
+     *          "com",
+     *          "datafibers",
+     *          "service",
+     *          "DFDataProcessor"
+     *          ],
+     *          "className" : "DFDataProcessor"
+     *          },
+     *          "fileName" : "DFDataProcessor.java",
+     *          "method" : "importAllFromKafkaConnect",
+     *          "lineNumber" : "1279",
+     *          "class" : {
+     *          "fullyQualifiedClassName" : "com.datafibers.service.DFDataProcessor",
+     *          "package" : [
+     *          "com",
+     *          "datafibers",
+     *          "service",
+     *          "DFDataProcessor"
+     *          ],
+     *          "className" : "DFDataProcessor"
+     *          },
+     *          "host" : {
+     *          "process" : "19497@vagrant",
+     *          "name" : "vagrant",
+     *          "ip" : "127.0.1.1"
      *          }
-     *       }
+     *          }
      *     ]
-     * @apiSampleRequest http://localhost:8080/api/df/ps
+     * @apiSampleRequest http://localhost:8080/api/logs/:id
      */
     private void getAllLogs(RoutingContext routingContext) {
-        getAll(routingContext, "CONNECT");
-        JsonObject searchCondition;
-        String connectorCategoryFilter;
-        if (connectorCategoryFilter.equalsIgnoreCase("all")) {
-            searchCondition = new JsonObject();
-        } else {
 
-            String searchKeywords = routingContext.request().getParam("q");
-            searchCondition = new JsonObject().put("$and",
+        final String id = routingContext.request().getParam("id");
+        if (id == null) {
+            routingContext.response()
+                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                    .end(DFAPIMessage.getResponseMessage(9000));
+            LOG.error(DFAPIMessage.getResponseMessage(9000, id));
+        } else {
+            JsonObject searchCondition = new JsonObject().put("$and",
                     new JsonArray()
-                            .add(new JsonObject().put("$where", "JSON.stringify(this).indexOf('" + searchKeywords + "') != -1"))
-                            .add(new JsonObject().put("connectorCategory", connectorCategoryFilter))
+                            .add(new JsonObject().put("$where", "JSON.stringify(this).indexOf('" + id + "') != -1"))
+            );
+
+            mongo.findWithOptions(COLLECTION_LOG, searchCondition, HelpFunc.getMongoSortFindOption(routingContext),
+                    results -> {
+                        List<JsonObject> objects = results.result();
+                        List<DFJobPOPJ> jobs = objects.stream().map(DFJobPOPJ::new).collect(Collectors.toList());
+                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                .putHeader("X-Total-Count", jobs.size() + "" )
+                                .end(Json.encodePrettily(jobs));
+                    }
             );
         }
 
-        mongo.findWithOptions(COLLECTION_LOG, searchCondition, HelpFunc.getMongoSortFindOption(routingContext),
-                results -> {
-                    List<JsonObject> objects = results.result();
-                    List<DFJobPOPJ> jobs = objects.stream().map(DFJobPOPJ::new).collect(Collectors.toList());
-                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                            .putHeader("X-Total-Count", jobs.size() + "" )
-                            .end(Json.encodePrettily(jobs));
-                });
     }
 
     /**
