@@ -610,15 +610,10 @@ public class DFDataProcessor extends AbstractVerticle {
                     .end(DFAPIMessage.getResponseMessage(9000));
             LOG.error(DFAPIMessage.getResponseMessage(9000, id));
         } else {
-            JsonObject searchCondition = new JsonObject().put("$and",
-                    new JsonArray()
-                            .add(new JsonObject().put("$where", "JSON.stringify(this).indexOf('" + id + "') != -1"))
-            );
-
+            JsonObject searchCondition = new JsonObject().put("message", new JsonObject().put("$regex", id));
             mongo.findWithOptions(COLLECTION_LOG, searchCondition, HelpFunc.getMongoSortFindOption(routingContext),
                     results -> {
-                        List<JsonObject> objects = results.result();
-                        List<DFJobPOPJ> jobs = objects.stream().map(DFJobPOPJ::new).collect(Collectors.toList());
+                        List<JsonObject> jobs = results.result();
                         HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                 .putHeader("X-Total-Count", jobs.size() + "" )
                                 .end(Json.encodePrettily(jobs));
