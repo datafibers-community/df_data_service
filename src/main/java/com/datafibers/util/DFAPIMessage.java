@@ -35,6 +35,8 @@ public final class DFAPIMessage {
         messageMap.put(1015, "INFO - IMPORT_ACTIVE_CONNECTS_STARTED_AT_STARTUP");
         messageMap.put(1016, "INFO - FOUND_CHANGES_IN_CONFIG");
         messageMap.put(1017, "INFO - SCHEMA_IS_UPDATED");
+        messageMap.put(1018, "INFO - DEFAULT_CONNECTOR_CLASS_USED");
+        messageMap.put(1018, "INFO - REGULAR_UPDATE_CONNECT_STATUS_FOUND_CHANGES");
         messageMap.put(9000, "EXCP - ID_IS_NULL_IN_REQUEST");
         messageMap.put(9001, "EXCP - ID_NOT_FOUND_IN_REPO");
         messageMap.put(9002, "EXCP - ID_SEARCH_EXCEPTION_IN_REPO");
@@ -59,6 +61,7 @@ public final class DFAPIMessage {
         messageMap.put(9021, "EXCP - ID_UPDATE_EXCEPTION_IN_KAFKA_CONNECT");
         messageMap.put(9022, "EXCP - ID_DELETE_EXCEPTION_IN_KAFKA_CONNECT");
         messageMap.put(9023, "EXCP - SCHEMA_UPDATE_FAILED");
+        messageMap.put(9024, "EXCP - DF_INSTALLED_DATA_NOT_FOUND");
     }
 
     public static String getResponseMessage(int responseCode, String comments) {

@@ -69,6 +69,7 @@ public class DFDataProcessor extends AbstractVerticle {
     private static String repo_port;
     private static String repo_db;
     private MongoClient mongo;
+    private MongoAdminClient mongoDFInstalled;
     private RestClient rc;
     private RestClient rc_schema;
 
@@ -139,6 +140,9 @@ public class DFDataProcessor extends AbstractVerticle {
         // MongoDB client for metadata repository
         JsonObject mongoConfig = new JsonObject().put("connection_string", repo_conn_str).put("db_name", repo_db);
         mongo = MongoClient.createShared(vertx, mongoConfig);
+
+        // df_meta mongo client to find default connector.class
+        mongoDFInstalled = new MongoAdminClient(repo_hostname, repo_port, repo_db, COLLECTION_INSTALLED);
 
         // Cleanup Log in mongodb
         if (config().getBoolean("db.log.cleanup.on.start", Boolean.TRUE))
@@ -879,13 +883,25 @@ public class DFDataProcessor extends AbstractVerticle {
         String mongoId = new ObjectId().toString();
         dfJob.setConnectUid(mongoId).setId(mongoId).getConnectorConfig().put("cuid", mongoId);
 
+        // Find and set default connector.class
+        if(!dfJob.getConnectorConfig().containsKey(ConstantApp.PK_KAFKA_CONNECTOR_CLASS) ||
+                dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_CONNECTOR_CLASS) != null) {
+            String connectorClass = mongoDFInstalled.findConnectorClassName(dfJob.getConnectorType());
+            if(connectorClass == null || connectorClass.isEmpty()) {
+                LOG.info(DFAPIMessage.logResponseMessage(1018, mongoId + " - " + connectorClass));
+            } else {
+                dfJob.getConnectorConfig().put(ConstantApp.PK_KAFKA_CONNECTOR_CLASS, connectorClass);
+                LOG.info(DFAPIMessage.logResponseMessage(9024, mongoId + " - " + connectorClass));
+            }
+        }
+
         // Start Kafka Connect REST API Forward only if Kafka is enabled and Connector type is Kafka Connect
         if (this.kafka_connect_enabled && dfJob.getConnectorType().contains("CONNECT")) {
             // Auto fix "name" in Connect Config when mismatch with Connector Name
             if (!dfJob.getConnectUid().equalsIgnoreCase(dfJob.getConnectorConfig().get("name")) &&
                     dfJob.getConnectorConfig().get("name") != null) {
                 dfJob.getConnectorConfig().put("name", dfJob.getConnectUid());
-                LOG.info(DFAPIMessage.logResponseMessage(1004, dfJob.getConnectUid()));
+                LOG.info(DFAPIMessage.logResponseMessage(1004, dfJob.getId()));
             }
             KafkaConnectProcessor.forwardPOSTAsAddOne(routingContext, rc, mongo, COLLECTION, dfJob);
         } else {
@@ -1285,7 +1301,7 @@ public class DFDataProcessor extends AbstractVerticle {
                 .replace("//", "").split(":")[2];
         String metaDBName = config().getString("db.name", "DEFAULT_DB");
 
-        // Create meta-database is it is not exist
+        // Create meta-database if it is not exist
         new MongoAdminClient(metaDBHost, Integer.parseInt(metaDBPort), metaDBName).createCollection(this.COLLECTION_META);
 
         String metaSinkConnect = new JSONObject().put("name", "metadata_sink_connect").put("config",
@@ -1377,7 +1393,9 @@ public class DFDataProcessor extends AbstractVerticle {
                     HttpResponse<JsonNode> resConnector = Unirest.get(restURI + "/" + connectName + "/config")
                             .header("accept", "application/json").asJson();
                     JsonNode resConfig = resConnector.getBody();
-                    String resConnectTypeTmp = resConfig.getObject().getString("connector.class");
+                    String resConnectTypeTmp = ConstantApp.DF_CONNECT_TYPE.NONE.name();
+                    if(resConfig.getObject().has("connector.class"))
+                        resConnectTypeTmp = resConfig.getObject().getString("connector.class");
                     String resConnectName = resConfig.getObject().getString("name");
                     String resConnectType;
 
@@ -1388,7 +1406,7 @@ public class DFDataProcessor extends AbstractVerticle {
                     } else if (resConnectTypeTmp.toUpperCase().contains("SINK")) {
                         resConnectType = ConstantApp.DF_CONNECT_TYPE.CONNECT_KAFKA_SINK.name();
                     } else {
-                        resConnectType = ConstantApp.DF_CONNECT_TYPE.NONE.name();
+                        resConnectType = resConnectTypeTmp;
                     }
 
                     // Get task status
@@ -1629,7 +1647,7 @@ public class DFDataProcessor extends AbstractVerticle {
                                         if (v.failed()) {
                                             LOG.error("Update Status - Update status failed", v.cause());
                                         } else {
-                                            LOG.debug("Update Status - Update status Successfully");
+                                            LOG.info(DFAPIMessage.logResponseMessage(1018, updateJob.getId()));
                                         }
                                     }
                             );

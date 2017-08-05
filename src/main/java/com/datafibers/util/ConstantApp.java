@@ -125,19 +125,6 @@ public final class ConstantApp {
         NONE
     }
 
-    // Mapping connectType to connector.class for CONNECT
-    public static final  Map<String, String> connectorClassMap = new HashMap<>();
-    static
-    {
-        Map<String, String> connectorClassMap = new HashMap<>();
-        connectorClassMap.put(DF_CONNECT_TYPE.CONNECT_KAFKA_SOURCE_AVRO.name(),
-                "com.datafibers.kafka.connect.FileGenericSourceConnector");
-        connectorClassMap.put(DF_CONNECT_TYPE.CONNECT_MONGODB_SINK.name(),
-                "org.apache.kafka.connect.mongodb.MongodbSinkConnector");
-        connectorClassMap.put(DF_CONNECT_TYPE.CONNECT_KAFKA_HDFS_SINK.name(),
-                "io.confluent.connect.hdfs.HdfsSinkConnector");
-    }
-
     // Schema registry properties
     public static final String SCHEMA = "schema";
     public static final String COMPATIBILITY = "compatibility";
@@ -160,6 +147,7 @@ public final class ConstantApp {
     public static final String PK_KAFKA_HOST_PORT = "bootstrap.servers";
     public static final String PK_KAFKA_CONSUMER_GROURP = "group.id";
     public static final String PK_KAFKA_SCHEMA_REGISTRY_HOST_PORT = "schema.registry";
+    public static final String PK_KAFKA_CONNECTOR_CLASS = "connector.class";
     public static final String PK_FLINK_TABLE_SINK_KEYS = "sink.key.fields";
 
     public static final String PK_KAFKA_TOPIC_INPUT = "topic.in";

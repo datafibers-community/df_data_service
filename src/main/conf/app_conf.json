@@ -5,6 +5,7 @@
 
   "db.name":"DEFAULT_DB",
   "db.collection.name":"df_processor",
+  "db.collection_installed.name":"df_installed",
   "db.metadata.collection.name":"df_meta",
   "db.log.collection.name":"df_log",
   "db.log.cleanup.on.start":"true",
