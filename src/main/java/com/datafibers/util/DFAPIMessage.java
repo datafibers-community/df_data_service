@@ -36,7 +36,10 @@ public final class DFAPIMessage {
         messageMap.put(1016, "INFO - FOUND_CHANGES_IN_CONFIG");
         messageMap.put(1017, "INFO - SCHEMA_IS_UPDATED");
         messageMap.put(1018, "INFO - DEFAULT_CONNECTOR_CLASS_USED");
-        messageMap.put(1018, "INFO - REGULAR_UPDATE_CONNECT_STATUS_FOUND_CHANGES");
+        messageMap.put(1019, "INFO - REGULAR_UPDATE_CONNECT_STATUS_FOUND_CHANGES");
+        messageMap.put(1020, "INFO - REGULAR_UPDATE_CONNECT_STATUS_NO_CHANGES");
+        messageMap.put(1021, "INFO - REGULAR_UPDATE_TRANSFORM_STATUS_FOUND_CHANGES");
+        messageMap.put(1022, "INFO - REGULAR_UPDATE_TRANSFORM_STATUS_NO_CHANGES");
         messageMap.put(9000, "EXCP - ID_IS_NULL_IN_REQUEST");
         messageMap.put(9001, "EXCP - ID_NOT_FOUND_IN_REPO");
         messageMap.put(9002, "EXCP - ID_SEARCH_EXCEPTION_IN_REPO");

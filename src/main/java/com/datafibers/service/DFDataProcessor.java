@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.bson.types.ObjectId;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.apache.log4j.Logger;
 import com.datafibers.flinknext.DFRemoteStreamEnvironment;
@@ -226,18 +227,10 @@ public class DFDataProcessor extends AbstractVerticle {
         startWebApp((http) -> completeStartup(http, fut));
 
         // Regular update Kafka connects/Flink transform status
-        if(this.kafka_connect_enabled) {
-            vertx.setPeriodic(ConstantApp.REGULAR_REFRESH_STATUS_TO_REPO, id -> {
-                updateKafkaConnectorStatus();
-            });
-        }
-
-        // Regular update Kafka connects/Flink transform status
-//        if(this.transform_engine_flink_enabled) {
-//            vertx.setPeriodic(ConstantApp.REGULAR_REFRESH_STATUS_TO_REPO, id -> {
-//                updateFlinkJobStatus();
-//            });
-//        }
+        vertx.setPeriodic(ConstantApp.REGULAR_REFRESH_STATUS_TO_REPO, id -> {
+            if(this.kafka_connect_enabled) updateKafkaConnectorStatus();
+            if(this.transform_engine_flink_enabled) updateFlinkJobStatus();
+        });
 
         LOG.info("********* DataFibers Services is started :) *********");
     }
@@ -1368,8 +1361,8 @@ public class DFDataProcessor extends AbstractVerticle {
     }
 
     /**
-     * Get initial method to import all available|paused|running connectors from Kafka connect
-     * according to what's available in repository
+     * Get initial method to import all active connectors from Kafka connect to mongodb repo
+     * The same function does not apply to the transforms since we are not able to rebuild their configs
      */
     private void importAllFromKafkaConnect() {
         LOG.info(DFAPIMessage.logResponseMessage(1015, "CONNECT_IMPORT"));
@@ -1494,123 +1487,11 @@ public class DFDataProcessor extends AbstractVerticle {
     }
 
     /**
-     * Get initial method to import all available|paused|running connectors from Flink rest server
-     * according to what's available in repository
-     */
-    private void importAllFromFlinkTransform() {// TODO - Working on it once Flink rest api issues are fixed
-        LOG.debug("Starting initial import data from Flink REST Server.");
-        String restURI = "http://" + this.flink_server_host+ ":" + this.flink_rest_server_port +
-                "/joboverview";
-        try {
-            HttpResponse<String> res = Unirest.get(restURI)
-                    .header("accept", "application/json")
-                    .asString();
-            String resStr = res.getBody();
-            LOG.debug("Import All get: " + resStr);
-            if (resStr.compareToIgnoreCase("[]") != 0 && !resStr.equalsIgnoreCase("[null]")) { //Has active connectors
-                for (String connectName: resStr.substring(2,resStr.length()-2).split("\",\"")) {
-                    if (connectName.equalsIgnoreCase("null")) continue;
-                    // Get connector config
-                    HttpResponse<JsonNode> resConnector = Unirest.get(restURI + "/" + connectName + "/config")
-                            .header("accept", "application/json").asJson();
-                    JsonNode resConfig = resConnector.getBody();
-                    String resConnectTypeTmp = resConfig.getObject().getString("connector.class");
-                    String resConnectName = resConfig.getObject().getString("name");
-                    String resConnectType;
-
-                    if (resConnectName.equalsIgnoreCase("metadata_sink_connect")) {
-                        resConnectType = ConstantApp.DF_CONNECT_TYPE.INTERNAL_METADATA_COLLECT.name();
-                    } else if (resConnectTypeTmp.toUpperCase().contains("SOURCE")) {
-                        resConnectType = ConstantApp.DF_CONNECT_TYPE.CONNECT_KAFKA_SOURCE.name();
-                    } else if (resConnectTypeTmp.toUpperCase().contains("SINK")) {
-                        resConnectType = ConstantApp.DF_CONNECT_TYPE.CONNECT_KAFKA_SINK.name();
-                    } else {
-                        resConnectType = ConstantApp.DF_CONNECT_TYPE.NONE.name();
-                    }
-
-                    // Get task status
-                    HttpResponse<JsonNode> resConnectorStatus = Unirest.get(restURI + "/" + connectName + "/status")
-                            .header("accept", "application/json").asJson();
-                    String resStatus = resConnectorStatus.getBody().getObject().getJSONObject("connector")
-                            .getString("state");
-
-                    mongo.count(COLLECTION, new JsonObject().put("connectUid", connectName), count -> {
-                        if (count.succeeded()) {
-                            if (count.result() == 0) {
-                                // No jobs found, then insert json data
-                                DFJobPOPJ insertJob = new DFJobPOPJ (
-                                        new JsonObject().put("name", "imported " + connectName)
-                                                .put("taskSeq", "0")
-                                                .put("connectUid", connectName)
-                                                .put("connectorType", resConnectType)
-                                                .put("connectorCategory", "CONNECT")
-                                                .put("status", resStatus)
-                                                .put("jobConfig", new JsonObject()
-                                                        .put("comments", "This is imported from Kafka Connect.").toString())
-                                                .put("connectorConfig", resConfig.getObject().toString())
-                                );
-                                mongo.insert(COLLECTION, insertJob.toJson(), ar -> {
-                                    if (ar.failed()) {
-                                        LOG.error("IMPORT Status - failed", ar.cause());
-                                    } else {
-                                        LOG.debug("IMPORT Status - successfully");
-                                    }
-                                });
-                            } else { // Update the connectConfig portion from Kafka import
-                                mongo.findOne(COLLECTION, new JsonObject().put("connectUid", connectName), null,
-                                        findidRes -> {
-                                            if (findidRes.succeeded()) {
-                                                DFJobPOPJ updateJob = new DFJobPOPJ(findidRes.result());
-                                                try {
-                                                    updateJob.setStatus(resStatus).setConnectorConfig(
-                                                            new ObjectMapper().readValue(resConfig.getObject().toString(),
-                                                                    new TypeReference<HashMap<String, String>>(){}));
-
-                                                } catch (IOException ioe) {
-                                                    LOG.error("IMPORT Status - Read Connector Config as Map failed",
-                                                            ioe.getCause());
-                                                }
-
-                                                mongo.updateCollection(COLLECTION,
-                                                        new JsonObject().put("_id", updateJob.getId()),
-                                                        // The update syntax: {$set, json object containing fields to update}
-                                                        new JsonObject().put("$set", updateJob.toJson()), v -> {
-                                                            if (v.failed()) {
-                                                                LOG.error("IMPORT Status - Update Connect Config Failed",
-                                                                        v.cause());
-                                                            } else {
-                                                                LOG.debug("IMPORT Status - Update Connect Config Successfully");
-                                                            }
-                                                        }
-                                                );
-
-                                            } else {
-                                                LOG.error("IMPORT-UPDATE failed", findidRes.cause());
-                                            }
-                                        });
-                            }
-                        } else {
-                            // report the error
-                            LOG.error("count failed",count.cause());
-                        }
-                    });
-                }
-            } else {
-                LOG.info("There is no active connects in Kafka Connect REST Server.");
-            }
-        } catch (UnirestException ue) {
-            LOG.error("Importing from Kafka Connect Server exception", ue);
-        }
-        LOG.info("Completed initial import data from Kafka Connect REST Server.");
-    }
-
-    /**
-     * Keep refreshing the active Kafka connector status against remote Kafka REST Server
+     * Keep refreshing the active Kafka connectors' status in repository against remote Kafka REST Server
      */
     private void updateKafkaConnectorStatus() {
-        // Loop existing KAFKA connectors in repository and fetch their latest status from Kafka Server
-        List<String> list = new ArrayList<String>();
-        // Add all Kafka connect TODO add a function to add all connects to List
+        List<String> list = new ArrayList<>();
+        // Add all Kafka connect
         HelpFunc.addSpecifiedConnectTypetoList(list, "(?i:.*connect.*)"); // case insensitive matching
 
         String restURI = "http://" + this.kafka_connect_rest_host+ ":" + this.kafka_connect_rest_port +
@@ -1621,6 +1502,7 @@ public class DFDataProcessor extends AbstractVerticle {
                 for (JsonObject json : result.result()) {
                     String connectName = json.getString("connectUid");
                     String statusRepo = json.getString("status");
+                    String taskId = json.getString("_id");
                     // Get task status
                     try {
                         String resStatus;
@@ -1636,70 +1518,54 @@ public class DFDataProcessor extends AbstractVerticle {
                             DFJobPOPJ updateJob = new DFJobPOPJ(json);
                             updateJob.setStatus(resStatus);
 
-                            mongo.updateCollection(COLLECTION, new JsonObject().put("_id", updateJob.getId()),
+                            mongo.updateCollection(COLLECTION, new JsonObject().put("_id", taskId),
                                     // The update syntax: {$set, the json object containing the fields to update}
                                     new JsonObject().put("$set", updateJob.toJson()), v -> {
                                         if (v.failed()) {
-                                            LOG.error("Update Status - Update status failed", v.cause());
+                                            LOG.error(DFAPIMessage.logResponseMessage(9003, taskId+ "cause:" + v.cause()));
                                         } else {
-                                            LOG.info(DFAPIMessage.logResponseMessage(1018, updateJob.getId()));
+                                            LOG.info(DFAPIMessage.logResponseMessage(1019, taskId));
                                         }
                                     }
                             );
                         } else {
-                            // LOG.info("Refreshing Connects status from Kafka Connect Resr Server - No Changes.");
+                            LOG.debug(DFAPIMessage.logResponseMessage(1020, taskId));
                         }
                     } catch (UnirestException ue) {
-                        LOG.error(DFAPIMessage.logResponseMessage(9006,
-                                "CONNECT_STATUS_REFRESH - " + ue.getCause()));
+                        LOG.error(DFAPIMessage.logResponseMessage(9006, ue.getCause().getMessage()));
                     }
                 }
             } else {
-                LOG.error(DFAPIMessage.logResponseMessage(9002, "CONNECT_STATUS_REFRESH - " +
-                result.cause()));
+                LOG.error(DFAPIMessage.logResponseMessage(9002, result.cause().getMessage()));
             }
         });
-        // LOG.info("Refreshing Connects status from Kafka Connect REST Server - Complete.");
     }
 
     /**
-     * Keep refreshing the active Flink transforms/job status against remote Flink REST Server since v1.2
+     * Keep refreshing the active Flink transforms/jobs' status in repository against remote Flink REST Server
      */
-    private void updateFlinkJobStatus() { //TODO - Working on it once Flink rest api issues are fixed
-        // Loop existing DF connects in repository and fetch their latest status from Flink Rest Server
-        LOG.debug("Refreshing Connects status from Flink Rest Server - Start.");
-        List<String> list = new ArrayList<String>();
-        // Add all Kafka connect TODO add a function to add all connects to List
+    private void updateFlinkJobStatus() {
+        List<String> list = new ArrayList<>();
+        // Add all Kafka connect
         HelpFunc.addSpecifiedConnectTypetoList(list, "(?i:.*transform.*)") ;
-        LOG.debug("added to the list" + list.size());
-        for(String model : list) {
-            LOG.debug("list of string is " + model);
-        }
-
         String restURI = "http://" + this.flink_server_host + ":" + this.flink_rest_server_port +
                 ConstantApp.FLINK_REST_URL;
 
         mongo.find(COLLECTION, new JsonObject().put("connectorType", new JsonObject().put("$in", list)), result -> {
             if (result.succeeded()) {
                 for (JsonObject json : result.result()) {
-                    LOG.debug("json in mongo is - " + json);
                     String statusRepo = json.getString("status");
+                    String taskId = json.getString("_id");
                     String jobId = ConstantApp.FLINK_DUMMY_JOB_ID;
                     if(!json.getString("jobConfig").equalsIgnoreCase("{}"))
                         jobId = new JsonObject(json.getString("jobConfig")).getString(ConstantApp.PK_FLINK_SUBMIT_JOB_ID);
-
-                    LOG.debug("flink_id=" + jobId);
                     // Get task status
                     try {
-                        String resStatus;
-                        // TODO - Blocked by Invalid Content-Encoding Header - https://issues.apache.org/jira/browse/FLINK-7226
                         HttpResponse<JsonNode> resConnectorStatus =
                                 Unirest.get(restURI + "/" + jobId).header("accept", "application/json").asJson();
-                        resStatus = resConnectorStatus.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND ?
+                        String resStatus = resConnectorStatus.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND ?
                             ConstantApp.DF_STATUS.LOST.name():// Not find - Mark status as LOST
-                            new JSONObject(resConnectorStatus.getBody()).getString("state");
-
-                        LOG.debug("resStatus=" + resStatus);
+                            resConnectorStatus.getBody().getObject().getString("state");
 
                         // Do change detection on status
                         if (statusRepo.compareToIgnoreCase(resStatus) != 0) { //status changes
@@ -1710,21 +1576,22 @@ public class DFDataProcessor extends AbstractVerticle {
                                     // The update syntax: {$set, the json object containing the fields to update}
                                     new JsonObject().put("$set", updateJob.toJson()), v -> {
                                         if (v.failed()) {
-                                            LOG.error("Update Status - Update status failed", v.cause());
+                                            LOG.error(DFAPIMessage.logResponseMessage(9003, taskId + "cause:" + v.cause()));
                                         } else {
-                                            LOG.debug("Update Status - Update status Successfully");
+                                            LOG.info(DFAPIMessage.logResponseMessage(1021, taskId));
                                         }
                                     }
                             );
                         } else {
-                            LOG.debug("Refreshing Connects status from Flink Rest Server - No Changes.");
+                            LOG.debug(DFAPIMessage.logResponseMessage(1022, taskId));
                         }
                     } catch (UnirestException ue) {
-                        LOG.error("Refreshing status REST client exception", ue.getCause());
+                        LOG.error(DFAPIMessage.logResponseMessage(9006, "TRANSFORM_STATUS_REFRESH:" + ue.getCause()));
                     }
                 }
             } else {
-                LOG.error("Refreshing status Mongo client find active connectors exception", result.cause());
+                LOG.error(DFAPIMessage.logResponseMessage(9002, "TRANSFORM_STATUS_REFRESH:" +
+                        result.cause()));
             }
         });
     }
