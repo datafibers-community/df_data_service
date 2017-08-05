@@ -65,6 +65,8 @@ public final class DFAPIMessage {
         messageMap.put(9022, "EXCP - ID_DELETE_EXCEPTION_IN_KAFKA_CONNECT");
         messageMap.put(9023, "EXCP - SCHEMA_UPDATE_FAILED");
         messageMap.put(9024, "EXCP - DF_INSTALLED_DATA_NOT_FOUND");
+        messageMap.put(9025, "EXCP - ID_UPDATE_EXCEPTION_IN_FLINK_REST");
+        messageMap.put(9026, "EXCP - ID_DELETE_EXCEPTION_IN_FLINK_REST");
     }
 
     public static String getResponseMessage(int responseCode, String comments) {

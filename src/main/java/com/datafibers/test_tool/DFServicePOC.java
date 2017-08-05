@@ -1106,7 +1106,7 @@ public class DFServicePOC extends AbstractVerticle {
      *     }
      */
     private void deleteOneConnects(RoutingContext routingContext) {
-        String id = routingContext.request().getParam("id");
+       /* String id = routingContext.request().getParam("id");
         
         if (id == null) {
             routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
@@ -1132,7 +1132,7 @@ public class DFServicePOC extends AbstractVerticle {
                     }
                 }
             });
-        }
+        }*/
     }
 
 	
@@ -1229,9 +1229,9 @@ public class DFServicePOC extends AbstractVerticle {
                     DFJobPOPJ dfJob = new DFJobPOPJ(ar.result());
                     if (this.transform_engine_flink_enabled && dfJob.getConnectorType().contains("FLINK")
                             && dfJob.getStatus().equalsIgnoreCase("RUNNING")) {
-                        FlinkTransformProcessor.cancelFlinkSQL(this.flink_server_host + ":" + this.flink_server_port,
-                                dfJob.getJobConfig().get(ConstantApp.PK_FLINK_SUBMIT_JOB_ID),
-                                mongo, COLLECTION, routingContext);
+                        //FlinkTransformProcessor.cancelFlinkSQL(this.flink_server_host + ":" + this.flink_server_port,
+                                //dfJob.getJobConfig().get(ConstantApp.PK_FLINK_SUBMIT_JOB_ID),
+                                //mongo, COLLECTION, routingContext);
                     } else {
                         mongo.removeDocument(COLLECTION, new JsonObject().put("_id", id),
                                 remove -> routingContext.response()

@@ -66,7 +66,6 @@ public final class ConstantApp {
 
     // Flink rest api setting
     public static final String FLINK_REST_URL = "/jobs";
-    public static final String FLINK_ACTIVE_JOBS_REST_URL = "/joboverview/running";
     public static final String FLINK_DUMMY_JOB_ID = "00000000000000000000000000000000";
 
     // HTTP req/res constants
@@ -92,6 +91,7 @@ public final class ConstantApp {
         PAUSED,             // The Kafka connector/task has been administratively paused.
         FAILED,             // The Kafka connector/task has failed.
         LOST,               // The Kafka connect restart and lost the connector job in DF repository.
+        CANCELED,
         NONE
     }
 

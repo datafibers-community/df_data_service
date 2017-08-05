@@ -73,6 +73,7 @@ public class DFDataProcessor extends AbstractVerticle {
     private MongoAdminClient mongoDFInstalled;
     private RestClient rc;
     private RestClient rc_schema;
+    private RestClient rc_flink;
 
     // Connects attributes
     private static Boolean kafka_connect_enabled;
@@ -158,42 +159,37 @@ public class DFDataProcessor extends AbstractVerticle {
         mongoAppender.activateOptions();
         Logger.getRootLogger().addAppender(mongoAppender);
 
-        // Non-blocking Vertx Rest API Client to talk to Kafka Connect when needed
-        if (this.kafka_connect_enabled) {
 
-            // For kafka connect rest service
+
+            // Common rest client properties
             final List<HttpMessageConverter> httpMessageConverters = ImmutableList.of(
                     new FormHttpMessageConverter(),
                     new StringHttpMessageConverter(),
                     new JacksonJsonHttpMessageConverter(new ObjectMapper())
             );
+
             final RestClientOptions restClientOptions = new RestClientOptions()
                     .setConnectTimeout(ConstantApp.REST_CLIENT_CONNECT_TIMEOUT)
                     .setGlobalRequestTimeout(ConstantApp.REST_CLIENT_GLOBAL_REQUEST_TIMEOUT)
-                    .setDefaultHost(this.kafka_connect_rest_host)
-                    .setDefaultPort(this.kafka_connect_rest_port)
                     .setKeepAlive(ConstantApp.REST_CLIENT_KEEP_LIVE)
                     .setMaxPoolSize(ConstantApp.REST_CLIENT_MAX_POOL_SIZE);
 
-            this.rc = RestClient.create(vertx, restClientOptions, httpMessageConverters);
+        // Non-blocking Vertx Rest API Client to talk to Kafka Connect when needed
+        if (this.kafka_connect_enabled) {
 
-            // For query schema registry
-            final List<HttpMessageConverter> httpMessageConvertersSchemaRegister = ImmutableList.of(
-                    new FormHttpMessageConverter(),
-                    new StringHttpMessageConverter(),
-                    new JacksonJsonHttpMessageConverter(new ObjectMapper())
-            );
+            this.rc = RestClient.create(vertx, restClientOptions.setDefaultHost(this.kafka_connect_rest_host)
+                    .setDefaultPort(this.kafka_connect_rest_port), httpMessageConverters);
 
-            final RestClientOptions restClientOptionsSchemaRegister = new RestClientOptions()
-                    .setConnectTimeout(ConstantApp.REST_CLIENT_CONNECT_TIMEOUT)
-                    .setGlobalRequestTimeout(ConstantApp.REST_CLIENT_GLOBAL_REQUEST_TIMEOUT)
-                    .setDefaultHost(this.kafka_connect_rest_host)
-                    .setDefaultPort(this.schema_registry_rest_port)
-                    .setKeepAlive(ConstantApp.REST_CLIENT_KEEP_LIVE)
-                    .setMaxPoolSize(ConstantApp.REST_CLIENT_MAX_POOL_SIZE);
-            
-            this.rc_schema = RestClient.create(vertx, restClientOptionsSchemaRegister, httpMessageConvertersSchemaRegister);
+            this.rc_schema = RestClient.create(vertx, restClientOptions.setDefaultHost(this.kafka_connect_rest_host)
+                    .setDefaultPort(this.schema_registry_rest_port), httpMessageConverters);
+
         }
+        // Non-blocking Vertx Rest API Client to talk toFlink Rest when needed
+        if (this.transform_engine_flink_enabled) {
+            this.rc_flink = RestClient.create(vertx, restClientOptions.setDefaultHost(this.flink_server_host)
+                    .setDefaultPort(this.flink_rest_server_port), httpMessageConverters);
+        }
+
         // Flink stream environment for data transformation
         if(transform_engine_flink_enabled) {
             if (config().getBoolean("debug.mode", Boolean.FALSE)) {
@@ -1103,21 +1099,22 @@ public class DFDataProcessor extends AbstractVerticle {
 
                                 // TODO - if running then cancel and resubmit, else resubmit
 
-//                                //here update is to cancel exiting job and submit a new one
-//                                FlinkTransformProcessor.updateFlinkSQL(dfJob, vertx,
-//                                        config().getInteger("flink.trans.client.timeout", 8000), env,
-//                                        this.kafka_server_host_and_port,
-//                                        HelpFunc.coalesce(dfJob.getConnectorConfig().get("group.id"),
-//                                                ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
-//                                        dfJob.getConnectorConfig().get("topic.for.query"),
-//                                        dfJob.getConnectorConfig().get("topic.for.result"),
-//                                        dfJob.getConnectorConfig().get("trans.sql"),
-//                                        mongo, COLLECTION, this.flink_server_host + ":" + this.flink_server_port,
-//                                        routingContext, this.schema_registry_host_and_port,
-//                                        dfJob.getConnectorConfig().get("schema.subject"),
-//                                        dfJob.getConnectorConfig().get("schema.subject"),
-//                                        HelpFunc.coalesce(dfJob.getConnectorConfig().get("static.avro.schema"),"empty_schema")
-//                                        );
+                                //here update is to cancel exiting job and submit a new one
+                                FlinkTransformProcessor.updateFlinkSQL(dfJob, vertx,
+                                        config().getInteger("flink.trans.client.timeout", 8000), env,
+                                        this.kafka_server_host_and_port,
+                                        HelpFunc.coalesce(dfJob.getConnectorConfig()
+                                                .get(ConstantApp.PK_KAFKA_CONSUMER_GROURP),
+                                                ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
+                                        dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_INPUT),
+                                        dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_OUTPUT),
+                                        dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL),
+                                        mongo, COLLECTION, this.flink_server_host + ":" + this.flink_server_port,
+                                        routingContext, this.schema_registry_host_and_port,
+                                        dfJob.getConnectorConfig().get(ConstantApp.PK_SCHEMA_SUB_INPUT),
+                                        dfJob.getConnectorConfig().get(ConstantApp.PK_SCHEMA_SUB_OUTPUT),
+                                        dfJob.getConnectorConfig().get(ConstantApp.PK_FLINK_TABLE_SINK_KEYS),
+                                        rc_flink);
 
                             } else { // Where there is no change detected
                                 LOG.info(DFAPIMessage.logResponseMessage(1007, id));
@@ -1240,7 +1237,7 @@ public class DFDataProcessor extends AbstractVerticle {
      *       "message" : "Delete Request exception - Bad Request."
      *     }
      */
-    private void deleteOneTransforms(RoutingContext routingContext) {// TODO - use flink rest API for instead
+    private void deleteOneTransforms(RoutingContext routingContext) {
         String id = routingContext.request().getParam("id");
         if (id == null) {
             routingContext.response()
@@ -1258,16 +1255,19 @@ public class DFDataProcessor extends AbstractVerticle {
                         return;
                     }
                     DFJobPOPJ dfJob = new DFJobPOPJ(ar.result());
-                    if (this.transform_engine_flink_enabled && dfJob.getConnectorType().contains("FLINK")
-                            && dfJob.getStatus().equalsIgnoreCase("RUNNING")) {
-                        FlinkTransformProcessor.cancelFlinkSQL(this.flink_server_host + ":" + this.flink_server_port,
-                                dfJob.getJobConfig().get(ConstantApp.PK_FLINK_SUBMIT_JOB_ID),
-                                mongo, COLLECTION, routingContext);
+                    String jobId = dfJob.getJobConfig().get(ConstantApp.PK_FLINK_SUBMIT_JOB_ID);
+                    if (jobId.isEmpty()) {
+                        LOG.error(DFAPIMessage.logResponseMessage(9011, "DELETE_FLINK_JOB " + id));
+                    } else if (this.transform_engine_flink_enabled &&
+                            dfJob.getConnectorType().contains("FLINK") &&
+                            dfJob.getStatus().equalsIgnoreCase("RUNNING")) {
+                        FlinkTransformProcessor.cancelFlinkJob(jobId, mongo, COLLECTION, routingContext, rc_flink);
+                        LOG.info(DFAPIMessage.logResponseMessage(1006, id));
                     } else {
                         mongo.removeDocument(COLLECTION, new JsonObject().put("_id", id),
                                 remove -> routingContext.response()
                                         .end(DFAPIMessage.getResponseMessage(1003)));
-                        LOG.info(DFAPIMessage.logResponseMessage(1003, id));
+                        LOG.info(DFAPIMessage.logResponseMessage(1002, id));
                     }
                 }
             });
@@ -1586,7 +1586,7 @@ public class DFDataProcessor extends AbstractVerticle {
                             LOG.debug(DFAPIMessage.logResponseMessage(1022, taskId));
                         }
                     } catch (UnirestException ue) {
-                        LOG.error(DFAPIMessage.logResponseMessage(9006, "TRANSFORM_STATUS_REFRESH:" + ue.getCause()));
+                        //LOG.error(DFAPIMessage.logResponseMessage(9006, "TRANSFORM_STATUS_REFRESH:" + ue.getCause()));
                     }
                 }
             } else {
