@@ -1,5 +1,6 @@
 package com.datafibers.processor;
 
+import com.datafibers.util.DFAPIMessage;
 import com.datafibers.util.DFMediaType;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.RestClientRequest;
@@ -9,6 +10,7 @@ import io.vertx.ext.web.RoutingContext;
 import java.net.ConnectException;
 import java.util.Arrays;
 
+import org.apache.hadoop.fs.DF;
 import org.bson.types.ObjectId;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -21,7 +23,7 @@ import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
 
-public class SchemaRegisterProcessor {
+public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or error with proper format and error code
     private static final Logger LOG = Logger.getLogger(SchemaRegisterProcessor.class);
 
     /**
@@ -113,9 +115,9 @@ public class SchemaRegisterProcessor {
             future.complete(status_code);
         }, res -> {
             Object result = HelpFunc.coalesce(res.result(), ConstantApp.STATUS_CODE_BAD_REQUEST);
-            routingContext.response().setStatusCode(Integer.parseInt(result.toString()))
-                    .putHeader("Access-Control-Allow-Origin", "*")
-                    .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                    .setStatusCode(Integer.parseInt(result.toString()))
+                    .putHeader("X-Total-Count", "3" )
                     .end(HelpFunc.stringToJsonFormat(returnString.toString()));
             executor.close();
         });
@@ -335,6 +337,7 @@ public class SchemaRegisterProcessor {
                             .putHeader("Access-Control-Allow-Origin", "*")
                             .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
                             .end(portRestResponse.statusMessage());
+                    LOG.info(DFAPIMessage.logResponseMessage(1017, "SCHEMA_UPDATE"));
                 }
             });
 
@@ -344,7 +347,9 @@ public class SchemaRegisterProcessor {
                     routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
                             .putHeader("Access-Control-Allow-Origin", "*")
                             .putHeader(ConstantApp.CONTENT_TYPE, "application/vnd.schemaregistry.v1+json")
-                            .end("Update one schema - compatibility POST request exception - " + exception.toString());
+                            .end("Update one schema - compatibility POST request exception - "
+                                    + exception.toString());
+                    LOG.error(DFAPIMessage.logResponseMessage(9023, "SCHEMA_UPDATE"));
                 }
             });
 
@@ -352,7 +357,6 @@ public class SchemaRegisterProcessor {
             postRestClientRequest2.setAcceptHeader(Arrays.asList(DFMediaType.APPLICATION_SCHEMAREGISTRY_JSON));
 
             JSONObject jsonToBeSubmitted = new JSONObject().put(ConstantApp.COMPATIBILITY, compatibility);
-            LOG.debug("Compatibility sent is: " + jsonToBeSubmitted.toString());
             postRestClientRequest2.end(jsonToBeSubmitted.toString());
         }
     }
@@ -382,7 +386,7 @@ public class SchemaRegisterProcessor {
                 }
             }
         } catch (UnirestException e) {
-            LOG.error("getCompatibilityOfSubject(), error message: " + e.getCause());
+            LOG.error(DFAPIMessage.logResponseMessage(9006, "exception - " + e.getCause()));
         }
 
         return compatibility;

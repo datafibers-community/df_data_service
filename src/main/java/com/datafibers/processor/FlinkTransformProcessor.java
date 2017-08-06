@@ -1,17 +1,22 @@
 package com.datafibers.processor;
 
 import com.datafibers.exception.DFPropertyValidationException;
-import com.datafibers.util.SchemaRegistryClient;
+import com.datafibers.util.*;
+import com.hubrick.vertx.rest.MediaType;
+import com.hubrick.vertx.rest.RestClient;
+import com.hubrick.vertx.rest.RestClientRequest;
 import io.vertx.core.Vertx;
 import io.vertx.core.WorkerExecutor;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.RoutingContext;
+
+import java.util.Arrays;
 import java.util.Properties;
 import net.openhft.compiler.CompilerUtils;
-import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.client.CliFrontend;
 import org.apache.flink.client.program.ProgramInvocationException;
+import org.apache.flink.runtime.client.JobCancellationException;
 import org.apache.flink.streaming.connectors.kafka.partitioner.FlinkFixedPartitioner;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableEnvironment;
@@ -21,9 +26,6 @@ import com.datafibers.flinknext.DFRemoteStreamEnvironment;
 import com.datafibers.flinknext.Kafka09AvroTableSink;
 import com.datafibers.flinknext.Kafka09AvroTableSource;
 import com.datafibers.model.DFJobPOPJ;
-import com.datafibers.util.ConstantApp;
-import com.datafibers.util.DynamicRunner;
-import com.datafibers.util.HelpFunc;
 
 public class FlinkTransformProcessor {
     private static final Logger LOG = Logger.getLogger(FlinkTransformProcessor.class);
@@ -33,6 +35,7 @@ public class FlinkTransformProcessor {
      * This method first submit a flink job against Kafka streaming in other thread.
      * At the end, update the record at repo - mongo as response.
      * It supports both SQL and table API
+     *
      * @param dfJob
      * @param vertx
      * @param maxRunTime
@@ -42,10 +45,10 @@ public class FlinkTransformProcessor {
      * @param topicIn
      * @param topicOut
      * @param sinkKeys
-     * @param transScript - this either SQL or table API
+     * @param transScript     - this either SQL or table API
      * @param mongoClient
      * @param mongoCOLLECTION
-     * @param engine - SQL_API or TABLE_API
+     * @param engine          - SQL_API or TABLE_API
      */
     public static void submitFlinkJobA2A(DFJobPOPJ dfJob, Vertx vertx, Integer maxRunTime,
                                          DFRemoteStreamEnvironment flinkEnv, String kafkaHostPort,
@@ -75,9 +78,9 @@ public class FlinkTransformProcessor {
         String[] topicInList = topicIn.split(",");
         String[] schemaSubjectInList = schemaSubjectIn.split(",");
 
-        if(topicInList.length != schemaSubjectInList.length)
+        if (topicInList.length != schemaSubjectInList.length)
             throw new DFPropertyValidationException("Number of inputTopic and inputTopicSchema Mismatch.");
-        if(engine.equalsIgnoreCase("tABLE_API") && (topicInList.length > 1 || schemaSubjectInList.length > 1))
+        if (engine.equalsIgnoreCase("tABLE_API") && (topicInList.length > 1 || schemaSubjectInList.length > 1))
             throw new DFPropertyValidationException("Script/Table API only supports single inputTopic/inputTopicSchema.");
 
         WorkerExecutor exec_flink = vertx.createSharedWorkerExecutor(dfJob.getName() + dfJob.hashCode(),
@@ -130,17 +133,25 @@ public class FlinkTransformProcessor {
                         result = runner.transTableObj(ingest);
                         break;
                     }
-                    default: break;
+                    default:
+                        break;
                 }
 
                 Kafka09AvroTableSink avro_sink =
-                        new Kafka09AvroTableSink (topicOut, properties, new FlinkFixedPartitioner());
+                        new Kafka09AvroTableSink(topicOut, properties, new FlinkFixedPartitioner());
                 result.writeToSink(avro_sink);
 
-                JobExecutionResult jres = flinkEnv.executeWithDFObj("DF_FLINK_A2A_" + engine.toUpperCase() + uuid, dfJob);
-            } catch (Exception e) {
-                LOG.error("Flink Submit Exception:" + e.getCause());
-                e.printStackTrace();
+                flinkEnv.executeWithDFObj("DF_FLINK_A2A_" + engine.toUpperCase() + uuid, dfJob);
+
+            } catch(Exception e) {
+                /*
+                TODO
+                Sometimes this is normal since we cancel from rest api through UI but the job submit in code
+                We need distinguish this by checking if the task is removed from repo. If removed, it is not exception
+                Or else, it is true exception.
+                 */
+                LOG.error(DFAPIMessage.logResponseMessage(9010, dfJob.getId()));
+                // e.printStackTrace();
             }
 
         }, res -> {
@@ -149,11 +160,11 @@ public class FlinkTransformProcessor {
 
         long timerID = vertx.setTimer(maxRunTime, id -> {
             // exec_flink.close();
-            LOG.info("Job - DF_FLINK_TRANS_" + uuid +  "'s JobID is - " + dfJob.getFlinkIDFromJobConfig());
+            LOG.info(DFAPIMessage.logResponseMessage(1005, "id-" + dfJob.getId() + " flink_job_id-" + dfJob.getFlinkIDFromJobConfig()));
             mongoClient.updateCollection(mongoCOLLECTION, new JsonObject().put("_id", dfJob.getId()),
                     new JsonObject().put("$set", dfJob.toJson()), v -> {
                         if (v.failed()) {
-                            LOG.error("update Flink JOB_ID Failed.", v.cause());
+                            LOG.error(DFAPIMessage.logResponseMessage(1001, dfJob.getId()));
                         }
                     }
             );
@@ -161,48 +172,54 @@ public class FlinkTransformProcessor {
     }
 
     /**
-     * This method lunch a local flink CLI and connect specified job manager in order to cancel the job.
-     * Job may not exist. In this case, just delete it for now.
-     * @param jobManagerHostPort The job manager address and port where to send cancel
-     * @param jobID The job ID to cancel for flink job
-     * @param mongoClient repo handler
+     * This method cancel a flink job by jobId through Flink rest API
+     * Job may not exist or got exception. In this case, just delete it for now.
+     *
+     * @param jobID           The job ID to cancel for flink job
+     * @param mongoClient     repo handler
      * @param mongoCOLLECTION collection to keep data
-     * @param routingContext response for rest client
+     * @param routingContext  response for rest client
+     * @param restClient client to response
      */
-    public static void cancelFlinkSQL(String jobManagerHostPort, String jobID,
-                                      MongoClient mongoClient, String mongoCOLLECTION, RoutingContext routingContext,
-                                      Boolean cancelRepoAndSendResp) {
-    	String id = routingContext.request().getParam("id");
+    public static void cancelFlinkJob(String jobID, MongoClient mongoClient, String mongoCOLLECTION,
+                                      RoutingContext routingContext, RestClient restClient) {
+        String id = routingContext.request().getParam("id");
+        System.out.println("jobId to cancel - " + jobID);
 
-    	try {
-    		if (jobID == null || jobID.trim().equalsIgnoreCase("")) {
-    			LOG.warn("Flink job ID is empty or null in cancelFlinkSQL() ");
-    		} 
-    		//else {
-    			String cancelCMD = "cancel;-m;" + jobManagerHostPort + ";" + jobID;
-    			LOG.info("Flink job " + jobID + " cancel CMD: " + cancelCMD);
-    			//CliFrontend cli = new CliFrontend("conf/flink-conf.yaml");
-    			CliFrontend cli = new CliFrontend("conf");
-    			int retCode = cli.parseParameters(cancelCMD.split(";"));
-    			LOG.info("Flink job " + jobID + " is canceled " + ((retCode == 0)? "successful.":"failed."));
+        if (jobID == null || jobID.trim().equalsIgnoreCase("")) {
+            LOG.error(DFAPIMessage.logResponseMessage(9000, id));
+        } else {
+            final RestClientRequest postRestClientRequest = restClient.delete(ConstantApp.FLINK_REST_URL + "/" +
+                            jobID + "/cancel", String.class,
+                    portRestResponse -> {
+                        LOG.debug("FLINK_SERVER_ACK: " + portRestResponse.statusMessage() + " "
+                                + portRestResponse.statusCode());
+                        if (portRestResponse.statusCode() == ConstantApp.STATUS_CODE_OK) {
+                            // Once REST API forward is successful, delete the record to the local repository
+                            mongoClient.removeDocument(mongoCOLLECTION, new JsonObject().put("_id", id),
+                                    ar -> routingContext
+                                            .response()
+                                            .end(DFAPIMessage.getResponseMessage(1002, id)));
+                            LOG.info(DFAPIMessage.logResponseMessage(1002, "CANCEL_FLINK_JOB " + id));
+                        } else {
+                            LOG.error(DFAPIMessage.logResponseMessage(9026, id));
+                        }
+                    });
 
-    			String respMsg = (retCode == 0)? " is deleted from repository.":
-    				" is deleted from repository, but Job_ID is not found.";
-    			if(cancelRepoAndSendResp) {
-    				mongoClient.removeDocument(mongoCOLLECTION, new JsonObject().put("_id", id),
-    						remove -> routingContext.response().end(id + respMsg));
-    			}
-    		//}
-    	} catch (IllegalArgumentException ire) {
-    		LOG.warn("No Flink job found with ID for cancellation");
-    	} catch (Throwable t) {
-    		LOG.error("Fatal error while running command line interface.", t.getCause());
-    	}
-    }
+            postRestClientRequest.exceptionHandler(exception -> {
 
-    public static void cancelFlinkSQL(String jobManagerHostPort, String jobID,
-                                      MongoClient mongoClient, String mongoCOLLECTION, RoutingContext routingContext) {
-        cancelFlinkSQL(jobManagerHostPort, jobID, mongoClient, mongoCOLLECTION, routingContext, Boolean.TRUE);
+                // Still delete once exception happens
+                mongoClient.removeDocument(mongoCOLLECTION, new JsonObject().put("_id", id),
+                        ar -> HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                                .end(DFAPIMessage.getResponseMessage(9007)));
+                LOG.info(DFAPIMessage.logResponseMessage(9012, id));
+            });
+
+            postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
+            postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
+            postRestClientRequest.end(DFAPIMessage.getResponseMessage(1002));
+        }
     }
 
     public static void updateFlinkSQL (DFJobPOPJ dfJob, Vertx vertx, Integer maxRunTime,
@@ -212,26 +229,26 @@ public class FlinkTransformProcessor {
                                        String transSql, MongoClient mongoClient, String mongoCOLLECTION,
                                        String jobManagerHostPort, RoutingContext routingContext,
                                        String SchemaRegistryHostPort, String schemSubject, String schemaSubjectOut,
-                                       String sinkKeys) {
+                                       String sinkKeys, RestClient restClient) {
 
         final String id = routingContext.request().getParam("id");
-
-        cancelFlinkSQL(jobManagerHostPort, dfJob.getJobConfig().get("flink.submit.job.id"),
-                mongoClient, mongoCOLLECTION, routingContext, Boolean.FALSE);
+        if(dfJob.getStatus().equalsIgnoreCase("RUNNING"))
+        cancelFlinkJob(dfJob.getJobConfig().get("flink.submit.job.id"), mongoClient, mongoCOLLECTION,
+                routingContext, restClient);
 
         // Submit Flink UDF
         if(dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_FLINK_UDF.name()) {
             FlinkTransformProcessor.runFlinkJar(dfJob.getUdfUpload(), jobManagerHostPort);
         }
 
-        // Submit Flink SQL Avro to Avro
+        // Submit Flink SQL A2A - Avro to Avro
         if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_FLINK_SQL_A2A.name()) {
             submitFlinkJobA2A(dfJob, vertx, maxRunTime, flinkEnv, kafkaHostPort,
                     SchemaRegistryHostPort, groupid, inputTopic, outputTopic, sinkKeys, transSql, schemSubject, schemaSubjectOut,
                     mongoClient, mongoCOLLECTION, "SQL_API");
         }
 
-        // Submit Flink SQL Json to Json
+        // Submit Flink Table API Job
         if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_FLINK_SCRIPT.name()) {
             submitFlinkJobA2A(dfJob, vertx, maxRunTime, flinkEnv, kafkaHostPort,
                     SchemaRegistryHostPort, groupid, inputTopic, outputTopic, sinkKeys, transSql, schemSubject, schemaSubjectOut,
@@ -243,12 +260,12 @@ public class FlinkTransformProcessor {
                 new JsonObject().put("$set", dfJob.toJson()), v -> {
                     if (v.failed()) {
                         routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
-                                .end(HelpFunc.errorMsg(133, "updateOne to repository is failed."));
+                                .end(DFAPIMessage.getResponseMessage(9003));
+                        LOG.error(DFAPIMessage.logResponseMessage(9003, id));
                     } else {
-                        routingContext.response()
-                                .putHeader("Access-Control-Allow-Origin", "*")
-                                .putHeader(ConstantApp.CONTENT_TYPE,
-                                ConstantApp.APPLICATION_JSON_CHARSET_UTF_8).end();
+                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                .end(DFAPIMessage.getResponseMessage(1001));
+                        LOG.info(DFAPIMessage.logResponseMessage(1001, id));
                     }
                 }
         );
@@ -269,16 +286,13 @@ public class FlinkTransformProcessor {
             int retCode = cli.parseParameters(runCMD.split(";"));
             String respMsg = (retCode == 0)? "Flink job is submitted for Jar UDF at " :
                     "Flink job is failed to submit for Jar UDF at " + jarFile;
-            LOG.info(respMsg);
-
+            LOG.info(DFAPIMessage.logResponseMessage(9013, "respMsg-" + respMsg));
         } catch (IllegalArgumentException ire) {
-            LOG.error("No Flink job found with ID for cancellation");
+            LOG.error(DFAPIMessage.logResponseMessage(9013, "jarFile-" + jarFile));
         } catch (ProgramInvocationException t) {
-            LOG.error("Fatal error while running the jar file.", t.getCause());
+            LOG.error(DFAPIMessage.logResponseMessage(9013, "jarFile-" + jarFile));
         } catch (Exception e) {
-            LOG.error("Flink submit UDF Jar run-time exception.");
+            LOG.error(DFAPIMessage.logResponseMessage(9013, "jarFile-" + jarFile));
         }
-
-
     }
 }

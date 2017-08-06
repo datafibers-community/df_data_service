@@ -1,23 +1,13 @@
 package com.datafibers.util;
 
-import io.vertx.core.json.Json;
+import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.net.ConnectException;
-import java.net.URL;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.List;
-import java.util.Properties;
-import java.util.Random;
-
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.node.ArrayNode;
+import java.util.*;
+import io.vertx.ext.mongo.FindOptions;
+import io.vertx.ext.web.RoutingContext;
 import org.json.JSONObject;
 
 /**
@@ -100,19 +90,6 @@ public class HelpFunc {
     }
 
     /**
-     * Print error message in better JSON format
-     *
-     * @param error_code
-     * @param msg
-     * @return ErrorMessage
-     */
-    public static String errorMsg(int error_code, String msg) {
-        return Json.encodePrettily(new JsonObject()
-                .put("code", String.format("%06d", error_code))
-                .put("message", msg));
-    }
-
-    /**
      * This function will search JSONSTRING to find patterned keys_1..n. If it has key_ignored_mark subkey, the element
      * will be removed. For example {"connectorConfig_1":{"config_ignored":"test"}, "connectorConfig_2":{"test":"test"}}
      * will be cleaned as {"connectorConfig":{"test":"test"}}
@@ -173,7 +150,6 @@ public class HelpFunc {
         for (ConstantApp.DF_CONNECT_TYPE item : ConstantApp.DF_CONNECT_TYPE.values()) {
             if(item.name().matches(type_regx)) list.add(item.name());
         }
-
     }
 
     /**
@@ -187,5 +163,38 @@ public class HelpFunc {
         // where the origin schema show as "schema":"\"string\"" == replace as ==> "schema":""string""
         // Then, replace as "schema":"string"
         return srcStr.replace("\"{", "{").replace("}\"", "}").replace("\\\"", "\"").replace("\"\"", "\"");
+    }
+
+    /**
+     * This is mainly to bypass security control for response.
+     * @param response
+     */
+    public static HttpServerResponse responseCorsHandleAddOn(HttpServerResponse response) {
+        return response
+                .putHeader("Access-Control-Allow-Origin", "*")
+                .putHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
+                .putHeader("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, X-Total-Count")
+                .putHeader("Access-Control-Expose-Headers", "X-Total-Count")
+                .putHeader("Access-Control-Max-Age", "60")
+                .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8);
+    }
+
+    /**
+     * Find mongo sorting options
+     * @param routingContext
+     * @param sortField
+     * @param sortOrderField
+     * @return
+     */
+    public static FindOptions getMongoSortFindOption(RoutingContext routingContext, String sortField, String sortOrderField) {
+        String sortName = HelpFunc.coalesce(routingContext.request().getParam(sortField), "_id");
+        if(sortName.equalsIgnoreCase("id")) sortName = "_" + sortName; //Mongo use _id
+        int sortOrder = HelpFunc.strCompare(
+                HelpFunc.coalesce(routingContext.request().getParam(sortOrderField), "ASC"), "ASC", 1, -1);
+        return new FindOptions().setSort(new JsonObject().put(sortName, sortOrder));
+    }
+
+    public static FindOptions getMongoSortFindOption(RoutingContext routingContext) {
+        return getMongoSortFindOption(routingContext, "_sort", "_order");
     }
 }

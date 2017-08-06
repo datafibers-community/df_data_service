@@ -80,6 +80,7 @@ public class DFJobPOPJ {
         this.connectorConfig = null;
     }
 
+    // Used by
     public DFJobPOPJ(JsonObject json) {
         this.taskSeq = json.getString("taskSeq");
         this.name = json.getString("name");
