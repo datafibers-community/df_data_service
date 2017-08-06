@@ -940,6 +940,7 @@ public class DFDataProcessor extends AbstractVerticle {
                     engine = "TABLE_API";
                 }
 
+                // When schema name are not provided, got them from topic
                 FlinkTransformProcessor.submitFlinkJobA2A(dfJob, vertx,
                         config().getInteger("flink.trans.client.timeout", 8000), env,
                         this.kafka_server_host_and_port,
@@ -950,8 +951,10 @@ public class DFDataProcessor extends AbstractVerticle {
                         dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_OUTPUT),
                         dfJob.getConnectorConfig().get(ConstantApp.PK_FLINK_TABLE_SINK_KEYS),
                         dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL),
-                        dfJob.getConnectorConfig().get(ConstantApp.PK_SCHEMA_SUB_INPUT),
-                        dfJob.getConnectorConfig().get(ConstantApp.PK_SCHEMA_SUB_OUTPUT),
+                        HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_SCHEMA_SUB_INPUT),
+                                dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_INPUT)),
+                        HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_SCHEMA_SUB_OUTPUT),
+                                dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_OUTPUT)),
                         mongo, COLLECTION, engine);
             }
         }

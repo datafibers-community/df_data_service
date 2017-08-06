@@ -27,7 +27,7 @@ customHeaderTemplate =
 	var processor = nga.entity('processor').label('ALL');
     var connect = nga.entity('ps').label('CONNECTS');
 	var transform = nga.entity('tr').label('TRANSFORMS');
-	var schema = nga.entity('schema').identifier(nga.field('subject')).label('SCHEMA');
+	var schema = nga.entity('schema').identifier(nga.field('subject')).label('TOPICS');
     var installed_connects = nga.entity('installed_connects').identifier(nga.field('class')).label('INSTALLED').readOnly();
     var process_history = nga.entity('hist').identifier(nga.field('uid')).label('HISTORY').readOnly();
 
@@ -52,10 +52,10 @@ customHeaderTemplate =
     ]);
 
   	schema.listView().sortField('name').fields([
-  	    nga.field('subject').label('Subject Name').isDetailLink(true),
-        nga.field('id').label('Schema ID'),
-        nga.field('version').label('Schema Version'),
-        nga.field('schema').label('Schema'),
+  	    nga.field('subject').label('Topic Name').isDetailLink(true),
+        nga.field('id').label('Topic ID'),
+        nga.field('version').label('Topic Schema Version'),
+        nga.field('schema').label('Topic Schema'),
         nga.field('compatibility').label('Compatibility')
     ]);
 
@@ -208,29 +208,29 @@ customHeaderTemplate =
     ]);
 
     schema.creationView().fields([
-        nga.field('id', 'number').format('0o').label('Schema ID'),
-        nga.field('subject').label('Subject'),
-        nga.field('version').label('Schema Version'),
-        nga.field('schema', 'json').label('Schema'),
+        nga.field('id', 'number').format('0o').label('Topic ID'),
+        nga.field('subject').label('Topic Name'),
+        nga.field('version').label('Topic Schema Version'),
+        nga.field('schema', 'json').label('Topic Schema'),
         nga.field('compatibility', 'choice').choices([
                                 {value:'NONE', label:'NONE'},
                                 {value:'FULL', label:'FULL'},
                                 {value:'FORWARD', label:'FORWARD'},
                                 {value:'BACKWARD', label:'BACKWARD'}
-                                ]).label('Compatibility')
+                                ]).label('Schema Compatibility')
     ]);
 
     schema.editionView().fields([
-                                nga.field('id', 'number').editable(false).label('Schema ID').isDetailLink(false),
-                                nga.field('subject').editable(false).label('Subject'),
-                                nga.field('version').editable(false).label('Schema Version'),
-                                nga.field('schema', 'json').label('Schema'),
+                                nga.field('id', 'number').editable(false).label('Topic ID').isDetailLink(false),
+                                nga.field('subject').editable(false).label('Topic Name'),
+                                nga.field('version').editable(false).label('Topic Schema Version'),
+                                nga.field('schema', 'json').label('Topic Schema'),
                                 nga.field('compatibility', 'choice').choices([
                                                         {value:'NONE', label:'NONE'},
                                                         {value:'FULL', label:'FULL'},
                                                         {value:'FORWARD', label:'FORWARD'},
                                                         {value:'BACKWARD', label:'BACKWARD'}
-                                                        ]).label('Compatibility')
+                                                        ]).label('Schema Compatibility')
     ]);
 
 	schema.editionView().actions(['list']);
