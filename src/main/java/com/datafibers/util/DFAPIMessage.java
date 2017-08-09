@@ -40,6 +40,8 @@ public final class DFAPIMessage {
         messageMap.put(1020, "INFO - REGULAR_UPDATE_CONNECT_STATUS_NO_CHANGES");
         messageMap.put(1021, "INFO - REGULAR_UPDATE_TRANSFORM_STATUS_FOUND_CHANGES");
         messageMap.put(1022, "INFO - REGULAR_UPDATE_TRANSFORM_STATUS_NO_CHANGES");
+        messageMap.put(1023, "INFO - RETURNED_CONNECT_STATUS_IN_DETAIL");
+        messageMap.put(1024, "INFO - RETURNED_TRANSFORM_STATUS_IN_DETAIL");
         messageMap.put(9000, "EXCP - ID_IS_NULL_IN_REQUEST");
         messageMap.put(9001, "EXCP - ID_NOT_FOUND_IN_REPO");
         messageMap.put(9002, "EXCP - ID_SEARCH_EXCEPTION_IN_REPO");

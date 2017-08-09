@@ -46,15 +46,15 @@ public final class ConstantApp {
     public static final String DF_PROCESS_HIST_REST_URL = "/api/df/hist";
     public static final String DF_PROCESS_HIST_URL_WILD = "/api/df/hist*";
 
-    // DF default configuration endpoint URLs
-    public static final String DF_PROCESS_DEFAULT_CONFIG_REST_URL = "/api/df/default_config";
-    public static final String DF_PROCESS_DEFAULT_CONFIG_URL_WILD = "/api/df/default_config*";
-    public static final String DF_PROCESS_DEFAULT_CONFIG_REST_URL_WITH_ID = DF_PROCESS_DEFAULT_CONFIG_REST_URL + "/:id";
-
     // DF log endpoint URLs
     public static final String DF_LOGGING_REST_URL = "/api/df/logs";
     public static final String DF_LOGGING_REST_URL_WILD = "/api/df/logs*";
     public static final String DF_LOGGING_REST_URL_WITH_ID = DF_LOGGING_REST_URL + "/:id";
+
+    // DF task status endpoint URLs
+    public static final String DF_TASK_STATUS_REST_URL = "/api/df/status";
+    public static final String DF_TASK_STATUS_REST_URL_WILD = "/api/df/status*";
+    public static final String DF_TASK_STATUS_REST_URL_WITH_ID = DF_TASK_STATUS_REST_URL + "/:id";
 
     // Kafka Connect endpoint URLs
     public static final String KAFKA_CONNECT_REST_URL = "/connectors";
@@ -93,6 +93,7 @@ public final class ConstantApp {
         LOST,               // The Kafka connect restart and lost the connector job in DF repository.
         CANCELED,           // Job (Flink) is canceled
         RWE,                // Connector/Transform is running with one of task is failed - RUNNING_WITH_ERROR
+        FINISHED,
         NONE
     }
 

@@ -13,12 +13,52 @@ import com.datafibers.util.HelpFunc;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.RestClient;
 import com.hubrick.vertx.rest.RestClientRequest;
+import org.json.JSONObject;
 
 public class KafkaConnectProcessor {
 
     private static final Logger LOG = Logger.getLogger(KafkaConnectProcessor.class);
     
     public KafkaConnectProcessor(){}
+
+    /**
+     * This method first decode the REST GET request to DFJobPOPJ object. Then, it updates its job status and repack
+     * for Kafka REST GET. After that, it forward the new GET to Kafka Connect.
+     * Once REST API forward is successful, response.
+     *
+     * @param routingContext This is the contect from REST API
+     * @param restClient This is vertx non-blocking rest client used for forwarding
+     * @param taskId This is the id used to look up status
+     */
+    public static void forwardGetAsGetOne(RoutingContext routingContext, RestClient restClient, String taskId) {
+        // Create REST Client for Kafka Connect REST Forward
+        final RestClientRequest postRestClientRequest =
+                restClient.get(ConstantApp.KAFKA_CONNECT_REST_URL + "/" + taskId + "/status", String.class,
+                portRestResponse -> {
+                    JsonObject jo = new JsonObject(portRestResponse.getBody());
+                    JsonObject dfJobResponsed = new JsonObject()
+                            .put("taskId", taskId)
+                            .put("jobId", taskId)
+                            .put("state", HelpFunc.getTaskStatusKafka(new JSONObject(jo.toString())))
+                            .put("jobState", jo.getJsonObject("connector").getString("state"))
+                            .put("subTask", jo.getJsonArray("tasks"));
+                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                    .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                    .end(Json.encodePrettily(dfJobResponsed));
+                    LOG.info(DFAPIMessage.logResponseMessage(1023, taskId));
+                });
+
+        postRestClientRequest.exceptionHandler(exception -> {
+            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                    .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                    .end(DFAPIMessage.getResponseMessage(9006));
+            LOG.error(DFAPIMessage.logResponseMessage(9006, taskId));
+        });
+
+        postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
+        postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
+        postRestClientRequest.end();
+    }
 
     /**
      * This method first decode the REST POST request to DFJobPOPJ object. Then, it updates its job status and repack

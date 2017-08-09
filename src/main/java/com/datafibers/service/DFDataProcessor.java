@@ -281,6 +281,10 @@ public class DFDataProcessor extends AbstractVerticle {
         router.options(ConstantApp.DF_LOGGING_REST_URL).handler(this::corsHandle);
         router.get(ConstantApp.DF_LOGGING_REST_URL_WITH_ID).handler(this::getAllLogs);
 
+        // Status Rest API definition
+        router.options(ConstantApp.DF_TASK_STATUS_REST_URL_WITH_ID).handler(this::corsHandle);
+        router.get(ConstantApp.DF_TASK_STATUS_REST_URL_WITH_ID).handler(this::getOneStatus);
+
         // Get all installed connect or transform
         router.get(ConstantApp.DF_CONNECTS_INSTALLED_CONNECTS_REST_URL).handler(this::getAllInstalledConnects);
 
@@ -833,6 +837,43 @@ public class DFDataProcessor extends AbstractVerticle {
      */
     private void getOneSchema(RoutingContext routingContext) {
         SchemaRegisterProcessor.forwardGetOneSchema(vertx, routingContext, schema_registry_host_and_port);
+    }
+
+    private void getOneStatus(RoutingContext routingContext) {
+        final String id = routingContext.request().getParam("id");
+        if (id == null) {
+            routingContext.response()
+                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                    .end(DFAPIMessage.getResponseMessage(9000));
+            LOG.error(DFAPIMessage.getResponseMessage(9000, id));
+        } else {
+            mongo.findOne(COLLECTION, new JsonObject().put("_id", id), null, ar -> {
+                if (ar.succeeded()) {
+                    if (ar.result() == null) {
+                        routingContext.response()
+                                .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
+                                .end(DFAPIMessage.getResponseMessage(9001));
+                        LOG.error(DFAPIMessage.logResponseMessage(9001, id));
+                        return;
+                    }
+                    DFJobPOPJ dfJob = new DFJobPOPJ(ar.result());
+                    if(dfJob.getConnectorCategory().equalsIgnoreCase("CONNECT")) {
+                        // Find status from Kafka Connect
+                        KafkaConnectProcessor.forwardGetAsGetOne(routingContext, rc, id);
+                    }
+                    if(dfJob.getConnectorCategory().equalsIgnoreCase("TRANSFORM")) {
+                        // Find status from Flink API
+                        FlinkTransformProcessor.forwardGetAsGetOne(routingContext, rc_flink, id,
+                                dfJob.getFlinkIDFromJobConfig());
+                    }
+                } else {
+                    routingContext.response()
+                            .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
+                            .end(DFAPIMessage.getResponseMessage(9002));
+                    LOG.error(DFAPIMessage.logResponseMessage(9002, id));
+                }
+            });
+        }
     }
 
     /**
