@@ -1,6 +1,7 @@
 package com.datafibers.util;
 
 import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -8,6 +9,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import io.vertx.ext.mongo.FindOptions;
 import io.vertx.ext.web.RoutingContext;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 /**
@@ -196,5 +198,72 @@ public class HelpFunc {
 
     public static FindOptions getMongoSortFindOption(RoutingContext routingContext) {
         return getMongoSortFindOption(routingContext, "_sort", "_order");
+    }
+
+    /**
+     * Get Connector or Transform sub-task status from task array on specific status keys
+     * {
+     *  "name": "59852ad67985372a792eafce",
+     *  "connector": {
+     *  "state": "RUNNING",
+     *  "worker_id": "127.0.1.1:8083"
+     *  },
+     *  "tasks": [
+     *  {
+     *      "state": "RUNNING",
+     *      "id": 0,
+     *      "worker_id": "127.0.1.1:8083"
+     *  }
+     *  ]
+     * }
+     * @param taskStatus Responsed json object
+     * @return
+     */
+    public static String getTaskStatusKafka(JSONObject taskStatus) {
+
+        if(taskStatus.has("connector")) {
+            // Check sub-task status ony if the high level task is RUNNING
+            if(taskStatus.getJSONObject("connector").getString("state")
+                    .equalsIgnoreCase(ConstantApp.DF_STATUS.RUNNING.name()) &&
+                    taskStatus.has("tasks")) {
+                JSONArray subTask = taskStatus.getJSONArray("tasks");
+                String status = ConstantApp.DF_STATUS.RUNNING.name();
+                for (int i = 0; i < subTask.length(); i++) {
+                    if (!subTask.getJSONObject(i).getString("state")
+                            .equalsIgnoreCase(ConstantApp.DF_STATUS.RUNNING.name())) {
+                        status = ConstantApp.DF_STATUS.RWE.name();
+                        break;
+                    }
+                }
+                return status;
+            } else {
+                return taskStatus.getJSONObject("connector").getString("state");
+            }
+        } else {
+            return ConstantApp.DF_STATUS.NONE.name();
+        }
+    }
+
+    public static String getTaskStatusFlink(JSONObject taskStatus) {
+        if(taskStatus.has("state")) {
+            // Check sub-task status ony if the high level task is RUNNING
+            if(taskStatus.getString("state").equalsIgnoreCase(ConstantApp.DF_STATUS.RUNNING.name()) &&
+                    taskStatus.has("vertices")) {
+                JSONArray subTask = taskStatus.getJSONArray("vertices");
+                String status = ConstantApp.DF_STATUS.RUNNING.name();
+                for (int i = 0; i < subTask.length(); i++) {
+                    if (!subTask.getJSONObject(i).getString("status")
+                            .equalsIgnoreCase(ConstantApp.DF_STATUS.RUNNING.name())) {
+                        status = ConstantApp.DF_STATUS.RWE.name();
+                        break;
+                    }
+                }
+                return status;
+            } else {
+                return taskStatus.getString("state");
+            }
+        } else {
+            return ConstantApp.DF_STATUS.NONE.name();
+        }
     }
 }

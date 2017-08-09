@@ -1406,8 +1406,7 @@ public class DFDataProcessor extends AbstractVerticle {
 
                     // Sometime, the status is still missing for active connectors (active <> running)
                     String resStatus = (resConnectorStatus.getStatus() == 200) ?
-                            resConnectorStatus.getBody().getObject().getJSONObject("connector")
-                                    .getString("state") :
+                            HelpFunc.getTaskStatusKafka(resConnectorStatus.getBody().getObject()) :
                             ConstantApp.DF_STATUS.LOST.name();
 
                     mongo.count(COLLECTION, new JsonObject().put("connectUid", connectName), count -> {
@@ -1514,7 +1513,7 @@ public class DFDataProcessor extends AbstractVerticle {
                                         .header("accept", "application/json").asJson();
                         resStatus = resConnectorStatus.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND ?
                                 ConstantApp.DF_STATUS.LOST.name():// Not find - Mark status as LOST
-                                resConnectorStatus.getBody().getObject().getJSONObject("connector").getString("state");
+                                HelpFunc.getTaskStatusKafka(resConnectorStatus.getBody().getObject());
 
                         // Do change detection on status
                         if (statusRepo.compareToIgnoreCase(resStatus) != 0) { //status changes
@@ -1568,7 +1567,7 @@ public class DFDataProcessor extends AbstractVerticle {
                                 Unirest.get(restURI + "/" + jobId).header("accept", "application/json").asJson();
                         String resStatus = resConnectorStatus.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND ?
                             ConstantApp.DF_STATUS.LOST.name():// Not find - Mark status as LOST
-                            resConnectorStatus.getBody().getObject().getString("state");
+                                HelpFunc.getTaskStatusFlink(resConnectorStatus.getBody().getObject());
 
                         // Do change detection on status
                         if (statusRepo.compareToIgnoreCase(resStatus) != 0) { //status changes

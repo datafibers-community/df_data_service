@@ -91,7 +91,8 @@ public final class ConstantApp {
         PAUSED,             // The Kafka connector/task has been administratively paused.
         FAILED,             // The Kafka connector/task has failed.
         LOST,               // The Kafka connect restart and lost the connector job in DF repository.
-        CANCELED,
+        CANCELED,           // Job (Flink) is canceled
+        RWE,                // Connector/Transform is running with one of task is failed - RUNNING_WITH_ERROR
         NONE
     }
 
