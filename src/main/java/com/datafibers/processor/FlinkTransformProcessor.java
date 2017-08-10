@@ -311,7 +311,7 @@ public class FlinkTransformProcessor {
     public static void forwardGetAsGetOne(RoutingContext routingContext, RestClient restClient, String taskId, String jobId) {
         // Create REST Client for Kafka Connect REST Forward
         final RestClientRequest postRestClientRequest =
-                restClient.get(ConstantApp.FLINK_REST_URL + "/" + taskId, String.class,
+                restClient.get(ConstantApp.FLINK_REST_URL + "/" + jobId, String.class,
                         portRestResponse -> {
                             JsonObject jo = new JsonObject(portRestResponse.getBody());
                             JsonObject dfJobResponsed = new JsonObject()
