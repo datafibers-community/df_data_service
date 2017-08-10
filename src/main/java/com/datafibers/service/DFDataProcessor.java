@@ -763,7 +763,7 @@ public class DFDataProcessor extends AbstractVerticle {
      * Generic getOne method for REST API End Point.
      * @param routingContext
      *
-     * @api {get} /ps/:id    3.Get a connect task
+     * @api {get} /ps/:id    3. Get a connect task
      * @apiVersion 0.1.1
      * @apiName getOne
      * @apiGroup Connect
@@ -825,7 +825,7 @@ public class DFDataProcessor extends AbstractVerticle {
      * 2) Retrieve a specific subject compatibility:
      * curl -X GET -i http://localhost:8081/config/finance-value
      *
-     * @api {get} /schema/:subject   2.Get a schema
+     * @api {get} /schema/:subject   2. Get a schema
      * @apiVersion 0.1.1
      * @apiName getOneSchema
      * @apiGroup Schema
@@ -839,6 +839,19 @@ public class DFDataProcessor extends AbstractVerticle {
         SchemaRegisterProcessor.forwardGetOneSchema(vertx, routingContext, schema_registry_host_and_port);
     }
 
+    /**
+     * Get one task status with task id specified
+     *
+     * @api {get} /status/:taskId   2. Get a task status
+     * @apiVersion 0.1.1
+     * @apiName getOneStatus
+     * @apiGroup All
+     * @apiPermission none
+     * @apiDescription This is where we get task status with specified task id.
+     * @apiParam {String}   taskId      taskId for connect or transform.
+     * @apiSuccess	{JsonObject[]}	status    status of the task.
+     * @apiSampleRequest http://localhost:8080/api/df/status/:taskId
+     */
     private void getOneStatus(RoutingContext routingContext) {
         final String id = routingContext.request().getParam("id");
         if (id == null) {
