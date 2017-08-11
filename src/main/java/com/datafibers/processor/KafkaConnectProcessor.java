@@ -37,7 +37,7 @@ public class KafkaConnectProcessor {
                 portRestResponse -> {
                     JsonObject jo = new JsonObject(portRestResponse.getBody());
                     JsonObject dfJobResponsed = new JsonObject()
-                            .put("taskId", taskId)
+                            .put("id", taskId)
                             .put("jobId", taskId)
                             .put("state", HelpFunc.getTaskStatusKafka(new JSONObject(jo.toString())))
                             .put("jobState", jo.getJsonObject("connector").getString("state"))

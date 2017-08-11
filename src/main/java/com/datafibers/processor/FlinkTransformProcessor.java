@@ -8,6 +8,7 @@ import com.hubrick.vertx.rest.RestClientRequest;
 import io.vertx.core.Vertx;
 import io.vertx.core.WorkerExecutor;
 import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.RoutingContext;
@@ -314,7 +315,7 @@ public class FlinkTransformProcessor {
                         portRestResponse -> {
                             JsonObject jo = new JsonObject(portRestResponse.getBody());
                             JsonObject dfJobResponsed = new JsonObject()
-                                    .put("taskId", taskId)
+                                    .put("id", taskId)
                                     .put("jobId", jobId)
                                     .put("state", HelpFunc.getTaskStatusFlink(new JSONObject(jo.toString())))
                                     .put("jobState", jo.getString("state"))
@@ -325,11 +326,18 @@ public class FlinkTransformProcessor {
                             LOG.info(DFAPIMessage.logResponseMessage(1024, taskId));
                         });
 
+        // todo return a lost status until flink rest api bug fixed
         postRestClientRequest.exceptionHandler(exception -> {
             HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                    .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                    .end(DFAPIMessage.getResponseMessage(9006));
-            LOG.error(DFAPIMessage.logResponseMessage(9006, taskId));
+                    .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                    //.setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                    .end(Json.encodePrettily(new JsonObject()
+                            .put("id", taskId)
+                            .put("jobId", jobId)
+                            .put("state", ConstantApp.DF_STATUS.LOST.name())
+                            .put("jobState", ConstantApp.DF_STATUS.LOST.name())
+                            .put("subTask", new JsonArray().add("NULL"))));
+            // LOG.error(DFAPIMessage.logResponseMessage(9006, taskId));
         });
 
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
