@@ -49,7 +49,7 @@ export const ProcessorList = (props) => (
             <TextField source="name" label="name" />
             <TextField source="connectorType" label="task type" />
             <ChipField source="status" label="status" />
-	    <ReferenceField label="state" source="id" reference="status">
+	        <ReferenceField label="state" source="id" reference="status">
                 <TextField source="state" />
             </ReferenceField>
             <EditButton /><ShowButton />

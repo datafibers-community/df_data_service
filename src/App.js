@@ -18,6 +18,7 @@ import { ConnectIcon, ConnectShow, ConnectList, ConnectCreate, ConnectEdit } fro
 import { TransformIcon, TransformShow, TransformList, TransformCreate, TransformEdit } from './transform';
 import { SchemaIcon, SchemaShow, SchemaList } from './schema';
 import { ProcessorIcon, ProcessorList } from './processor';
+import { LoggingIcon, LoggingList, LoggingShow } from './logging';
 import { VisitorList, VisitorEdit, VisitorDelete, VisitorIcon } from './visitors';
 import { CommandList, CommandEdit, CommandIcon } from './commands';
 import { ProductList, ProductCreate, ProductEdit, ProductIcon } from './products';
@@ -47,6 +48,7 @@ class App extends Component {
                 <Resource name="ps" options={{ label: 'Connect' }} icon={ConnectIcon} list={ConnectList} create={ConnectCreate} edit={ConnectEdit} remove={Delete} show={ConnectShow} />
                 <Resource name="tr" options={{ label: 'Transform' }} icon={TransformIcon} list={TransformList} edit={ConnectEdit} create={ConnectCreate} remove={Delete}  show={ConnectShow} />
                 <Resource name="schema" options={{ label: 'Topic' }} icon={SchemaIcon} list={SchemaList} remove={Delete} show={SchemaShow} />
+                <Resource name="logs" options={{ label: 'Logging' }} icon={LoggingIcon} list={LoggingList} remove={Delete} show={LoggingShow} />
                 <Resource name="status" />
 //                <Resource name="customers" list={VisitorList} edit={VisitorEdit} remove={VisitorDelete} icon={VisitorIcon}/>
 //                <Resource name="commands" list={CommandList} edit={CommandEdit} remove={Delete} icon={CommandIcon} options={{ label: 'Orders' }}/>

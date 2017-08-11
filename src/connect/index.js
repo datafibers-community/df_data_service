@@ -8,10 +8,14 @@ import { Show, SimpleShowLayout, SimpleForm, TabbedForm, FormTab } from 'admin-o
 import RichTextInput from 'aor-rich-text-input';
 import { DependentInput } from 'aor-dependent-input';
 import Icon from 'material-ui/svg-icons/image/flare';
+import get from 'lodash.get';
 
 export const ConnectIcon = Icon;
 
 const RawRecordField = ({ record, source }) => <pre dangerouslySetInnerHTML={{ __html: JSON.stringify(record, null, '\t')}}></pre>;
+RawRecordField.defaultProps = { label: 'Raw Json' };
+
+const RawRecordSpecificField = ({ record, source }) => <pre dangerouslySetInnerHTML={{ __html: JSON.stringify(get(record, source), null, '\t')}}></pre>;
 RawRecordField.defaultProps = { label: 'Raw Json' };
 
 const ConnectShowTitle = ({ record }) => {
@@ -93,7 +97,15 @@ export const ConnectEdit = (props) => (
                 </DependentInput>
             </FormTab>
             <FormTab label="State">
-                <TextInput source="connectorConfig.topic" label="Topic to Write Data" style={{ display: 'inline-block' }} />
+                <ReferenceField label="Engine Job|Task ID." source="id" reference="status" linkType={false}>
+                    <TextField source="jobId" />
+                </ReferenceField>
+                <ReferenceField label="Engine Job|Task State" source="id" reference="status" linkType={false}>
+                    <ChipField source="jobState" />
+                </ReferenceField>
+                <ReferenceField label="List of Sub Job|Task" source="id" reference="status" linkType={false}>
+                    <RawRecordSpecificField source="subTask" />
+                </ReferenceField>
             </FormTab>
         </TabbedForm>
     </Edit>
