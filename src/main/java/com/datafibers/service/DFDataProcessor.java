@@ -279,14 +279,15 @@ public class DFDataProcessor extends AbstractVerticle {
         // Logging Rest API definition
         router.options(ConstantApp.DF_LOGGING_REST_URL_WITH_ID).handler(this::corsHandle);
         router.options(ConstantApp.DF_LOGGING_REST_URL).handler(this::corsHandle);
+        router.get(ConstantApp.DF_LOGGING_REST_URL).handler(this::getAllLogs);
         router.get(ConstantApp.DF_LOGGING_REST_URL_WITH_ID).handler(this::getOneLogs);
-        router.route(ConstantApp.DF_LOGGING_REST_URL_WILD).handler(this::getOneLogs);
+        router.route(ConstantApp.DF_LOGGING_REST_URL_WITH_ID).handler(BodyHandler.create());
 
         // Status Rest API definition
         router.options(ConstantApp.DF_TASK_STATUS_REST_URL).handler(this::corsHandle);
         router.options(ConstantApp.DF_TASK_STATUS_REST_URL_WITH_ID).handler(this::corsHandle);
-        router.get(ConstantApp.DF_TASK_STATUS_REST_URL_WITH_ID).handler(this::getOneStatus);
-        router.route(ConstantApp.DF_TASK_STATUS_REST_URL_WILD).handler(this::getOneStatus);
+        router.get(ConstantApp.DF_TASK_STATUS_REST_URL).handler(this::getOneStatus);
+        router.get(ConstantApp.DF_TASK_STATUS_REST_URL_WILD).handler(this::getOneStatus);
 
         // Get all installed connect or transform
         router.get(ConstantApp.DF_CONNECTS_INSTALLED_CONNECTS_REST_URL).handler(this::getAllInstalledConnects);
@@ -685,6 +686,39 @@ public class DFDataProcessor extends AbstractVerticle {
             }
 
         });
+    }
+
+    /**
+     * Get all logging information from df repo
+     * @param routingContext
+     *
+     * @api {get} /logs 2.List all df logs in the current run
+     * @apiVersion 0.1.1
+     * @apiName getAllLogs
+     * @apiGroup All
+     * @apiPermission none
+     * @apiDescription This is where get df logs.
+     * @apiSuccess	{JsonObject[]}	logs    List of processed logs.
+     * @apiSampleRequest http://localhost:8080/api/df/logs
+     */
+    private void getAllLogs(RoutingContext routingContext) {
+
+        JsonObject searchCondition;
+
+        String searchKeywords = routingContext.request().getParam("q");
+        searchCondition = new JsonObject().put("$and",
+                new JsonArray()
+                        .add(new JsonObject().put("$where", "JSON.stringify(this).indexOf('" + searchKeywords + "') != -1"))
+                        .add(new JsonObject().put("level", new JsonObject().put("$ne", "DEBUG")))
+        );
+
+        mongo.findWithOptions(COLLECTION_LOG, searchCondition, HelpFunc.getMongoSortFindOption(routingContext),
+                results -> {
+                    List<JsonObject> objects = results.result();
+                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                            .putHeader("X-Total-Count", objects.size() + "" )
+                            .end(Json.encodePrettily(objects));
+                });
     }
 
     /**
