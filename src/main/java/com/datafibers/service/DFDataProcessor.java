@@ -1621,33 +1621,36 @@ public class DFDataProcessor extends AbstractVerticle {
                     if(!json.getString("jobConfig").equalsIgnoreCase("{}"))
                         jobId = new JsonObject(json.getString("jobConfig")).getString(ConstantApp.PK_FLINK_SUBMIT_JOB_ID);
                     // Get task status
+                    String resStatus;
                     try {
                         HttpResponse<JsonNode> resConnectorStatus =
                                 Unirest.get(restURI + "/" + jobId).header("accept", "application/json").asJson();
-                        String resStatus = resConnectorStatus.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND ?
+                        resStatus = resConnectorStatus.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND ?
                             ConstantApp.DF_STATUS.LOST.name():// Not find - Mark status as LOST
                                 HelpFunc.getTaskStatusFlink(resConnectorStatus.getBody().getObject());
-
-                        // Do change detection on status
-                        if (statusRepo.compareToIgnoreCase(resStatus) != 0) { //status changes
-                            DFJobPOPJ updateJob = new DFJobPOPJ(json);
-                            updateJob.setStatus(resStatus);
-
-                            mongo.updateCollection(COLLECTION, new JsonObject().put("_id", updateJob.getId()),
-                                    // The update syntax: {$set, the json object containing the fields to update}
-                                    new JsonObject().put("$set", updateJob.toJson()), v -> {
-                                        if (v.failed()) {
-                                            LOG.error(DFAPIMessage.logResponseMessage(9003, taskId + "cause:" + v.cause()));
-                                        } else {
-                                            LOG.info(DFAPIMessage.logResponseMessage(1021, taskId));
-                                        }
-                                    }
-                            );
-                        } else {
-                            LOG.debug(DFAPIMessage.logResponseMessage(1022, taskId));
-                        }
                     } catch (UnirestException ue) {
+                        //TODO when jobId not found, the rest API response still has issue with wrong encoding, set status LOST as temp fix.
                         //LOG.error(DFAPIMessage.logResponseMessage(9006, "TRANSFORM_STATUS_REFRESH:" + ue.getCause()));
+                        resStatus = ConstantApp.DF_STATUS.LOST.name();
+                    }
+
+                    // Do change detection on status
+                    if (statusRepo.compareToIgnoreCase(resStatus) != 0) { //status changes
+                        DFJobPOPJ updateJob = new DFJobPOPJ(json);
+                        updateJob.setStatus(resStatus);
+
+                        mongo.updateCollection(COLLECTION, new JsonObject().put("_id", updateJob.getId()),
+                                // The update syntax: {$set, the json object containing the fields to update}
+                                new JsonObject().put("$set", updateJob.toJson()), v -> {
+                                    if (v.failed()) {
+                                        LOG.error(DFAPIMessage.logResponseMessage(9003, taskId + "cause:" + v.cause()));
+                                    } else {
+                                        LOG.info(DFAPIMessage.logResponseMessage(1021, taskId));
+                                    }
+                                }
+                        );
+                    } else {
+                        LOG.debug(DFAPIMessage.logResponseMessage(1022, taskId));
                     }
                 }
             } else {
