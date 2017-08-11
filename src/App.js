@@ -15,6 +15,8 @@ import customRoutes from './routes';
 import translations from './i18n';
 
 import { ConnectIcon, ConnectShow, ConnectList, ConnectCreate, ConnectEdit } from './connect';
+import { TransformIcon, TransformShow, TransformList, TransformCreate, TransformEdit } from './transform';
+import { SchemaIcon, SchemaShow, SchemaList } from './schema';
 import { ProcessorIcon, ProcessorList } from './processor';
 import { VisitorList, VisitorEdit, VisitorDelete, VisitorIcon } from './visitors';
 import { CommandList, CommandEdit, CommandIcon } from './commands';
@@ -42,7 +44,10 @@ class App extends Component {
                 //menu={Menu}
                 messages={translations}
             >
-                <Resource name="ps" list={ConnectList} create={ConnectCreate} edit={ConnectEdit} remove={Delete} icon={ConnectIcon} show={ConnectShow} options={{ label: 'Connect' }}/>
+                <Resource name="ps" options={{ label: 'Connect' }} icon={ConnectIcon} list={ConnectList} create={ConnectCreate} edit={ConnectEdit} remove={Delete} show={ConnectShow} />
+                <Resource name="tr" options={{ label: 'Transform' }} icon={TransformIcon} list={TransformList} edit={ConnectEdit} create={ConnectCreate} remove={Delete}  show={ConnectShow} />
+                <Resource name="schema" options={{ label: 'Topic' }} icon={SchemaIcon} list={SchemaList} remove={Delete} show={SchemaShow} />
+                <Resource name="status" />
 //                <Resource name="customers" list={VisitorList} edit={VisitorEdit} remove={VisitorDelete} icon={VisitorIcon}/>
 //                <Resource name="commands" list={CommandList} edit={CommandEdit} remove={Delete} icon={CommandIcon} options={{ label: 'Orders' }}/>
 //                <Resource name="products" list={ProductList} create={ProductCreate} edit={ProductEdit} remove={Delete} icon={ProductIcon} />
