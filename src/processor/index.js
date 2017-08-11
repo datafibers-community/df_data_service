@@ -7,7 +7,7 @@ import { EditButton, ShowButton } from 'admin-on-rest';
 import { Show, SimpleShowLayout, SimpleForm, TabbedForm, FormTab } from 'admin-on-rest';
 import RichTextInput from 'aor-rich-text-input';
 import { DependentInput } from 'aor-dependent-input';
-import Icon from 'material-ui/svg-icons/image/Processor';
+import Icon from 'material-ui/svg-icons/image/transform';
 
 export const ProcessorIcon = Icon;
 
