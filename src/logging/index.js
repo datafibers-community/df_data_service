@@ -3,7 +3,7 @@ import React from 'react';
 import { Filter, List, Edit, Create } from 'admin-on-rest';
 import { Datagrid, SelectField, FunctionField, ChipField, TextField, DateField, RichTextField, NumberField } from 'admin-on-rest';
 import { NumberInput, DisabledInput, BooleanInput, LongTextInput, SelectInput, TextInput } from 'admin-on-rest';
-import { EditButton } from 'admin-on-rest';
+import { EditButton, ShowButton } from 'admin-on-rest';
 import { Show, SimpleShowLayout, SimpleForm, TabbedForm, FormTab } from 'admin-on-rest';
 import RichTextInput from 'aor-rich-text-input';
 import { DependentInput } from 'aor-dependent-input';
@@ -15,7 +15,7 @@ const RawRecordField = ({ record, source }) => <pre dangerouslySetInnerHTML={{ _
 RawRecordField.defaultProps = { label: 'Raw Json' };
 
 const LoggingShowTitle = ({ record }) => {
-    return <span>Raw Json with ID. {record ? `"${record.id}"` : ''}</span>;
+    return <span>Raw Log Json with ID. {record ? `"${record.id}"` : ''}</span>;
 };
 
 const LoggingTitle = ({ record }) => {
@@ -25,7 +25,6 @@ const LoggingTitle = ({ record }) => {
 const LoggingFilter = (props) => (
     <Filter {...props}>
         <TextInput label="Search" source="q" alwaysOn />
-        <TextInput label="Compatibility" source="status" defaultValue="FULL" />
     </Filter>
 );
 
@@ -38,18 +37,14 @@ export const LoggingShow = (props) => (
 );
 
 export const LoggingList = (props) => (
-    <List {...props} title="Topic List" filters={<LoggingFilter />}>
-        <Datagrid
-            headerOptions={{ adjustForCheckbox: true, displaySelectAll: true }}
-            bodyOptions={{ displayRowCheckbox: true, stripedRows: true, showRowHover: true}}
-            rowOptions={{ selectable: true }}
-            options={{ multiSelectable: true }}>    
-	    <TextField source="id" label="id" />
-            <TextField source="timestamp.$date" label="datetime" />
+    <List {...props} title="Logging List" filters={<LoggingFilter />}>
+        <Datagrid >
+	        <TextField source="id" label="log id" />
+            <TextField source="timestamp" label="timestamp" />
             <TextField source="level" label="level" />
-            <TextField source="class.className" label="class name" />
+            <TextField source="className" label="class name" />
             <TextField source="method" label="method" />
-            <NumberField source="lineNumber" label="lineNumber" />
+            <NumberField source="lineNumber" label="line" />
             <ShowButton />
         </Datagrid>
     </List>

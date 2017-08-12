@@ -46,7 +46,7 @@ class App extends Component {
                 messages={translations}
             >
                 <Resource name="ps" options={{ label: 'Connect' }} icon={ConnectIcon} list={ConnectList} create={ConnectCreate} edit={ConnectEdit} remove={Delete} show={ConnectShow} />
-                <Resource name="tr" options={{ label: 'Transform' }} icon={TransformIcon} list={TransformList} edit={ConnectEdit} create={ConnectCreate} remove={Delete}  show={ConnectShow} />
+                <Resource name="tr" options={{ label: 'Transform' }} icon={TransformIcon} list={TransformList} edit={TransformEdit} create={TransformCreate} remove={Delete}  show={ConnectShow} />
                 <Resource name="schema" options={{ label: 'Topic' }} icon={SchemaIcon} list={SchemaList} remove={Delete} show={SchemaShow} />
                 <Resource name="logs" options={{ label: 'Logging' }} icon={LoggingIcon} list={LoggingList} remove={Delete} show={LoggingShow} />
                 <Resource name="status" />
