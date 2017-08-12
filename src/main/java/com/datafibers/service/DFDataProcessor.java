@@ -286,7 +286,7 @@ public class DFDataProcessor extends AbstractVerticle {
         // Status Rest API definition
         router.options(ConstantApp.DF_TASK_STATUS_REST_URL).handler(this::corsHandle);
         router.options(ConstantApp.DF_TASK_STATUS_REST_URL_WITH_ID).handler(this::corsHandle);
-        router.get(ConstantApp.DF_TASK_STATUS_REST_URL).handler(this::getOneStatus);
+        router.get(ConstantApp.DF_TASK_STATUS_REST_URL_WITH_ID).handler(this::getOneStatus);
         router.get(ConstantApp.DF_TASK_STATUS_REST_URL_WILD).handler(this::getOneStatus);
 
         // Get all installed connect or transform
