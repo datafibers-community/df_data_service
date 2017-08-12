@@ -1,5 +1,6 @@
 package com.datafibers.service;
 
+import com.datafibers.model.DFLogPOPJ;
 import com.datafibers.processor.SchemaRegisterProcessor;
 import com.datafibers.util.DFAPIMessage;
 import com.datafibers.util.MongoAdminClient;
@@ -52,6 +53,8 @@ import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
 import org.log4mongo.MongoDbAppender;
+import org.log4mongo.MongoDbPatternLayout;
+import scala.collection.immutable.Stream;
 
 /**
  * DF Producer is used to route producer service to kafka connect rest or lunch locally.
@@ -715,9 +718,10 @@ public class DFDataProcessor extends AbstractVerticle {
         mongo.findWithOptions(COLLECTION_LOG, searchCondition, HelpFunc.getMongoSortFindOption(routingContext),
                 results -> {
                     List<JsonObject> objects = results.result();
+                    List<DFLogPOPJ> jobs = objects.stream().map(DFLogPOPJ::new).collect(Collectors.toList());
                     HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                            .putHeader("X-Total-Count", objects.size() + "" )
-                            .end(Json.encodePrettily(objects));
+                            .putHeader("X-Total-Count", jobs.size() + "" )
+                            .end(Json.encodePrettily(jobs));
                 });
     }
 
