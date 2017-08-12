@@ -1671,8 +1671,8 @@ public class DFDataProcessor extends AbstractVerticle {
                             ConstantApp.DF_STATUS.LOST.name():// Not find - Mark status as LOST
                                 HelpFunc.getTaskStatusFlink(resConnectorStatus.getBody().getObject());
                     } catch (UnirestException ue) {
-                        //TODO when jobId not found, the rest API response still has issue with wrong encoding, set status LOST as temp fix.
-                        //LOG.error(DFAPIMessage.logResponseMessage(9006, "TRANSFORM_STATUS_REFRESH:" + ue.getCause()));
+                        // When jobId not found, set status LOST with error message.
+                        LOG.error(DFAPIMessage.logResponseMessage(9006, "TRANSFORM_STATUS_REFRESH:" + ue.getCause()));
                         resStatus = ConstantApp.DF_STATUS.LOST.name();
                     }
 

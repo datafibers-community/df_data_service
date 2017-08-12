@@ -326,7 +326,7 @@ public class FlinkTransformProcessor {
                             LOG.info(DFAPIMessage.logResponseMessage(1024, taskId));
                         });
 
-        // todo return a lost status until flink rest api bug fixed
+        // Return a lost status when there is exception
         postRestClientRequest.exceptionHandler(exception -> {
             HelpFunc.responseCorsHandleAddOn(routingContext.response())
                     .setStatusCode(ConstantApp.STATUS_CODE_OK)
@@ -337,7 +337,7 @@ public class FlinkTransformProcessor {
                             .put("state", ConstantApp.DF_STATUS.LOST.name())
                             .put("jobState", ConstantApp.DF_STATUS.LOST.name())
                             .put("subTask", new JsonArray().add("NULL"))));
-            // LOG.error(DFAPIMessage.logResponseMessage(9006, taskId));
+            LOG.error(DFAPIMessage.logResponseMessage(9006, taskId));
         });
 
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
