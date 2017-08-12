@@ -709,11 +709,16 @@ public class DFDataProcessor extends AbstractVerticle {
         JsonObject searchCondition;
 
         String searchKeywords = routingContext.request().getParam("q");
-        searchCondition = new JsonObject().put("$and",
-                new JsonArray()
-                        .add(new JsonObject().put("$where", "JSON.stringify(this).indexOf('" + searchKeywords + "') != -1"))
-                        .add(new JsonObject().put("level", new JsonObject().put("$ne", "DEBUG")))
-        );
+        if(searchKeywords == null || searchKeywords.isEmpty()) {
+            searchCondition = new JsonObject().put("level", new JsonObject().put("$ne", "DEBUG"));
+        } else {
+            searchCondition = new JsonObject().put("$and",
+                    new JsonArray()
+                            .add(new JsonObject().put("$where", "JSON.stringify(this).indexOf('" + searchKeywords + "') != -1"))
+                            .add(new JsonObject().put("level", new JsonObject().put("$ne", "DEBUG")))
+            );
+        }
+
 
         mongo.findWithOptions(COLLECTION_LOG, searchCondition, HelpFunc.getMongoSortFindOption(routingContext),
                 results -> {
@@ -862,7 +867,6 @@ public class DFDataProcessor extends AbstractVerticle {
     private void getOneLogs(RoutingContext routingContext) {
 
         final String id = routingContext.request().getParam("id");
-        System.out.println("getOneLogs id = " + id);
         if (id == null) {
             routingContext.response()
                     .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)

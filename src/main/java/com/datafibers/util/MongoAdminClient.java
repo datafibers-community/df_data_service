@@ -37,7 +37,7 @@ public class MongoAdminClient {
 
     public MongoAdminClient truncateCollection(String colName) {
         if(collectionExists(colName))
-        this.database.getCollection(colName).deleteMany(new Document());
+        this.database.getCollection(colName).deleteMany(new Document()); //TODO add date filter
         return this;
     }
 
