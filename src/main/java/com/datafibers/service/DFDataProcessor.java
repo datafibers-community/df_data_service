@@ -1672,7 +1672,7 @@ public class DFDataProcessor extends AbstractVerticle {
                                 HelpFunc.getTaskStatusFlink(resConnectorStatus.getBody().getObject());
                     } catch (UnirestException ue) {
                         // When jobId not found, set status LOST with error message.
-                        LOG.error(DFAPIMessage.logResponseMessage(9006, "TRANSFORM_STATUS_REFRESH:" + ue.getCause()));
+                        LOG.info(DFAPIMessage.logResponseMessage(9006, "TRANSFORM_STATUS_REFRESH:" + ue.getCause()));
                         resStatus = ConstantApp.DF_STATUS.LOST.name();
                     }
 
