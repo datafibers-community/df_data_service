@@ -7,19 +7,16 @@ import SettingsIcon from 'material-ui/svg-icons/action/settings';
 import LabelIcon from 'material-ui/svg-icons/action/label';
 import { translate, DashboardMenuItem } from 'admin-on-rest';
 
-import { VisitorIcon } from './visitors';
-import { CommandIcon } from './commands';
-import { ProductIcon } from './products';
-import { CategoryIcon } from './categories';
-import { ReviewIcon } from './reviews';
+import { ProcessorIcon } from './processor';
+import { ConnectIcon } from './connect';
+import { TransformIcon } from './transform';
+import { SchemaIcon } from './schema';
 
 const items = [
-    { name: 'customers', icon: <VisitorIcon /> },
-    { name: 'segments', icon: <LabelIcon /> },
-    { name: 'commands', icon: <CommandIcon /> },
-    { name: 'products', icon: <ProductIcon /> },
-    { name: 'categories', icon: <CategoryIcon /> },
-    { name: 'reviews', icon: <ReviewIcon /> },
+    { name: 'processor', icon: <ProcessorIcon /> },
+    { name: 'ps', icon: <ConnectIcon /> },
+    { name: 'tr', icon: <TransformIcon /> },
+    { name: 'schema', icon: <SchemaIcon /> }
 ];
 
 const styles = {

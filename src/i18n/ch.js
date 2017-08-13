@@ -1,12 +1,12 @@
 export default {
     pos: {
-        search: 'Search',
-        configuration: 'Configuration',
-        language: 'Language',
+        search: '搜索',
+        configuration: '设置',
+        language: '语言',
         theme: {
-            name: 'Theme',
-            light: 'Light',
-            dark: 'Dark',
+            name: '主题',
+            light: '明亮',
+            dark: '暗黑',
         },
         dashboard: {
             monthly_revenue: 'Monthly Revenue',
@@ -27,7 +27,7 @@ export default {
     },
     resources: {
         processor: {
-            name: 'All |||| All',
+            name: '全部 |||| 全部',
                     fields: {
                         commands: 'Orders',
                         groups: 'Segments',
@@ -47,7 +47,7 @@ export default {
 
         },
         ps: {
-            name: 'Connect |||| Connect',
+            name: '连接 |||| 连接',
                     fields: {
                         commands: 'Orders',
                         groups: 'Segments',
@@ -67,7 +67,7 @@ export default {
 
         },
         tr: {
-            name: 'Transform |||| Transform',
+            name: '转换 |||| 转换',
                     fields: {
                         commands: 'Orders',
                         groups: 'Segments',
@@ -87,7 +87,7 @@ export default {
 
         },
         schema: {
-            name: 'Topic |||| Topic',
+            name: '主题 |||| 主题',
                     fields: {
                         commands: 'Orders',
                         groups: 'Segments',

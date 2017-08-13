@@ -17,7 +17,7 @@ import translations from './i18n';
 import { ConnectIcon, ConnectShow, ConnectList, ConnectCreate, ConnectEdit } from './connect';
 import { TransformIcon, TransformShow, TransformList, TransformCreate, TransformEdit } from './transform';
 import { SchemaIcon, SchemaShow, SchemaList } from './schema';
-import { ProcessorIcon, ProcessorList } from './processor';
+import { ProcessorIcon, ProcessorList, ProcessorShow } from './processor';
 import { LoggingIcon, LoggingList, LoggingShow } from './logging';
 import { VisitorList, VisitorEdit, VisitorDelete, VisitorIcon } from './visitors';
 import { CommandList, CommandEdit, CommandIcon } from './commands';
@@ -42,9 +42,10 @@ class App extends Component {
                 dashboard={Dashboard}
                 loginPage={Login}
                 appLayout={Layout}
-                // menu={Menu}
+                menu={Menu}
                 messages={translations}
             >
+                <Resource name="processor" options={{ label: 'All' }} icon={ProcessorIcon} list={ProcessorList} show={ProcessorShow} />
                 <Resource name="ps" options={{ label: 'Connect' }} icon={ConnectIcon} list={ConnectList} create={ConnectCreate} edit={ConnectEdit} remove={Delete} show={ConnectShow} />
                 <Resource name="tr" options={{ label: 'Transform' }} icon={TransformIcon} list={TransformList} edit={TransformEdit} create={TransformCreate} remove={Delete}  show={ConnectShow} />
                 <Resource name="schema" options={{ label: 'Topic' }} icon={SchemaIcon} list={SchemaList} remove={Delete} show={SchemaShow} />

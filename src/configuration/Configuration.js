@@ -23,6 +23,7 @@ const Configuration = ({ theme, locale, changeTheme, changeLocale, translate }) 
             <div style={styles.label}>{translate('pos.language')}</div>
             <RaisedButton style={styles.button} label="en" primary={locale === 'en'} onClick={() => changeLocale('en')} />
             <RaisedButton style={styles.button} label="fr" primary={locale === 'fr'} onClick={() => changeLocale('fr')} />
+            <RaisedButton style={styles.button} label="ch" primary={locale === 'ch'} onClick={() => changeLocale('ch')} />
         </CardText>
     </Card>
 );
