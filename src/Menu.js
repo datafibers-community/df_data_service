@@ -11,12 +11,14 @@ import { ProcessorIcon } from './processor';
 import { ConnectIcon } from './connect';
 import { TransformIcon } from './transform';
 import { SchemaIcon } from './schema';
+import { LoggingIcon } from './logging';
 
 const items = [
     { name: 'processor', icon: <ProcessorIcon /> },
     { name: 'ps', icon: <ConnectIcon /> },
     { name: 'tr', icon: <TransformIcon /> },
-    { name: 'schema', icon: <SchemaIcon /> }
+    { name: 'schema', icon: <SchemaIcon /> },
+    { name: 'logs', icon: <LoggingIcon /> }
 ];
 
 const styles = {

@@ -106,6 +106,26 @@ export default {
                     },
 
         },
+        logs: {
+             name: 'Logging |||| Logging',
+                     fields: {
+                         commands: 'Orders',
+                         groups: 'Segments',
+                         last_seen_gte: 'Visited Since',
+                         name: 'Name',
+                     },
+                     tabs: {
+                         identity: 'Identity',
+                         address: 'Address',
+                         orders: 'Orders',
+                         reviews: 'Reviews',
+                         stats: 'Stats',
+                     },
+                     page: {
+                         delete: 'Delete Customer',
+                     },
+
+        },
         customers: {
             name: 'Customer |||| Customers',
             fields: {
