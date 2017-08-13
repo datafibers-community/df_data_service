@@ -9,10 +9,9 @@ import io.vertx.core.WorkerExecutor;
 import io.vertx.ext.web.RoutingContext;
 import java.net.ConnectException;
 import java.util.Arrays;
-
-import org.apache.hadoop.fs.DF;
 import org.bson.types.ObjectId;
 import org.json.JSONException;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.apache.log4j.Logger;
 import com.datafibers.util.ConstantApp;
@@ -34,20 +33,17 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
      */
     public static void forwardGetAllSchemas(Vertx vertx, RoutingContext routingContext,
                                             String schema_registry_host_and_port) {
-        LOG.debug("SchemaRegisterProcessor.forwardGetAllSchemas is called ");
         StringBuffer returnString = new StringBuffer();
         WorkerExecutor executor = vertx.createSharedWorkerExecutor("forwardGetAllSchemas_pool_" + new ObjectId(),
                 ConstantApp.WORKER_POOL_SIZE, ConstantApp.MAX_RUNTIME);
         executor.executeBlocking(future -> {
-            // Call some blocking API that takes a significant amount of time to return
             String restURI = "http://" + schema_registry_host_and_port + "/subjects";
             int status_code = ConstantApp.STATUS_CODE_OK;
-
-            LOG.debug("Starting List All Subjects @" + restURI);
-
             try {
-                HttpResponse<String> res = Unirest.get(restURI)
-                        .header("accept", ConstantApp.AVRO_REGISTRY_CONTENT_TYPE).asString();
+                HttpResponse<String> res = Unirest
+                        .get(restURI)
+                        .header("accept", ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
+                        .asString();
 
                 if (res == null) {
                     status_code = ConstantApp.STATUS_CODE_BAD_REQUEST;
@@ -59,69 +55,55 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
                     LOG.debug("All subjects received are " + subjects);
                     StringBuffer strBuff = new StringBuffer();
                     int count = 0;
-
                     if (subjects.compareToIgnoreCase("[]") != 0) { // Has active subjects
                         for (String subject : subjects.substring(2, subjects.length() - 2).split("\",\"")) {
                             // {"subject":"Kafka-value","version":1,"id":1,"schema":"\"string\""}
                             HttpResponse<JsonNode> resSubject = Unirest
                                     .get(restURI + "/" + subject + "/versions/latest")
-                                    .header("accept", ConstantApp.APPLICATION_JSON_CHARSET_UTF_8).asJson();
-
+                                    .header("accept", ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+                                    .asJson();
                             if (resSubject == null) {
                                 status_code = ConstantApp.STATUS_CODE_BAD_REQUEST;
                             } else if (resSubject.getStatus() != ConstantApp.STATUS_CODE_OK) {
                                 status_code = resSubject.getStatus();
                             } else {
-                                String schema = resSubject.getBody().toString();
-
+                                JSONObject jsonSchema = resSubject.getBody().getObject();
                                 String compatibility =
                                         getCompatibilityOfSubject(schema_registry_host_and_port, subject);
-                                LOG.debug("compatibility: " + compatibility);
-
-                                if (compatibility != null && !compatibility.isEmpty()) {
-                                    JSONObject jsonSchema = new JSONObject(schema);
-                                    jsonSchema.put(ConstantApp.COMPATIBILITY, compatibility);
-                                    schema = jsonSchema.toString();
-                                }
-
-                                LOG.debug("schema: " + schema);
-
-                                if (count == 0) {
+                                if (compatibility == null || compatibility.isEmpty())
+                                    compatibility = "NONE";
+                                jsonSchema.put(ConstantApp.COMPATIBILITY, compatibility);
+                                String schema = jsonSchema.toString();
+                                if (count == 0)
                                     strBuff.append("[");
-                                }
-
-                                count++;
+                                count ++;
                                 strBuff.append(schema).append(",");
                             }
                         }
-
-                        LOG.debug("strBuf.toString(): " + strBuff.toString() + ", count = " + count);
-
-                        if (count > 0) {
+                        if (count > 0)
                             returnString.append(strBuff.toString().substring(0, strBuff.toString().length() - 1) + "]");
-                        }
-
                         LOG.debug("returnString: " + returnString.toString());
-
                     }
                 }
             } catch (JSONException | UnirestException e) {
-                LOG.error("SchemaRegisterProcessor - forwardGetAllSchemas() - Exception message: " + e.getCause());
-                e.printStackTrace();
+                LOG.error(DFAPIMessage.logResponseMessage(9027, " exception -" + e.getCause()));
                 status_code = ConstantApp.STATUS_CODE_BAD_REQUEST;
             }
-
-            LOG.debug("status_code:" + status_code);
             future.complete(status_code);
         }, res -> {
             Object result = HelpFunc.coalesce(res.result(), ConstantApp.STATUS_CODE_BAD_REQUEST);
-            HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                    .setStatusCode(Integer.parseInt(result.toString()))
-                    .putHeader("X-Total-Count", "3" )
-                    .end(HelpFunc.stringToJsonFormat(returnString.toString()));
+            try {
+                HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                        .setStatusCode(Integer.parseInt(result.toString()))
+                        .putHeader("X-Total-Count", new JSONArray(returnString.toString()).length() + "")
+                        .end(HelpFunc.stringToJsonFormat(
+                                HelpFunc.sortJsonArray(routingContext,
+                                        new JSONArray(returnString.toString())).toString()));
+            } catch (JSONException je) {
+                LOG.error(DFAPIMessage.logResponseMessage(9027, " exception -" + je.getCause()));
+            }
             executor.close();
         });
-
     }
 
     /**

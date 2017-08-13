@@ -10,6 +10,7 @@ import java.util.*;
 import io.vertx.ext.mongo.FindOptions;
 import io.vertx.ext.web.RoutingContext;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
@@ -265,5 +266,51 @@ public class HelpFunc {
         } else {
             return ConstantApp.DF_STATUS.NONE.name();
         }
+    }
+
+    /**
+     * Sort JsonArray when we do not use mongodb
+     * @param routingContext
+     * @param jsonArray
+     * @return
+     */
+    public static JSONArray sortJsonArray(RoutingContext routingContext, JSONArray jsonArray) {
+
+        String sortKey = HelpFunc.coalesce(routingContext.request().getParam("_sort"), "id");
+        String sortOrder = HelpFunc.coalesce(routingContext.request().getParam("_order"), "ASC");
+
+        JSONArray sortedJsonArray = new JSONArray();
+
+        List<JSONObject> jsonValues = new ArrayList<>();
+        for (int i = 0; i < jsonArray.length(); i++) {
+            jsonValues.add(jsonArray.getJSONObject(i));
+        }
+        Collections.sort( jsonValues, new Comparator<JSONObject>() {
+
+            @Override
+            public int compare(JSONObject a, JSONObject b) {
+                String valA = new String();
+                String valB = new String();
+
+                try {
+                    valA = a.get(sortKey).toString();
+                    valB = b.get(sortKey).toString();
+                }
+                catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
+                if(sortOrder.equalsIgnoreCase("ASC")) {
+                    return valA.compareTo(valB);
+                } else {
+                    return -valA.compareTo(valB);
+                }
+            }
+        });
+
+        for (int i = 0; i < jsonArray.length(); i++) {
+            sortedJsonArray.put(jsonValues.get(i));
+        }
+        return sortedJsonArray;
     }
 }

@@ -69,6 +69,7 @@ public final class DFAPIMessage {
         messageMap.put(9024, "EXCP - DF_INSTALLED_DATA_NOT_FOUND");
         messageMap.put(9025, "EXCP - ID_UPDATE_EXCEPTION_IN_FLINK_REST");
         messageMap.put(9026, "EXCP - ID_DELETE_EXCEPTION_IN_FLINK_REST");
+        messageMap.put(9027, "EXCP - FORWARD_GET_ALL_SCHEMA");
     }
 
     public static String getResponseMessage(int responseCode, String comments) {
