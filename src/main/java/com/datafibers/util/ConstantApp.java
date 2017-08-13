@@ -16,6 +16,8 @@ public final class ConstantApp {
 
     // DF REST endpoint URLs for all processors, connects and transforms
     public static final String DF_PROCESSOR_REST_URL = "/api/df/processor";
+    public static final String DF_PROCESSOR_REST_URL_WILD = "/api/df/processor*";
+    public static final String DF_PROCESSOR_REST_URL_WITH_ID = DF_PROCESSOR_REST_URL + "/:id";
 
     // DF Connects REST endpoint URLs
     public static final String DF_CONNECTS_REST_URL = "/api/df/ps";

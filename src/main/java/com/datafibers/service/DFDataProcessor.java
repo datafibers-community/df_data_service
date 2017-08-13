@@ -28,7 +28,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.bson.types.ObjectId;
-import org.json.JSONArray;
 import org.json.JSONObject;
 import org.apache.log4j.Logger;
 import com.datafibers.flinknext.DFRemoteStreamEnvironment;
@@ -240,8 +239,11 @@ public class DFDataProcessor extends AbstractVerticle {
         Router router = Router.router(vertx);
 
         // Job including both Connects and Transforms Rest API definition
+        router.options(ConstantApp.DF_PROCESSOR_REST_URL_WITH_ID).handler(this::corsHandle);
         router.options(ConstantApp.DF_PROCESSOR_REST_URL).handler(this::corsHandle);
         router.get(ConstantApp.DF_PROCESSOR_REST_URL).handler(this::getAllProcessor);
+        router.get(ConstantApp.DF_PROCESSOR_REST_URL_WITH_ID).handler(this::getOne);
+        router.route(ConstantApp.DF_PROCESSOR_REST_URL_WILD).handler(BodyHandler.create());
 
         // Connects Rest API definition
         router.options(ConstantApp.DF_CONNECTS_REST_URL_WITH_ID).handler(this::corsHandle);
@@ -287,8 +289,8 @@ public class DFDataProcessor extends AbstractVerticle {
         router.route(ConstantApp.DF_LOGGING_REST_URL_WITH_ID).handler(BodyHandler.create());
 
         // Status Rest API definition
-        router.options(ConstantApp.DF_TASK_STATUS_REST_URL).handler(this::corsHandle);
         router.options(ConstantApp.DF_TASK_STATUS_REST_URL_WITH_ID).handler(this::corsHandle);
+        router.options(ConstantApp.DF_TASK_STATUS_REST_URL).handler(this::corsHandle);
         router.get(ConstantApp.DF_TASK_STATUS_REST_URL_WITH_ID).handler(this::getOneStatus);
         router.get(ConstantApp.DF_TASK_STATUS_REST_URL_WILD).handler(this::getOneStatus);
 
@@ -761,7 +763,7 @@ public class DFDataProcessor extends AbstractVerticle {
             routingContext.response()
                     .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
                     .end(DFAPIMessage.getResponseMessage(9000));
-            LOG.error(DFAPIMessage.getResponseMessage(9000, id));
+            LOG.error(DFAPIMessage.getResponseMessage(9000, "id=null"));
         } else {
             mongo.findOne(COLLECTION, new JsonObject().put("_id", id), null, ar -> {
                 if (ar.succeeded()) {
