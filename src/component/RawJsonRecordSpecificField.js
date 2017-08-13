@@ -4,17 +4,18 @@ import { Link } from 'react-router-dom';
 import IconButton from 'material-ui/IconButton';
 import {cyan500} from 'material-ui/styles/colors';
 import ContentCreate from 'material-ui/svg-icons/content/create';
+import get from 'lodash.get';
 
-const RawJsonRecordField = ({ record, source }) => <pre dangerouslySetInnerHTML={{ __html: JSON.stringify(record, null, '\t')}}></pre>;
+const RawJsonRecordSpecificField = ({ record, source }) => <pre dangerouslySetInnerHTML={{ __html: JSON.stringify(get(record, source), null, '\t')}}></pre>;
 
-RawJsonRecordField.propTypes = {
+RawJsonRecordSpecificField.propTypes = {
     record: PropTypes.object,
     source: PropTypes.string,
 };
 
-RawJsonRecordField.defaultProps = {
+RawJsonRecordSpecificField.defaultProps = {
     label: 'Raw Json',
     style: { padding: 0 },
 };
 
-export default RawJsonRecordField;
+export default RawJsonRecordSpecificField;

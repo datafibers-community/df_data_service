@@ -42,7 +42,7 @@ class App extends Component {
                 dashboard={Dashboard}
                 loginPage={Login}
                 appLayout={Layout}
-                //menu={Menu}
+                // menu={Menu}
                 messages={translations}
             >
                 <Resource name="ps" options={{ label: 'Connect' }} icon={ConnectIcon} list={ConnectList} create={ConnectCreate} edit={ConnectEdit} remove={Delete} show={ConnectShow} />
