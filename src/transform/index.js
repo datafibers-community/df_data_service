@@ -2,7 +2,7 @@
 import React from 'react';
 import { Filter, List, Edit, Create } from 'admin-on-rest';
 import { ReferenceField, Datagrid, SelectField, UrlField, FunctionField, ChipField, TextField, DateField, RichTextField, ImageField } from 'admin-on-rest';
-import { NumberInput, DisabledInput, BooleanInput, LongTextInput, SelectInput, TextInput } from 'admin-on-rest';
+import { SelectArrayInput, AutocompleteInput, NumberInput, DisabledInput, BooleanInput, LongTextInput, SelectInput, TextInput, ReferenceInput, ReferenceArrayInput } from 'admin-on-rest';
 import { EditButton, ShowButton } from 'admin-on-rest';
 import { Show, SimpleShowLayout, SimpleForm, TabbedForm, FormTab } from 'admin-on-rest';
 import RichTextInput from 'aor-rich-text-input';
@@ -121,8 +121,12 @@ export const TransformCreate = (props) => (
             </FormTab>
             <FormTab label="Setting">
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_FLINK_SQL_A2A">
-                    <LongTextInput source="connectorConfig.['topic.in']" label="Topics to Read Data (use , to separate multiple values)" validate={[ required ]} />
-                    <TextInput source="connectorConfig.['topic.out']" label="A Topic to Write Data" validate={[ required ]} />
+                    <ReferenceArrayInput source="connectorConfig.['topic.in']" label="Choose Topics to Read Data" reference="schema" validate={[ required ]} allowEmpty>
+                        <SelectArrayInput optionText="subject" />
+                    </ReferenceArrayInput>
+                    <ReferenceInput source="connectorConfig.['topic.out']" label="Choose a Topic to Write Data" reference="schema" validate={[ required ]} allowEmpty>
+                        <AutocompleteInput optionText="subject" />
+                    </ReferenceInput>
                     <LongTextInput source="connectorConfig.['group.id']" label="Consumer ID to Read Data. (Optional)" />
 		            <LongTextInput source="connectorConfig.['sink.key.fields']" label="List of Commas Separated Columns for Keys in Sink" />
 		            <LongTextInput source="connectorConfig.['trans.sql']" label="Stream SQL Statement" validate={[ required ]} />
@@ -131,7 +135,6 @@ export const TransformCreate = (props) => (
                     <TextInput source="connectorConfig.['topic.in']" label="A Topic to Read Data" style={{ display: 'inline-block' }} validate={[ required ]} />
                     <TextInput source="connectorConfig.['topic.out']" label="A Topic to Write Data" style={{ display: 'inline-block', marginLeft: 32 }} validate={[ required ]} />
                     <LongTextInput source="connectorConfig.['group.id']" label="Consumer ID to Read Data. (Optional)" />
-		            <LongTextInput source="connectorConfig.['sink.key.fields']" label="List of Commas Separated Columns for Keys in Sink" />
 		            <LongTextInput source="connectorConfig.['trans.script']" label="Stream Script Statement, such as select(name).count()" validate={[ required ]} />
 		        </DependentInput>
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_FLINK_UDF">
