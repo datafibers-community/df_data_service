@@ -2,7 +2,7 @@
 import React from 'react';
 import { Filter, List, Edit, Create } from 'admin-on-rest';
 import { Datagrid, SelectField, UrlField, FunctionField, ChipField, TextField, DateField, RichTextField, ImageField, ReferenceField, ReferenceManyField, SingleFieldList } from 'admin-on-rest';
-import { NumberInput, DisabledInput, BooleanInput, LongTextInput, SelectInput, TextInput, ReferenceInput } from 'admin-on-rest';
+import { AutocompleteInput, NumberInput, DisabledInput, BooleanInput, LongTextInput, SelectInput, TextInput, ReferenceInput } from 'admin-on-rest';
 import { EditButton, ShowButton } from 'admin-on-rest';
 import { Show, SimpleShowLayout, SimpleForm, TabbedForm, FormTab } from 'admin-on-rest';
 import RichTextInput from 'aor-rich-text-input';
@@ -120,16 +120,15 @@ export const ConnectCreate = (props) => (
                 ]} />
                 <LongTextInput source="description" label="Task Description" defaultValue="This is default description." />
                 <NumberInput source="connectorConfig.['tasks.max']" label="Number of Sub-task to Submit" defaultValue="1" step={1}/>
-                <ReferenceInput source="connectorConfig.topic" label="choose a topic to write data" reference="schema" validate={[ required ]} allowEmpty>
-                    <SelectInput optionText="subject" />
-                </ReferenceInput>
             </FormTab>
             <FormTab label="Setting">
                 <DependentInput dependsOn="connectorType" value="CONNECT_KAFKA_SOURCE_AVRO">
-                    <TextInput source="connectorConfig.topic" label="A Topic to Write Data" style={{ display: 'inline-block' }} validate={[ required ]} />
+                    <ReferenceInput source="connectorConfig.topic" label="choose a topic to write data" reference="schema" validate={[ required ]} allowEmpty>
+                        <AutocompleteInput optionText="subject" />
+                    </ReferenceInput>
                     <BooleanInput source="connectorConfig.['file.overwrite']" label="Allow File Overwrite" defaultValue="true" />
                     <TextInput source="connectorConfig.['file.location']" label="Path Where to Load the Files" style={{ display: 'inline-block' }} validate={[ required ]} />
-                    <TextInput source="connectorConfig.['file.glob']" label="Pattern/Glob to Match the Files" style={{ display: 'inline-block' }} validate={[ required ]} />
+                    <TextInput source="connectorConfig.['file.glob']" label="Pattern/Glob to Match the Files" style={{ display: 'inline-block', marginLeft: 32 }} validate={[ required ]} />
                 </DependentInput>
                 <DependentInput dependsOn="connectorType" value="CONNECT_MONGODB_SINK">
                     <LongTextInput source="connectorConfig.topics" label="Topics to Sink Data From (use , to separate multiple values)" validate={[ required ]} />

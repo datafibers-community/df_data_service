@@ -3,7 +3,7 @@ import React from 'react';
 import { Filter, List, Edit, Create } from 'admin-on-rest';
 import { Datagrid, SelectField, FunctionField, ChipField, TextField, DateField, RichTextField, NumberField } from 'admin-on-rest';
 import { NumberInput, DisabledInput, BooleanInput, LongTextInput, SelectInput, TextInput } from 'admin-on-rest';
-import { EditButton } from 'admin-on-rest';
+import { ShowButton, EditButton } from 'admin-on-rest';
 import { Show, SimpleShowLayout, SimpleForm, TabbedForm, FormTab } from 'admin-on-rest';
 import RichTextInput from 'aor-rich-text-input';
 import { DependentInput } from 'aor-dependent-input';
@@ -22,7 +22,7 @@ const SchemaShowTitle = ({ record }) => {
 };
 
 const SchemaTitle = ({ record }) => {
-    return <span>ID. {record ? `"${record.id}"` : ''}</span>;
+    return <span>Topic Name. {record ? `"${record.id}"` : ''}</span>;
 };
 
 const SchemaFilter = (props) => (
@@ -42,7 +42,7 @@ export const SchemaShow = (props) => (
 
 export const SchemaList = (props) => (
     <List {...props} title="Topic List" filters={<SchemaFilter />}>
-        <Datagrid >
+        <Datagrid bodyOptions={{ stripedRows: true, showRowHover: true}} >
 	        <TextField source="id" label="Topic Name" />
             <TextField source="schema.name" label="Desc." />
             <TextField source="schema.type" label="Schema Type" />
@@ -57,16 +57,16 @@ export const SchemaEdit = (props) => (
     <Edit title={<SchemaTitle />} {...props}>
         <SimpleForm>
 	        <DisabledInput source="id" label="Topic Name" />
-            <TextField source="schema.name" label="Desc." />
-            <TextField source="schema.type" label="Schema Type" />
-            <NumberField source="version" label="Schema Version" />
-            <SelectField source="compatibility" label="Compatibility" validate={[ required ]} choices={[
+            <TextInput source="schema.name" label="Desc." />
+            <DisabledInput source="schema.type" label="Schema Type" />
+            <NumberInput source="version" label="Schema Version" />
+            <SelectInput source="compatibility" label="Compatibility" validate={[ required ]} choices={[
                         { id: 'NONE', name: 'NONE' },
                         { id: 'FULL', name: 'FULL' },
                         { id: 'BACKWARD',  name: 'BACKWARD' },
-                        { id: 'FORWARD',  name: 'FORWARD' },
-                ]} />
-            <RawJsonRecordSpecificField source="schema" label="schema" />
+                        { id: 'FORWARD',  name: 'FORWARD' }, ]}
+            />
+            <RawJsonRecordSpecificField source="schema.fields" label="fields" />
         </SimpleForm>
     </Edit>
 );

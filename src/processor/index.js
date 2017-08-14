@@ -37,7 +37,7 @@ export const ProcessorShow = (props) => (
 
 export const ProcessorList = (props) => (
     <List {...props} title="All Connect and Transform List" filters={<ProcessorFilter />}>
-        <Datagrid >
+        <Datagrid bodyOptions={{ stripedRows: true, showRowHover: true}} >
             <TextField source="id" label="id" />
             <TextField source="taskSeq" label="seq." />
             <TextField source="name" label="name" />
