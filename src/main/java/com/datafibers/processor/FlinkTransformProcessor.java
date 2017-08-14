@@ -153,7 +153,8 @@ public class FlinkTransformProcessor {
                 We need distinguish this by checking if the task is removed from repo. If removed, it is not exception
                 Or else, it is true exception.
                  */
-                LOG.error(DFAPIMessage.logResponseMessage(9010, dfJob.getId()));
+                LOG.error(DFAPIMessage.logResponseMessage(9010, "jobId = " + dfJob.getId() +
+                "exception - " + e.getCause()));
                 // e.printStackTrace();
             }
 
