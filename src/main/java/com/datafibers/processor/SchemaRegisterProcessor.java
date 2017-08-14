@@ -289,11 +289,9 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
                     String rs = portRestResponse.getBody();
                     if (rs != null) {
                         LOG.info("Update schema status code: " + portRestResponse.statusCode());
-                        routingContext
-                                .response().setStatusCode(ConstantApp.STATUS_CODE_OK)
-                                .putHeader("Access-Control-Allow-Origin", "*")
-                                .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                                .end();
+                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                .end(DFAPIMessage.getResponseMessage(1017));
                     }
                 }
         );
@@ -307,7 +305,6 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
 
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
         postRestClientRequest.setAcceptHeader(Arrays.asList(DFMediaType.APPLICATION_SCHEMAREGISTRY_JSON));
-
         jsonForSubmit = new JSONObject().put("schema", schema1.toString());
         LOG.debug("Schema send to update is: " + jsonForSubmit.toString());
 
@@ -318,10 +315,9 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
             restURI = "http://" + schema_registry_host_and_port + "/config/" + subject;
             final RestClientRequest postRestClientRequest2 = rc_schema.put(restURI, portRestResponse -> {
                 if (routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_OK) {
-                    routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_OK)
-                            .putHeader("Access-Control-Allow-Origin", "*")
-                            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                            .end(portRestResponse.statusMessage());
+                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                            .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                            .end(DFAPIMessage.logResponseMessage(1017, "SCHEMA_UPDATE"));
                     LOG.info(DFAPIMessage.logResponseMessage(1017, "SCHEMA_UPDATE"));
                 }
             });
@@ -329,11 +325,10 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
             postRestClientRequest2.exceptionHandler(exception -> {
                 if (routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_CONFLICT
                         && routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_OK) {
-                    routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                            .putHeader("Access-Control-Allow-Origin", "*")
-                            .putHeader(ConstantApp.CONTENT_TYPE, "application/vnd.schemaregistry.v1+json")
-                            .end("Update one schema - compatibility POST request exception - "
-                                    + exception.toString());
+                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                            .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                            .end(DFAPIMessage.logResponseMessage(9023,
+                                    "SCHEMA_UPDATE_EXCEPTION - " + exception.toString()));
                     LOG.error(DFAPIMessage.logResponseMessage(9023, "SCHEMA_UPDATE"));
                 }
             });
