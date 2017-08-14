@@ -73,6 +73,9 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
                                 if (compatibility == null || compatibility.isEmpty())
                                     compatibility = "NONE";
                                 jsonSchema.put(ConstantApp.COMPATIBILITY, compatibility);
+                                // Resample subject to id, id to schema id
+                                jsonSchema.put("schemaId", jsonSchema.get("id"));
+                                jsonSchema.put("id", subject);
                                 String schema = jsonSchema.toString();
                                 if (count == 0)
                                     strBuff.append("[");
