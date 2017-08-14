@@ -8,6 +8,9 @@ import { Show, SimpleShowLayout, SimpleForm, TabbedForm, FormTab } from 'admin-o
 import RichTextInput from 'aor-rich-text-input';
 import { DependentInput } from 'aor-dependent-input';
 import Icon from 'material-ui/svg-icons/image/blur-on';
+import { required, minLength, maxLength, minValue, maxValue, number, regex, email, choices } from 'admin-on-rest';
+import RawJsonRecordField from '../component/RawJsonRecordField';
+import RawJsonRecordSpecificField from '../component/RawJsonRecordSpecificField';
 
 export const SchemaIcon = Icon;
 
@@ -39,13 +42,8 @@ export const SchemaShow = (props) => (
 
 export const SchemaList = (props) => (
     <List {...props} title="Topic List" filters={<SchemaFilter />}>
-        <Datagrid
-            headerOptions={{ adjustForCheckbox: true, displaySelectAll: true }}
-            bodyOptions={{ displayRowCheckbox: true, stripedRows: true, showRowHover: true}}
-            rowOptions={{ selectable: true }}
-            options={{ multiSelectable: true }}>    
-	    <TextField source="id" label="id" />
-            <TextField source="subject" label="Name" />
+        <Datagrid >
+	        <TextField source="id" label="Topic Name" />
             <TextField source="schema.name" label="Desc." />
             <TextField source="schema.type" label="Schema Type" />
             <NumberField source="version" label="Schema Version" />
@@ -53,4 +51,22 @@ export const SchemaList = (props) => (
             <EditButton />
         </Datagrid>
     </List>
+);
+
+export const SchemaEdit = (props) => (
+    <Edit title={<SchemaTitle />} {...props}>
+        <SimpleForm>
+	        <DisabledInput source="id" label="Topic Name" />
+            <TextField source="schema.name" label="Desc." />
+            <TextField source="schema.type" label="Schema Type" />
+            <NumberField source="version" label="Schema Version" />
+            <SelectField source="compatibility" label="Compatibility" validate={[ required ]} choices={[
+                        { id: 'NONE', name: 'NONE' },
+                        { id: 'FULL', name: 'FULL' },
+                        { id: 'BACKWARD',  name: 'BACKWARD' },
+                        { id: 'FORWARD',  name: 'FORWARD' },
+                ]} />
+            <RawJsonRecordSpecificField source="schema" label="schema" />
+        </SimpleForm>
+    </Edit>
 );
