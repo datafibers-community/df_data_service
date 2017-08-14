@@ -153,7 +153,7 @@ public final class ConstantApp {
     public static final String PK_KAFKA_CONSUMER_GROURP = "group.id";
     public static final String PK_KAFKA_SCHEMA_REGISTRY_HOST_PORT = "schema.registry";
     public static final String PK_KAFKA_CONNECTOR_CLASS = "connector.class";
-    public static final String PK_CONNECT_TOPICS = "topics";
+    public static final String PK_DF_TOPICS_ALIAS = "topics,topic.in";
     public static final String PK_FLINK_TABLE_SINK_KEYS = "sink.key.fields";
 
     public static final String PK_KAFKA_TOPIC_INPUT = "topic.in";

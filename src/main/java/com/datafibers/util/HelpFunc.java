@@ -132,15 +132,17 @@ public class HelpFunc {
      * @param jsonString
      * @return cleaned json string
      */
-    public static String convertTopicsFromArrayToString(String jsonString, String topicsKey) {
+    public static String convertTopicsFromArrayToString(String jsonString, String topicsKeyAliasString) {
         JSONObject json = new JSONObject(jsonString.replaceAll("\\s+?/\\*.*?\\*/", ""));
         if(json.has("connectorConfig")) {
-            if(json.getJSONObject("connectorConfig").has(topicsKey)) {
-                Object topicsObj = json.getJSONObject("connectorConfig").get(topicsKey);
-                if(topicsObj instanceof JSONArray){ // if it is array, convert it to , separated string
-                    JSONArray topicsJsonArray = (JSONArray) topicsObj;
-                    json.getJSONObject("connectorConfig")
-                            .put(topicsKey, topicsJsonArray.join(",").replace("\"", ""));
+            for(String topicsKey : topicsKeyAliasString.split(",")) {
+                if(json.getJSONObject("connectorConfig").has(topicsKey)) {
+                    Object topicsObj = json.getJSONObject("connectorConfig").get(topicsKey);
+                    if(topicsObj instanceof JSONArray){ // if it is array, convert it to , separated string
+                        JSONArray topicsJsonArray = (JSONArray) topicsObj;
+                        json.getJSONObject("connectorConfig")
+                                .put(topicsKey, topicsJsonArray.join(",").replace("\"", ""));
+                    }
                 }
             }
         }
@@ -156,7 +158,7 @@ public class HelpFunc {
     public static String cleanJsonConfig(String JSON_STRING) {
         String cleanedJsonString;
         cleanedJsonString = cleanJsonConfigIgnored(JSON_STRING, "connectorConfig_", "config_ignored");
-        cleanedJsonString = convertTopicsFromArrayToString(cleanedJsonString, ConstantApp.PK_CONNECT_TOPICS);
+        cleanedJsonString = convertTopicsFromArrayToString(cleanedJsonString, ConstantApp.PK_DF_TOPICS_ALIAS);
         return cleanedJsonString;
     }
 
