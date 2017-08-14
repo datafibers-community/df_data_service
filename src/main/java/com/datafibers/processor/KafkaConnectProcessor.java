@@ -178,10 +178,10 @@ public class KafkaConnectProcessor {
                     if(portRestResponse.statusCode() == ConstantApp.STATUS_CODE_OK_NO_CONTENT) {
                         // Once REST API forward is successful, delete the record to the local repository
                         mongoClient.removeDocument(mongoCOLLECTION, new JsonObject().put("_id", id),
-                                ar -> routingContext.response()
+                                ar -> HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                        .setStatusCode(ConstantApp.STATUS_CODE_OK)
                                         .end(DFAPIMessage.getResponseMessage(1002, id)));
-                        LOG.info(DFAPIMessage.logResponseMessage(1002,
-                                "FOUND_CONNECT_NAME_IN_KAFKA_CONNECT"));
+                        LOG.info(DFAPIMessage.logResponseMessage(1002, "FOUND_CONNECT_NAME_IN_KAFKA_CONNECT"));
                     } else {
                         LOG.error(DFAPIMessage.logResponseMessage(9022, id));
                     }
@@ -192,10 +192,9 @@ public class KafkaConnectProcessor {
             // Once REST API forward is successful, delete the record to the local repository
             mongoClient.removeDocument(mongoCOLLECTION, new JsonObject().put("_id", id),
                     ar -> HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                            .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                            .setStatusCode(ConstantApp.STATUS_CODE_OK)
                             .end(DFAPIMessage.getResponseMessage(9007)));
-            LOG.info(DFAPIMessage.logResponseMessage(1002,
-                    "CANNOT_FIND_CONNECT_NAME_IN_KAFKA_CONNECT"));
+            LOG.info(DFAPIMessage.logResponseMessage(1002, "CANNOT_FIND_CONNECT_NAME_IN_KAFKA_CONNECT"));
         });
 
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
