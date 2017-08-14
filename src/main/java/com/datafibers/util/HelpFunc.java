@@ -98,13 +98,14 @@ public class HelpFunc {
      * will be cleaned as {"connectorConfig":{"test":"test"}}
      *
      * This will also remove any comments in "\/* *\/"
+     * This is deprecated once new UI is released
      *
-     * @param JSON_STRING
+     * @param jsonString
      * @param key_ingored_mark: If the
      * @return cleaned json string
      */
-    public static String cleanJsonConfig(String JSON_STRING, String key_pattern, String key_ingored_mark) {
-        JSONObject json = new JSONObject(JSON_STRING.replaceAll("\\s+?/\\*.*?\\*/", ""));
+    public static String cleanJsonConfigIgnored(String jsonString, String key_pattern, String key_ingored_mark) {
+        JSONObject json = new JSONObject(jsonString.replaceAll("\\s+?/\\*.*?\\*/", ""));
         int index = 0;
         int index_found = 0;
         String json_key_to_check;
@@ -126,12 +127,37 @@ public class HelpFunc {
     }
 
     /**
-     * A default short-cut call for cleanJsonConfig
+     * This function will search topics in connectorConfig. If the topics are array, convert it to string.
+     *
+     * @param jsonString
+     * @return cleaned json string
+     */
+    public static String convertTopicsFromArrayToString(String jsonString, String topicsKey) {
+        JSONObject json = new JSONObject(jsonString.replaceAll("\\s+?/\\*.*?\\*/", ""));
+        if(json.has("connectorConfig")) {
+            if(json.getJSONObject("connectorConfig").has(topicsKey)) {
+                Object topicsObj = json.getJSONObject("connectorConfig").get(topicsKey);
+                if(topicsObj instanceof JSONArray){ // if it is array, convert it to , separated string
+                    JSONArray topicsJsonArray = (JSONArray) topicsObj;
+                    json.getJSONObject("connectorConfig")
+                            .put(topicsKey, topicsJsonArray.join(",").replace("\"", ""));
+                }
+            }
+        }
+        return json.toString();
+    }
+
+    /**
+     * A default short-cut call for clean raw json for connectConfig.
+     * List of cleaning functions will be called through this
      * @param JSON_STRING
      * @return cleaned json string
      */
     public static String cleanJsonConfig(String JSON_STRING) {
-        return cleanJsonConfig(JSON_STRING, "connectorConfig_", "config_ignored");
+        String cleanedJsonString;
+        cleanedJsonString = cleanJsonConfigIgnored(JSON_STRING, "connectorConfig_", "config_ignored");
+        cleanedJsonString = convertTopicsFromArrayToString(cleanedJsonString, ConstantApp.PK_CONNECT_TOPICS);
+        return cleanedJsonString;
     }
 
     /**

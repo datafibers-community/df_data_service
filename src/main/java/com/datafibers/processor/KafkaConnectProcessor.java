@@ -50,7 +50,7 @@ public class KafkaConnectProcessor {
 
         postRestClientRequest.exceptionHandler(exception -> {
             HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                    .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                    .setStatusCode(ConstantApp.STATUS_CODE_OK)
                     .end(DFAPIMessage.getResponseMessage(9006));
             LOG.error(DFAPIMessage.logResponseMessage(9006, taskId));
         });
@@ -91,7 +91,7 @@ public class KafkaConnectProcessor {
 
         postRestClientRequest.exceptionHandler(exception -> {
             HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                    .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                    .setStatusCode(ConstantApp.STATUS_CODE_OK)
                     .end(DFAPIMessage.getResponseMessage(9006));
             LOG.error(DFAPIMessage.logResponseMessage(9006, dfJobResponsed.getId()));
         });

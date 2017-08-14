@@ -975,10 +975,10 @@ public class DFDataProcessor extends AbstractVerticle {
                 dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_CONNECTOR_CLASS) != null) {
             String connectorClass = mongoDFInstalled.findConnectorClassName(dfJob.getConnectorType());
             if(connectorClass == null || connectorClass.isEmpty()) {
-                LOG.info(DFAPIMessage.logResponseMessage(1018, mongoId + " - " + connectorClass));
+                LOG.info(DFAPIMessage.logResponseMessage(9024, mongoId + " - " + connectorClass));
             } else {
                 dfJob.getConnectorConfig().put(ConstantApp.PK_KAFKA_CONNECTOR_CLASS, connectorClass);
-                LOG.info(DFAPIMessage.logResponseMessage(9024, mongoId + " - " + connectorClass));
+                LOG.info(DFAPIMessage.logResponseMessage(1018, mongoId + " - " + connectorClass));
             }
         }
 
