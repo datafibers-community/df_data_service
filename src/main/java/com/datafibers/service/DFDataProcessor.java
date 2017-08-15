@@ -27,6 +27,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import org.apache.log4j.Level;
 import org.bson.types.ObjectId;
 import org.json.JSONObject;
 import org.apache.log4j.Logger;
@@ -103,6 +105,8 @@ public class DFDataProcessor extends AbstractVerticle {
 
     @Override
     public void start(Future<Void> fut) {
+        // Turn off
+        // Logger.getLogger("io.vertx.core.impl.BlockedThreadChecker").setLevel(Level.OFF);
 
         /**
          * Get all application configurations
@@ -150,7 +154,7 @@ public class DFDataProcessor extends AbstractVerticle {
 
         // Cleanup Log in mongodb
         if (config().getBoolean("db.log.cleanup.on.start", Boolean.TRUE))
-            new MongoAdminClient(repo_hostname, repo_port, repo_db).truncateCollection(COLLECTION_LOG);
+            new MongoAdminClient(repo_hostname, repo_port, repo_db).truncateCollection(COLLECTION_LOG).close();
 
         // Set dynamic logging to MongoDB
         MongoDbAppender mongoAppender = new MongoDbAppender();
@@ -161,20 +165,18 @@ public class DFDataProcessor extends AbstractVerticle {
         mongoAppender.activateOptions();
         Logger.getRootLogger().addAppender(mongoAppender);
 
+        // Common rest client properties
+        final List<HttpMessageConverter> httpMessageConverters = ImmutableList.of(
+                new FormHttpMessageConverter(),
+                new StringHttpMessageConverter(),
+                new JacksonJsonHttpMessageConverter(new ObjectMapper())
+        );
 
-
-            // Common rest client properties
-            final List<HttpMessageConverter> httpMessageConverters = ImmutableList.of(
-                    new FormHttpMessageConverter(),
-                    new StringHttpMessageConverter(),
-                    new JacksonJsonHttpMessageConverter(new ObjectMapper())
-            );
-
-            final RestClientOptions restClientOptions = new RestClientOptions()
-                    .setConnectTimeout(ConstantApp.REST_CLIENT_CONNECT_TIMEOUT)
-                    .setGlobalRequestTimeout(ConstantApp.REST_CLIENT_GLOBAL_REQUEST_TIMEOUT)
-                    .setKeepAlive(ConstantApp.REST_CLIENT_KEEP_LIVE)
-                    .setMaxPoolSize(ConstantApp.REST_CLIENT_MAX_POOL_SIZE);
+        final RestClientOptions restClientOptions = new RestClientOptions()
+                .setConnectTimeout(ConstantApp.REST_CLIENT_CONNECT_TIMEOUT)
+                .setGlobalRequestTimeout(ConstantApp.REST_CLIENT_GLOBAL_REQUEST_TIMEOUT)
+                .setKeepAlive(ConstantApp.REST_CLIENT_KEEP_LIVE)
+                .setMaxPoolSize(ConstantApp.REST_CLIENT_MAX_POOL_SIZE);
 
         // Non-blocking Vertx Rest API Client to talk to Kafka Connect when needed
         if (this.kafka_connect_enabled) {
@@ -211,9 +213,6 @@ public class DFDataProcessor extends AbstractVerticle {
             }
         }
 
-        /**
-         * Create all application client
-         **/
         // Import from remote server. It is blocking at this point.
         if (this.kafka_connect_enabled && this.kafka_connect_import_start) {
             importAllFromKafkaConnect();
@@ -221,15 +220,14 @@ public class DFDataProcessor extends AbstractVerticle {
             startMetadataSink();
         }
 
-        // Start Core application
-        startWebApp((http) -> completeStartup(http, fut));
-
         // Regular update Kafka connects/Flink transform status
         vertx.setPeriodic(ConstantApp.REGULAR_REFRESH_STATUS_TO_REPO, id -> {
             if(this.kafka_connect_enabled) updateKafkaConnectorStatus();
             if(this.transform_engine_flink_enabled) updateFlinkJobStatus();
         });
 
+        // Start Core application
+        startWebApp((http) -> completeStartup(http, fut));
         LOG.info("********* DataFibers Services is started :) *********");
     }
 
@@ -317,8 +315,10 @@ public class DFDataProcessor extends AbstractVerticle {
     @Override
     public void stop() throws Exception {
         this.mongo.close();
+        this.mongoDFInstalled.close();
         this.rc.close();
         this.rc_schema.close();
+        this.rc_flink.close();
     }
 
     /**

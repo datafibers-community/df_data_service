@@ -82,4 +82,8 @@ public class MongoAdminClient {
         String connectorClass = this.collection.find(eq("connectorType", connectorType)).first().toJson();
         return new JsonObject(connectorClass).getString("class");
     }
+
+    public void close() {
+        this.mongoClient.close();
+    }
 }
