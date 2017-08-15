@@ -1,4 +1,4 @@
 #!/bin/bash
 set -e
 
-mongoimport -c df_installed -d DEFAULT_DB --file df_installed.json
+mongoimport -d DEFAULT_DB -c df_installed --file df_installed.json --drop
