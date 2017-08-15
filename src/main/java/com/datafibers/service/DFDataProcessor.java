@@ -1217,8 +1217,10 @@ public class DFDataProcessor extends AbstractVerticle {
                                         dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL),
                                         mongo, COLLECTION, this.flink_server_host + ":" + this.flink_server_port,
                                         routingContext, this.schema_registry_host_and_port,
-                                        dfJob.getConnectorConfig().get(ConstantApp.PK_SCHEMA_SUB_INPUT),
-                                        dfJob.getConnectorConfig().get(ConstantApp.PK_SCHEMA_SUB_OUTPUT),
+                                        HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_SCHEMA_SUB_INPUT),
+                                                dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_INPUT)),
+                                        HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_SCHEMA_SUB_OUTPUT),
+                                                dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_OUTPUT)),
                                         dfJob.getConnectorConfig().get(ConstantApp.PK_FLINK_TABLE_SINK_KEYS),
                                         rc_flink);
 
