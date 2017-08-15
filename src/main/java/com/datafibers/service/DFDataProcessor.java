@@ -284,7 +284,7 @@ public class DFDataProcessor extends AbstractVerticle {
         router.options(ConstantApp.DF_LOGGING_REST_URL).handler(this::corsHandle);
         router.get(ConstantApp.DF_LOGGING_REST_URL).handler(this::getAllLogs);
         router.get(ConstantApp.DF_LOGGING_REST_URL_WITH_ID).handler(this::getOneLogs);
-        router.route(ConstantApp.DF_LOGGING_REST_URL_WITH_ID).handler(BodyHandler.create());
+        router.route(ConstantApp.DF_LOGGING_REST_URL_WILD).handler(BodyHandler.create());
 
         // Status Rest API definition
         router.options(ConstantApp.DF_TASK_STATUS_REST_URL_WITH_ID).handler(this::corsHandle);
@@ -293,7 +293,11 @@ public class DFDataProcessor extends AbstractVerticle {
         router.get(ConstantApp.DF_TASK_STATUS_REST_URL_WILD).handler(this::getOneStatus);
 
         // Get all installed connect or transform
-        router.get(ConstantApp.DF_CONNECTS_INSTALLED_CONNECTS_REST_URL).handler(this::getAllInstalledConnects);
+        router.options(ConstantApp.DF_PROCESSOR_CONFIG_REST_URL_WITH_ID).handler(this::corsHandle);
+        router.options(ConstantApp.DF_PROCESSOR_CONFIG_REST_URL).handler(this::corsHandle);
+        router.get(ConstantApp.DF_PROCESSOR_CONFIG_REST_URL).handler(this::getAllProcessorConfigs);
+        router.get(ConstantApp.DF_PROCESSOR_CONFIG_REST_URL_WITH_ID).handler(this::getOneProcessorConfig);
+        router.route(ConstantApp.DF_PROCESSOR_CONFIG_REST_URL_WILD).handler(BodyHandler.create());
 
         // Process History
         router.options(ConstantApp.DF_PROCESS_HIST_REST_URL).handler(this::corsHandle);
@@ -551,32 +555,19 @@ public class DFDataProcessor extends AbstractVerticle {
     }
 
     /**
-     * List all installed Connects
+     * List all configurations for Connect or Transforms
      * @param routingContext
      *
-     * @api {get} /installed_connects 2.List installed connect lib
+     * @api {get} /config 4.List processor lib
      * @apiVersion 0.1.1
-     * @apiName getAllInstalledConnects
-     * @apiGroup Connect
+     * @apiName getAllProcessorConfigs
+     * @apiGroup All
      * @apiPermission none
-     * @apiDescription This is where get list of launched or installed connect jar or libraries.
-     * @apiSuccess	{JsonObject[]}	connects    List of connects installed and launched by DataFibers.
-     * @apiSampleRequest http://localhost:8080/api/df/installed_connects
+     * @apiDescription This is where get list of configured or installed connect/transform jar or libraries.
+     * @apiSuccess	{JsonObject[]}	config    List of processors' configuration.
+     * @apiSampleRequest http://localhost:8080/api/df/config
      */
-    /**
-     * List all installed Transforms
-     * @param routingContext
-     *
-     * @api {get} /installed_transforms 2.List installed transform lib
-     * @apiVersion 0.1.1
-     * @apiName getAllInstalledTransforms
-     * @apiGroup Transform
-     * @apiPermission none
-     * @apiDescription This is where get list of launched or installed transform jar or libraries.
-     * @apiSuccess	{JsonObject[]}	transforms    List of transforms installed and launched by DataFibers.
-     * @apiSampleRequest http://localhost:8080/api/df/installed_transforms
-     */
-    private void getAllInstalledConnects(RoutingContext routingContext) {
+    private void getAllProcessorConfigs(RoutingContext routingContext) {
 
         // TODO get all installed transforms as well
         final RestClientRequest postRestClientRequest =
@@ -697,7 +688,7 @@ public class DFDataProcessor extends AbstractVerticle {
      * Get all logging information from df repo
      * @param routingContext
      *
-     * @api {get} /logs 2.List all df logs in the current run
+     * @api {get} /logs 3.List all df logs in the current run
      * @apiVersion 0.1.1
      * @apiName getAllLogs
      * @apiGroup All
@@ -778,6 +769,49 @@ public class DFDataProcessor extends AbstractVerticle {
                     HelpFunc.responseCorsHandleAddOn(routingContext.response())
                             .setStatusCode(ConstantApp.STATUS_CODE_OK)
                             .end(Json.encodePrettily(dfJob));
+                    LOG.info(DFAPIMessage.logResponseMessage(1003, id));
+
+                } else {
+                    routingContext.response()
+                            .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
+                            .end(DFAPIMessage.getResponseMessage(9002));
+                    LOG.error(DFAPIMessage.logResponseMessage(9002, id));
+                }
+            });
+        }
+    }
+
+    /**
+     * @api {get} /config/:id    5. Get a config info.
+     * @apiVersion 0.1.1
+     * @apiName getOneProcessorConfig
+     * @apiGroup All
+     * @apiPermission none
+     * @apiDescription This is where we get config for one specific processor type.
+     * @apiParam {String}   id      config Id (aka. connectorType).
+     * @apiSuccess	{JsonObject[]}	all    One processor config.
+     * @apiSampleRequest http://localhost:8080/api/df/config/:id
+     */
+    private void getOneProcessorConfig(RoutingContext routingContext) {
+        final String id = routingContext.request().getParam("id");
+        if (id == null) {
+            routingContext.response()
+                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                    .end(DFAPIMessage.getResponseMessage(9000));
+            LOG.error(DFAPIMessage.getResponseMessage(9000, "id=null"));
+        } else {
+            mongo.findOne(COLLECTION_INSTALLED, new JsonObject().put("connectorType", id), null, ar -> {
+                if (ar.succeeded()) {
+                    if (ar.result() == null) {
+                        routingContext.response()
+                                .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
+                                .end(DFAPIMessage.getResponseMessage(9001));
+                        LOG.error(DFAPIMessage.logResponseMessage(9001, id));
+                        return;
+                    }
+                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                            .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                            .end(Json.encodePrettily(ar.result()));
                     LOG.info(DFAPIMessage.logResponseMessage(1003, id));
 
                 } else {

@@ -230,7 +230,7 @@ public class DFServicePOC extends AbstractVerticle {
         router.get(ConstantApp.DF_CONNECTS_REST_URL_WITH_ID).handler(this::getOne);
         router.route(ConstantApp.DF_CONNECTS_REST_URL_WILD).handler(BodyHandler.create());
 
-        router.get(ConstantApp.DF_CONNECTS_INSTALLED_CONNECTS_REST_URL).handler(this::getAllInstalledConnects);
+        router.get(ConstantApp.DF_PROCESSOR_CONFIG_REST_URL).handler(this::getAllInstalledConnects);
         router.post(ConstantApp.DF_CONNECTS_REST_URL).handler(this::addOneConnects); // Kafka Connect Forward
         router.put(ConstantApp.DF_CONNECTS_REST_URL_WITH_ID).handler(this::updateOneConnects); // Kafka Connect Forward
         router.delete(ConstantApp.DF_CONNECTS_REST_URL_WITH_ID).handler(this::deleteOneConnects); // Kafka Connect Forward

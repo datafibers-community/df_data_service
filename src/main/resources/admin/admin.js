@@ -28,7 +28,7 @@ customHeaderTemplate =
     var connect = nga.entity('ps').label('CONNECTS');
 	var transform = nga.entity('tr').label('TRANSFORMS');
 	var schema = nga.entity('schema').identifier(nga.field('subject')).label('TOPICS');
-    var installed_connects = nga.entity('installed_connects').identifier(nga.field('class')).label('INSTALLED').readOnly();
+    var installed_connects = nga.entity('config').identifier(nga.field('class')).label('INSTALLED').readOnly();
     var process_history = nga.entity('hist').identifier(nga.field('uid')).label('HISTORY').readOnly();
 
     // set the fields of the connect entity list view

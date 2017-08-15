@@ -19,9 +19,13 @@ public final class ConstantApp {
     public static final String DF_PROCESSOR_REST_URL_WILD = "/api/df/processor*";
     public static final String DF_PROCESSOR_REST_URL_WITH_ID = DF_PROCESSOR_REST_URL + "/:id";
 
+    // DF REST endpoint URLs for all processors installed information and default config
+    public static final String DF_PROCESSOR_CONFIG_REST_URL = "/api/df/config";
+    public static final String DF_PROCESSOR_CONFIG_REST_URL_WILD = "/api/df/config*";
+    public static final String DF_PROCESSOR_CONFIG_REST_URL_WITH_ID = DF_PROCESSOR_CONFIG_REST_URL + "/:id";
+
     // DF Connects REST endpoint URLs
     public static final String DF_CONNECTS_REST_URL = "/api/df/ps";
-    public static final String DF_CONNECTS_INSTALLED_CONNECTS_REST_URL = "/api/df/installed_connects";
     public static final String DF_CONNECTS_REST_URL_WILD = "/api/df/ps*";
     public static final String DF_CONNECTS_REST_URL_WITH_ID = DF_CONNECTS_REST_URL + "/:id";
 
@@ -32,7 +36,6 @@ public final class ConstantApp {
 
     // DF Transforms REST endpoint URLs
     public static final String DF_TRANSFORMS_REST_URL = "/api/df/tr";
-    public static final String DF_TRANSFORMS_INSTALLED_TRANSFORMS_REST_URL = "/api/df/installed_transforms";
     public static final String DF_TRANSFORMS_REST_URL_WILD = "/api/df/tr*";
     public static final String DF_TRANSFORMS_REST_URL_WITH_ID = DF_TRANSFORMS_REST_URL + "/:id";
     public static final String DF_TRANSFORMS_UPLOAD_FILE_REST_URL_WILD = "/api/df/uploaded_files*";
