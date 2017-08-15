@@ -1480,7 +1480,7 @@ public class DFDataProcessor extends AbstractVerticle {
             HttpResponse<String> res = Unirest.get(restURI)
                     .header("accept", "application/json").asString();
             String resStr = res.getBody();
-            LOG.info(DFAPIMessage.logResponseMessage(1011, resStr));
+            LOG.debug(DFAPIMessage.logResponseMessage(1011, resStr));
 
             if (resStr.compareToIgnoreCase("[]") != 0 && !resStr.equalsIgnoreCase("[null]")) { //Has active connectors
                 for (String connectName: resStr.substring(2,resStr.length()-2).split("\",\"")) {
