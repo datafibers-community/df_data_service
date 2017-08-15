@@ -123,15 +123,15 @@ export const ConnectCreate = (props) => (
                         { id: 'CONNECT_MONGODB_SINK',  name: 'Sink MongoDB' },
                 ]} />
                 <LongTextInput source="description" label="Task Description" defaultValue="This is default description." />
-                <NumberInput source="connectorConfig.['tasks.max']" label="Number of Sub-task to Submit" defaultValue="1" step={1}/>
+                <NumberInput source="connectorConfig.['tasks.max']" label="Number of Sub-task to Submit" defaultValue={1} step={1}/>
             </FormTab>
             <FormTab label="Setting">
                 <DependentInput dependsOn="connectorType" value="CONNECT_KAFKA_SOURCE_AVRO">
                     <ReferenceInput source="connectorConfig.topic" label="Choose a topic to write data" reference="schema" validate={[ required ]} allowEmpty>
                         <AutocompleteInput optionText="subject" />
                     </ReferenceInput>
-                    <BooleanInput source="connectorConfig.['file.overwrite']" label="Allow File Overwrite" defaultValue="true" />
-                    <TextInput source="connectorConfig.['file.location']" label="Path Where to Load the Files" style={{ display: 'inline-block' }} validate={[ required ]} />
+                    <BooleanInput source="connectorConfig.['file.overwrite']" label="Allow File Overwrite" defaultValue={true} />
+                    <TextInput source="connectorConfig.['file.location']" label="Path Where to Load the Files" style={{ display: 'inline-block' }} defaultValue={"/home/vagrant/df_data"} validate={[ required ]} />
                     <TextInput source="connectorConfig.['file.glob']" label="Pattern/Glob to Match the Files" style={{ display: 'inline-block', marginLeft: 32 }} validate={[ required ]} />
                 </DependentInput>
                 <DependentInput dependsOn="connectorType" value="CONNECT_MONGODB_SINK">
