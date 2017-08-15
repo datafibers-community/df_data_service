@@ -2,10 +2,13 @@ package com.datafibers.processor;
 
 import com.datafibers.util.DFAPIMessage;
 import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.RoutingContext;
 import java.util.Arrays;
+import java.util.List;
+
 import org.apache.log4j.Logger;
 import com.datafibers.model.DFJobPOPJ;
 import com.datafibers.util.ConstantApp;
@@ -13,6 +16,7 @@ import com.datafibers.util.HelpFunc;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.RestClient;
 import com.hubrick.vertx.rest.RestClientRequest;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 public class KafkaConnectProcessor {
@@ -34,19 +38,24 @@ public class KafkaConnectProcessor {
         // Create REST Client for Kafka Connect REST Forward
         final RestClientRequest postRestClientRequest =
                 restClient.get(ConstantApp.KAFKA_CONNECT_REST_URL + "/" + taskId + "/status", String.class,
-                portRestResponse -> {
-                    JsonObject jo = new JsonObject(portRestResponse.getBody());
-                    JsonObject dfJobResponsed = new JsonObject()
-                            .put("id", taskId)
-                            .put("jobId", taskId)
-                            .put("state", HelpFunc.getTaskStatusKafka(new JSONObject(jo.toString())))
-                            .put("jobState", jo.getJsonObject("connector").getString("state"))
-                            .put("subTask", jo.getJsonArray("tasks"));
-                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                        portRestResponse -> {
+                            JsonObject jo = new JsonObject(portRestResponse.getBody());
+                            JsonArray subTaskArray = jo.getJsonArray("tasks");
+                            for (int i = 0; i < subTaskArray.size(); i++) {
+                                subTaskArray.getJsonObject(i)
+                                        .put("subTaskId", subTaskArray.getJsonObject(i).getInteger("id"))
+                                        .put("id", taskId)
+                                        .put("jobId", taskId)
+                                        .put("dfTaskState", HelpFunc.getTaskStatusKafka(new JSONObject(jo.toString())))
+                                        .put("taskState", jo.getJsonObject("connector").getString("state"));
+                            }
+
+                            HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                     .setStatusCode(ConstantApp.STATUS_CODE_OK)
-                                    .end(Json.encodePrettily(dfJobResponsed));
-                    LOG.info(DFAPIMessage.logResponseMessage(1023, taskId));
-                });
+                                    .putHeader("X-Total-Count", subTaskArray.size() + "" )
+                                    .end(Json.encodePrettily(subTaskArray.getList()));
+                            LOG.info(DFAPIMessage.logResponseMessage(1023, taskId));
+                        });
 
         postRestClientRequest.exceptionHandler(exception -> {
             HelpFunc.responseCorsHandleAddOn(routingContext.response())

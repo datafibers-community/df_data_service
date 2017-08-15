@@ -308,7 +308,7 @@ public class FlinkTransformProcessor {
      * @param routingContext This is the contect from REST API
      * @param restClient This is vertx non-blocking rest client used for forwarding
      * @param taskId This is the id used to look up status
-     */
+     */ // TODO updated to return list
     public static void forwardGetAsGetOne(RoutingContext routingContext, RestClient restClient, String taskId, String jobId) {
         // Create REST Client for Kafka Connect REST Forward
         final RestClientRequest postRestClientRequest =
