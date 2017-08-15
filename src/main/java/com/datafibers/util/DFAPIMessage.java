@@ -48,7 +48,7 @@ public final class DFAPIMessage {
         messageMap.put(9003, "EXCP - ID_UPDATE_EXCEPTION_IN_REPO");
         messageMap.put(9004, "EXCP - ID_DELETE_EXCEPTION_IN_REPO");
         messageMap.put(9005, "EXCP - ID_INSERT_EXCEPTION_IN_REPO");
-        messageMap.put(9006, "EXCP - REST_CLIENT_EXCEPTION");
+        messageMap.put(9006, "EXCP - REST_CLIENT_REQUEST_EXCEPTION");
         messageMap.put(9007, "EXCP - ID_NOT_FOUND_IN_KAFKA_CONNECT");
         messageMap.put(9008, "EXCP - KAFKA_CONNECT_NOT_ENABLED");
         messageMap.put(9009, "EXCP - FLINK_NOT_ENABLED");
@@ -70,6 +70,7 @@ public final class DFAPIMessage {
         messageMap.put(9025, "EXCP - ID_UPDATE_EXCEPTION_IN_FLINK_REST");
         messageMap.put(9026, "EXCP - ID_DELETE_EXCEPTION_IN_FLINK_REST");
         messageMap.put(9027, "EXCP - FORWARD_GET_ALL_SCHEMA");
+        messageMap.put(9028, "EXCP - REST_CLIENT_EXCEPTION");
     }
 
     public static String getResponseMessage(int responseCode, String comments) {

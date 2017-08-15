@@ -341,6 +341,19 @@ public class FlinkTransformProcessor {
             LOG.error(DFAPIMessage.logResponseMessage(9006, taskId));
         });
 
+        restClient.exceptionHandler(exception -> {
+            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                    .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                    //.setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                    .end(Json.encodePrettily(new JsonObject()
+                            .put("id", taskId)
+                            .put("jobId", jobId)
+                            .put("state", ConstantApp.DF_STATUS.LOST.name())
+                            .put("jobState", ConstantApp.DF_STATUS.LOST.name())
+                            .put("subTask", new JsonArray().add("NULL"))));
+            LOG.error(DFAPIMessage.logResponseMessage(9028, taskId));
+        });
+
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
         postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
         postRestClientRequest.end();

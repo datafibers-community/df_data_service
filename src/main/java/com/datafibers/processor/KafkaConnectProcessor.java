@@ -55,6 +55,13 @@ public class KafkaConnectProcessor {
             LOG.error(DFAPIMessage.logResponseMessage(9006, taskId));
         });
 
+        restClient.exceptionHandler(exception -> {
+            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                    .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                    .end(DFAPIMessage.getResponseMessage(9028));
+            LOG.error(DFAPIMessage.logResponseMessage(9028, taskId));
+        });
+
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
         postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
         postRestClientRequest.end();
