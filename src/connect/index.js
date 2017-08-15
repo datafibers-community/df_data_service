@@ -1,7 +1,7 @@
 // in src/Connects.js
 import React from 'react';
 import { Filter, List, Edit, Create } from 'admin-on-rest';
-import { Datagrid, SelectField, UrlField, FunctionField, ChipField, TextField, DateField, RichTextField, ImageField, ReferenceField, ReferenceManyField, SingleFieldList, SelectArrayInput } from 'admin-on-rest';
+import { Datagrid, SelectField, UrlField, FunctionField, ChipField, TextField, DateField, RichTextField, ImageField, ReferenceField, ReferenceArrayField, ReferenceManyField, SingleFieldList, SelectArrayInput } from 'admin-on-rest';
 import { AutocompleteInput, NumberInput, DisabledInput, BooleanInput, LongTextInput, SelectInput, TextInput, ReferenceInput, ReferenceArrayInput } from 'admin-on-rest';
 import { EditButton, ShowButton } from 'admin-on-rest';
 import { Show, SimpleShowLayout, SimpleForm, TabbedForm, FormTab } from 'admin-on-rest';
@@ -97,15 +97,17 @@ export const ConnectEdit = (props) => (
                 </DependentInput>
             </FormTab>
             <FormTab label="State">
-                <ReferenceField label="Engine Job|Task ID." source="id" reference="status" linkType={false}>
-                    <TextField source="jobId" />
-                </ReferenceField>
-                <ReferenceField label="Engine Job|Task State" source="id" reference="status" linkType={false}>
-                    <ChipField source="jobState" />
-                </ReferenceField>
-                <ReferenceField label="List of Sub Job|Task" source="id" reference="status" linkType={false}>
-                    <RawJsonRecordSpecificField source="subTask" />
-                </ReferenceField>
+                <ReferenceManyField addLabel={false} reference="status" target="id">
+                    <Datagrid>
+                        <TextField source="id" label="This Task ID." />
+                        <ChipField source="dfTaskState" label="Overall State" />
+                        <ChipField source="taskState" label="Connect Job State" />
+                        <ChipField source="state" label="Sub Task State" />
+                        <TextField source="subTaskId" label="Sub Task ID." />
+                        <TextField source="worker_id" label="Worker ID." />
+                        <ShowButton />
+                    </Datagrid>
+                </ReferenceManyField>
             </FormTab>
         </TabbedForm>
     </Edit>
