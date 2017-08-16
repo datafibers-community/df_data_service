@@ -100,51 +100,31 @@ export const SchemaCreate = (props) => (
     <Create title="Create New Topic Guide" {...props}>
         <TabbedForm>
             <FormTab label="Overview">
-                <NumberInput source="taskSeq" label="Task Sequence Number, eg. 1, 2, ..." />
-                <LongTextInput source="name" label="Task Name" validate={[ required ]} />
-                <SelectInput source="connectorType" label="Task Type" validate={[ required ]} choices={[
-                        { id: 'CONNECT_KAFKA_SOURCE_AVRO', name: 'Source Avro Files' },
-                        { id: 'CONNECT_KAFKA_HDFS_SINK', name: 'Sink Hadoop|Hive' },
-                        { id: 'CONNECT_MONGODB_SINK',  name: 'Sink MongoDB' },
-                ]} />
-                <LongTextInput source="description" label="Task Description" defaultValue="This is default description." />
-                <NumberInput source="connectorConfig.['tasks.max']" label="Number of Sub-task to Submit" defaultValue={1} step={1}/>
+                <TextInput source="id" label="Topic Name" validate={[ required ]} />
+                <SelectInput source="schema.type" label="Schema Type" validate={[ required ]} defaultValue="record" choices={[
+                             { id: 'record', name: 'Record' },
+                             { id: 'enum', name: 'Enum' },
+                             { id: 'array',  name: 'Array' },
+                             { id: 'map',  name: 'Map' },
+                             { id: 'fixed',  name: 'Fixed' },]}
+                 />
+                <NumberInput source="version" label="Schema Version" />
+                <SelectInput source="compatibility" label="Compatibility" validate={[ required ]} defaultValue="NONE" choices={[
+                            { id: 'NONE', name: 'NONE' },
+                            { id: 'FULL', name: 'FULL' },
+                            { id: 'BACKWARD',  name: 'BACKWARD' },
+                            { id: 'FORWARD',  name: 'FORWARD' }, ]}
+                />
             </FormTab>
-            <FormTab label="Setting">
-                <DependentInput dependsOn="connectorType" value="CONNECT_KAFKA_SOURCE_AVRO">
-                    <ReferenceInput source="connectorConfig.topic" label="Choose a topic to write data" reference="schema" validate={[ required ]} allowEmpty>
-                        <AutocompleteInput optionText="subject" />
-                    </ReferenceInput>
-                    <LongTextInput source="connectorConfig.['schema.registry.uri']" label="Schema Registry URI, such as http://localhost:8081" validate={[ required ]} />
-                    <BooleanInput source="connectorConfig.['file.overwrite']" label="Allow File Overwrite" defaultValue={true} />
-                    <TextInput source="connectorConfig.['file.location']" label="Path Where to Load the Files" style={{ display: 'inline-block' }} defaultValue={"/home/vagrant/df_data"} validate={[ required ]} />
-                    <TextInput source="connectorConfig.['file.glob']" label="Pattern/Glob to Match the Files" style={{ display: 'inline-block', marginLeft: 32 }} validate={[ required ]} />
-                </DependentInput>
-                <DependentInput dependsOn="connectorType" value="CONNECT_MONGODB_SINK">
-                    <ReferenceArrayInput source="connectorConfig.topics" label="Choose topics to write data" reference="schema" validate={[ required ]} allowEmpty>
-                        <SelectArrayInput optionText="subject" />
-                    </ReferenceArrayInput>
-                    <TextInput source="connectorConfig.host" label="MongoDB Hostname" style={{ display: 'inline-block' }} validate={[ required ]} />
-                    <TextInput source="connectorConfig.port" label="MongoDB Port" style={{ display: 'inline-block', marginLeft: 32 }} validate={[ required ]} />
-                    <TextInput source="connectorConfig.['mongodb.database']" label="The Database Name" validate={[ required ]} />
-                    <LongTextInput source="connectorConfig.['mongodb.collections']" label="Collections Where to Sink the Files (use , separate multiple values)" validate={[ required ]} />
-                    <NumberInput source="connectorConfig.['bulk.size']" label="The Bulk Size of Rows to Sink" defaultValue="1" step={1} validate={[ required ]} />
-                </DependentInput>
-                <DependentInput dependsOn="connectorType" value="CONNECT_KAFKA_HDFS_SINK">
-                    <ReferenceArrayInput source="connectorConfig.topics" label="Choose topics to write data" reference="schema" validate={[ required ]} allowEmpty>
-                        <SelectArrayInput optionText="subject" />
-                    </ReferenceArrayInput>
-                    <BooleanInput source="connectorConfig.['hive.integration']" label="Enable Hive Metadata" style={{ display: 'inline-block' }} validate={[ required ]} />
-                    <DisabledInput source="connectorConfig.['hive.metastore.uris']" label="Hive Metastore URL" style={{ display: 'inline-block' , marginLeft: 32 }} validate={[ required ]} />
-                    <DisabledInput source="connectorConfig.['hdfs.url']" label="HDFS URL" style={{ display: 'inline-block', marginLeft: 32 }} validate={[ required ]} />
-                    <NumberInput source="connectorConfig.['flush.size']" label="The Bulk Size of Rows to Sink" step={1} validate={[ required ]} />
-                </DependentInput>
-            </FormTab>
-            <FormTab label="Testing">
-            <NumberInput source="connectorConfig.['flush.size']" label="The Bulk Size of Rows to Sink" step={1} validate={[ required ]} />
-                <EmbeddedArrayInput source="links">
-                    <TextInput source="url" />
-                    <TextInput source="context"/>
+            <FormTab label="Fields">
+                <EmbeddedArrayInput source="schema.fields" label="">
+                    <TextInput source="name" label="Column Name"/>
+                    <SelectInput source="type" label="Column Date Type" defaultValue="string" choices={[
+                        { id: 'string', name: 'String/Text' },
+                        { id: 'long', name: 'Long 64bit' },
+                        { id: 'int',  name: 'Integer 32bit' },
+                        { id: 'boolean',  name: 'Boolean 0 (false) or 1 (true)' },
+                        { id: 'null',  name: 'Null' }]} />
                 </EmbeddedArrayInput>
             </FormTab>
         </TabbedForm>
