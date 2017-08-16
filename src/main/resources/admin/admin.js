@@ -203,8 +203,7 @@ customHeaderTemplate =
     ]);
 
     schema.creationView().fields([
-        nga.field('id', 'number').format('0o').label('Topic ID'),
-        nga.field('subject').label('Topic Name'),
+        nga.field('id').label('Topic Name'),
         nga.field('version').label('Topic Schema Version'),
         nga.field('schema', 'json').label('Topic Schema'),
         nga.field('compatibility', 'choice').choices([
