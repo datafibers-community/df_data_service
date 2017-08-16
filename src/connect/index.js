@@ -11,6 +11,7 @@ import Icon from 'material-ui/svg-icons/image/flare';
 import { required, minLength, maxLength, minValue, maxValue, number, regex, email, choices } from 'admin-on-rest';
 import RawJsonRecordField from '../component/RawJsonRecordField';
 import RawJsonRecordSpecificField from '../component/RawJsonRecordSpecificField';
+import EmbeddedArrayInputFormField from '../component/EmbeddedArrayInputFormField';
 
 export const ConnectIcon = Icon;
 
