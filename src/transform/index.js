@@ -1,8 +1,8 @@
 // in src/Connects.js
 import React from 'react';
 import { Filter, List, Edit, Create } from 'admin-on-rest';
-import { ReferenceField, Datagrid, SelectField, UrlField, FunctionField, ChipField, TextField, DateField, RichTextField, ImageField } from 'admin-on-rest';
-import { SelectArrayInput, AutocompleteInput, NumberInput, DisabledInput, BooleanInput, LongTextInput, SelectInput, TextInput, ReferenceInput, ReferenceArrayInput } from 'admin-on-rest';
+import { ReferenceField, Datagrid, SelectField, UrlField, FunctionField, ChipField, LongTextField, TextField, DateField, RichTextField, ImageField } from 'admin-on-rest';
+import { SelectArrayInput, AutocompleteInput, NumberInput, DisabledInput, BooleanInput, LongTextInput, SelectInput, TextInput, ReferenceInput, ReferenceArrayInput, ReferenceManyField } from 'admin-on-rest';
 import { EditButton, ShowButton } from 'admin-on-rest';
 import { Show, SimpleShowLayout, SimpleForm, TabbedForm, FormTab } from 'admin-on-rest';
 import RichTextInput from 'aor-rich-text-input';
@@ -92,15 +92,16 @@ export const TransformEdit = (props) => (
                 </DependentInput>
 	        </FormTab>
             <FormTab label="State">
-                <ReferenceField label="Engine Job|Task ID." source="id" reference="status" linkType={false}>
-                    <TextField source="jobId" />
-                </ReferenceField>
-                <ReferenceField label="Engine Job|Task State" source="id" reference="status" linkType={false}>
-                    <ChipField source="jobState" />
-                </ReferenceField>
-                <ReferenceField label="List of Sub Job|Task" source="id" reference="status" linkType={false}>
-                    <RawJsonRecordSpecificField source="subTask" />
-                </ReferenceField>
+                <ReferenceManyField addLabel={false} reference="status" target="id">
+                    <Datagrid>
+                        <TextField source="jobId" label="Engine Job ID." />
+                        <ChipField source="taskState" label="Engine Job State" />
+                        <TextField source="subTaskId" label="Subtask ID." />
+                        <ChipField source="status" label="Subtask State" />
+                        <TextField source="name" label="Subtask Desc." />
+                        <ShowButton />
+                    </Datagrid>
+                </ReferenceManyField>
             </FormTab>
         </TabbedForm>
     </Edit>

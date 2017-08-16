@@ -44,7 +44,7 @@ export const SchemaList = (props) => (
     <List {...props} title="Topic List" filters={<SchemaFilter />}>
         <Datagrid bodyOptions={{ stripedRows: true, showRowHover: true}} >
 	        <TextField source="id" label="Topic Name" />
-            <TextField source="schema.name" label="Desc." />
+            <TextField source="schema.name" label="Schema Name" />
             <TextField source="schema.type" label="Schema Type" />
             <NumberField source="version" label="Schema Version" />
             <TextField source="compatibility" label="Compatibility" />
@@ -57,7 +57,7 @@ export const SchemaEdit = (props) => (
     <Edit title={<SchemaTitle />} {...props}>
         <SimpleForm>
 	        <DisabledInput source="id" label="Topic Name" />
-            <TextInput source="schema.name" label="Desc." />
+            <TextInput source="schema.name" label="Schema Name" />
             <DisabledInput source="schema.type" label="Schema Type" />
             <NumberInput source="version" label="Schema Version" />
             <SelectInput source="compatibility" label="Compatibility" validate={[ required ]} choices={[

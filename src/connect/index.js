@@ -65,13 +65,15 @@ export const ConnectEdit = (props) => (
                         { id: 'CONNECT_KAFKA_HDFS_SINK', name: 'Sink Hadoop|Hive' },
                         { id: 'CONNECT_MONGODB_SINK',  name: 'Sink MongoDB' },
                 ]} />
+
                 <ChipField source="status" label="Task Status" />
                 <LongTextInput source="description" label="Task Description" />
+                <NumberInput source="connectorConfig.['tasks.max']" label="Number of Sub-task to Submit" step={1}/>
             </FormTab>
             <FormTab label="Setting">
                 <DisabledInput source="connectorConfig.cuid" label="ID or CUID or Name"/>
                 <TextField source="connectorConfig.['connector.class']" label="Connect Class Library" style={{ maxWidth: 544 }} />
-                <NumberInput source="connectorConfig.['tasks.max']" label="Number of Sub-task to Submit" step={1}/>
+                <LongTextInput source="connectorConfig.['schema.registry.uri']" label="Schema Registry URI, such as http://localhost:8081" />
                 <DependentInput dependsOn="connectorType" value="CONNECT_KAFKA_SOURCE_AVRO">
                 <ReferenceInput source="connectorConfig.topic" label="Choose a topic to write data" reference="schema" validate={[ required ]} allowEmpty>
                     <AutocompleteInput optionText="subject" />
@@ -99,11 +101,10 @@ export const ConnectEdit = (props) => (
             <FormTab label="State">
                 <ReferenceManyField addLabel={false} reference="status" target="id">
                     <Datagrid>
-                        <TextField source="id" label="This Task ID." />
-                        <ChipField source="dfTaskState" label="Overall State" />
-                        <ChipField source="taskState" label="Connect Job State" />
-                        <ChipField source="state" label="Sub Task State" />
-                        <TextField source="subTaskId" label="Sub Task ID." />
+                        <TextField source="jobId" label="Engine Job ID." />
+                        <ChipField source="taskState" label="Engine Job State" />
+                        <TextField source="subTaskId" label="Subtask ID." />
+                        <ChipField source="state" label="Subtask State" />
                         <TextField source="worker_id" label="Worker ID." />
                         <ShowButton />
                     </Datagrid>
@@ -132,6 +133,7 @@ export const ConnectCreate = (props) => (
                     <ReferenceInput source="connectorConfig.topic" label="Choose a topic to write data" reference="schema" validate={[ required ]} allowEmpty>
                         <AutocompleteInput optionText="subject" />
                     </ReferenceInput>
+                    <LongTextInput source="connectorConfig.['schema.registry.uri']" label="Schema Registry URI, such as http://localhost:8081" validate={[ required ]} />
                     <BooleanInput source="connectorConfig.['file.overwrite']" label="Allow File Overwrite" defaultValue={true} />
                     <TextInput source="connectorConfig.['file.location']" label="Path Where to Load the Files" style={{ display: 'inline-block' }} defaultValue={"/home/vagrant/df_data"} validate={[ required ]} />
                     <TextInput source="connectorConfig.['file.glob']" label="Pattern/Glob to Match the Files" style={{ display: 'inline-block', marginLeft: 32 }} validate={[ required ]} />
