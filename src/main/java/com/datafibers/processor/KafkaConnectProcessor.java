@@ -44,7 +44,7 @@ public class KafkaConnectProcessor {
                             for (int i = 0; i < subTaskArray.size(); i++) {
                                 subTaskArray.getJsonObject(i)
                                         .put("subTaskId", subTaskArray.getJsonObject(i).getInteger("id"))
-                                        .put("id", taskId)
+                                        .put("id", taskId + "_" + subTaskArray.getJsonObject(i).getInteger("id"))
                                         .put("jobId", taskId)
                                         .put("dfTaskState", HelpFunc.getTaskStatusKafka(new JSONObject(jo.toString())))
                                         .put("taskState", jo.getJsonObject("connector").getString("state"));

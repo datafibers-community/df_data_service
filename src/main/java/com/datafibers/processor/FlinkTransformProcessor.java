@@ -308,22 +308,26 @@ public class FlinkTransformProcessor {
      * @param routingContext This is the contect from REST API
      * @param restClient This is vertx non-blocking rest client used for forwarding
      * @param taskId This is the id used to look up status
-     */ // TODO updated to return list
+     */
     public static void forwardGetAsGetOne(RoutingContext routingContext, RestClient restClient, String taskId, String jobId) {
         // Create REST Client for Kafka Connect REST Forward
         final RestClientRequest postRestClientRequest =
                 restClient.get(ConstantApp.FLINK_REST_URL + "/" + jobId, String.class,
                         portRestResponse -> {
                             JsonObject jo = new JsonObject(portRestResponse.getBody());
-                            JsonObject dfJobResponsed = new JsonObject()
-                                    .put("id", taskId)
-                                    .put("jobId", jobId)
-                                    .put("state", HelpFunc.getTaskStatusFlink(new JSONObject(jo.toString())))
-                                    .put("jobState", jo.getString("state"))
-                                    .put("subTask", jo.getJsonArray("vertices"));
+                            JsonArray subTaskArray = jo.getJsonArray("vertices");
+                            for (int i = 0; i < subTaskArray.size(); i++) {
+                                subTaskArray.getJsonObject(i)
+                                        .put("subTaskId", subTaskArray.getJsonObject(i).getString("id"))
+                                        .put("id", taskId + "_" + subTaskArray.getJsonObject(i).getString("id"))
+                                        .put("jobId", jo.getString("jid"))
+                                        .put("dfTaskState", HelpFunc.getTaskStatusKafka(new JSONObject(jo.toString())))
+                                        .put("taskState", jo.getString("state"));
+                            }
                             HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                     .setStatusCode(ConstantApp.STATUS_CODE_OK)
-                                    .end(Json.encodePrettily(dfJobResponsed));
+                                    .putHeader("X-Total-Count", subTaskArray.size() + "" )
+                                    .end(Json.encodePrettily(subTaskArray.getList()));
                             LOG.info(DFAPIMessage.logResponseMessage(1024, taskId));
                         });
 
