@@ -104,6 +104,9 @@ export default {
                     page: {
                         delete: 'Delete Customer',
                     },
+                    card: {
+                        title: 'Please well understand the schema compatibility before editing.'
+                    },
 
         },
         logs: {

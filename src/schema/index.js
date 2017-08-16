@@ -1,5 +1,9 @@
 // in src/Schemas.js
 import React from 'react';
+import { translate } from 'admin-on-rest';
+import Avatar from 'material-ui/Avatar';
+import LightBulbIcon from 'material-ui/svg-icons/action/lightbulb-outline';
+import { Card, CardHeader, CardText } from 'material-ui/Card';
 import { Filter, List, Edit, Create } from 'admin-on-rest';
 import { Datagrid, SelectField, FunctionField, ChipField, TextField, DateField, RichTextField, NumberField } from 'admin-on-rest';
 import { SelectArrayInput, AutocompleteInput, NumberInput, DisabledInput, BooleanInput, LongTextInput, SelectInput, TextInput, ReferenceInput, ReferenceArrayInput } from 'admin-on-rest';
@@ -11,7 +15,8 @@ import Icon from 'material-ui/svg-icons/image/blur-on';
 import { required, minLength, maxLength, minValue, maxValue, number, regex, email, choices } from 'admin-on-rest';
 import RawJsonRecordField from '../component/RawJsonRecordField';
 import RawJsonRecordSpecificField from '../component/RawJsonRecordSpecificField';
-import EmbeddedArrayInputFormField from '../component/EmbeddedArrayInputFormField';
+import EmbeddedArrayInput from '../component/EmbeddedArrayInput';
+import EmbeddedArrayField from '../component/EmbeddedArrayField';
 
 export const SchemaIcon = Icon;
 
@@ -56,19 +61,38 @@ export const SchemaList = (props) => (
 
 export const SchemaEdit = (props) => (
     <Edit title={<SchemaTitle />} {...props}>
-        <SimpleForm>
-	        <DisabledInput source="id" label="Topic Name" />
-            <TextInput source="schema.name" label="Schema Name" />
-            <DisabledInput source="schema.type" label="Schema Type" />
-            <NumberInput source="version" label="Schema Version" />
-            <SelectInput source="compatibility" label="Compatibility" validate={[ required ]} choices={[
-                        { id: 'NONE', name: 'NONE' },
-                        { id: 'FULL', name: 'FULL' },
-                        { id: 'BACKWARD',  name: 'BACKWARD' },
-                        { id: 'FORWARD',  name: 'FORWARD' }, ]}
-            />
-            <RawJsonRecordSpecificField source="schema.fields" label="fields" />
-        </SimpleForm>
+        <TabbedForm>
+            <FormTab label="Overview">
+                <DisabledInput source="id" label="Topic Name" />
+                <TextInput source="schema.name" label="Schema Name" />
+                <DisabledInput source="schema.type" label="Schema Type" />
+                <NumberInput source="version" label="Schema Version" />
+                <SelectInput source="compatibility" label="Compatibility" validate={[ required ]} choices={[
+                            { id: 'NONE', name: 'NONE' },
+                            { id: 'FULL', name: 'FULL' },
+                            { id: 'BACKWARD',  name: 'BACKWARD' },
+                            { id: 'FORWARD',  name: 'FORWARD' }, ]}
+                />
+            </FormTab>
+            <FormTab label="Fields">
+                <Card style={{ margin: '2em' }}>
+                     <CardHeader
+                         title="Please well understand the schema compatibility before editing."
+                         style={{ fontWeight: 'bold',  textAlign: 'center' }}
+                         avatar={<Avatar backgroundColor="#FFEB3B" icon={<LightBulbIcon />} />}
+                     />
+                </Card>
+                <EmbeddedArrayInput source="schema.fields" label="">
+                    <TextInput source="name" label="Column Name"/>
+                    <SelectInput source="type" label="Column Date Type" choices={[
+                        { id: 'string', name: 'String/Text' },
+                        { id: 'long', name: 'Long 64bit' },
+                        { id: 'int',  name: 'Integer 32bit' },
+                        { id: 'boolean',  name: 'Boolean 0 (false) or 1 (true)' },
+                        { id: 'null',  name: 'Null' }]} />
+                </EmbeddedArrayInput>
+            </FormTab>
+        </TabbedForm>
     </Edit>
 );
 
@@ -117,10 +141,11 @@ export const SchemaCreate = (props) => (
                 </DependentInput>
             </FormTab>
             <FormTab label="Testing">
-                <EmbeddedArrayInputFormField source="links">
+            <NumberInput source="connectorConfig.['flush.size']" label="The Bulk Size of Rows to Sink" step={1} validate={[ required ]} />
+                <EmbeddedArrayInput source="links">
                     <TextInput source="url" />
                     <TextInput source="context"/>
-                </EmbeddedArrayInputFormField>
+                </EmbeddedArrayInput>
             </FormTab>
         </TabbedForm>
     </Create>
