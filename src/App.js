@@ -18,6 +18,7 @@ import { ConnectIcon, ConnectShow, ConnectList, ConnectCreate, ConnectEdit } fro
 import { TransformIcon, TransformShow, TransformList, TransformCreate, TransformEdit } from './transform';
 import { SchemaIcon, SchemaCreate, SchemaEdit, SchemaShow, SchemaList } from './schema';
 import { ProcessorIcon, ProcessorList, ProcessorShow } from './processor';
+import { HistIcon, HistList, HistShow } from './history';
 import { LoggingIcon, LoggingList, LoggingShow } from './logging';
 import { VisitorList, VisitorEdit, VisitorDelete, VisitorIcon } from './visitors';
 import { CommandList, CommandEdit, CommandIcon } from './commands';
@@ -50,6 +51,7 @@ class App extends Component {
                 <Resource name="tr" options={{ label: 'Transform' }} icon={TransformIcon} list={TransformList} edit={TransformEdit} create={TransformCreate} remove={Delete}  show={ConnectShow} />
                 <Resource name="schema" options={{ label: 'Topic' }} icon={SchemaIcon} list={SchemaList} create={SchemaCreate} edit={SchemaEdit} show={SchemaShow} />
                 <Resource name="logs" options={{ label: 'Logging' }} icon={LoggingIcon} list={LoggingList} remove={Delete} show={LoggingShow} />
+                <Resource name="hist" options={{ label: 'History' }} icon={HistIcon} list={HistList} show={HistShow} />
                 <Resource name="status" />
 //                <Resource name="customers" list={VisitorList} edit={VisitorEdit} remove={VisitorDelete} icon={VisitorIcon}/>
 //                <Resource name="commands" list={CommandList} edit={CommandEdit} remove={Delete} icon={CommandIcon} options={{ label: 'Orders' }}/>

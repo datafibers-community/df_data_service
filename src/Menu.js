@@ -11,6 +11,7 @@ import { ProcessorIcon } from './processor';
 import { ConnectIcon } from './connect';
 import { TransformIcon } from './transform';
 import { SchemaIcon } from './schema';
+import { HistIcon } from './history';
 import { LoggingIcon } from './logging';
 
 const items = [
@@ -18,6 +19,7 @@ const items = [
     { name: 'ps', icon: <ConnectIcon /> },
     { name: 'tr', icon: <TransformIcon /> },
     { name: 'schema', icon: <SchemaIcon /> },
+    { name: 'hist', icon: <HistIcon /> },
     { name: 'logs', icon: <LoggingIcon /> }
 ];
 
