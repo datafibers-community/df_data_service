@@ -3,7 +3,7 @@ import React from 'react';
 import { Filter, List, Edit, Create } from 'admin-on-rest';
 import { ReferenceField, Datagrid, SelectField, UrlField, FunctionField, ChipField, TextField, DateField, RichTextField, ImageField } from 'admin-on-rest';
 import { NumberInput, DisabledInput, BooleanInput, LongTextInput, SelectInput, TextInput } from 'admin-on-rest';
-import { EditButton, ShowButton } from 'admin-on-rest';
+import { ShowButton } from 'admin-on-rest';
 import { Show, SimpleShowLayout, SimpleForm, TabbedForm, FormTab } from 'admin-on-rest';
 import RichTextInput from 'aor-rich-text-input';
 import { DependentInput } from 'aor-dependent-input';
@@ -15,10 +15,6 @@ export const ProcessorIcon = Icon;
 
 const ProcessorShowTitle = ({ record }) => {
     return <span>Raw Json with ID. {record ? `"${record.id}"` : ''}</span>;
-};
-
-const ProcessorTitle = ({ record }) => {
-    return <span>ID. {record ? `"${record.id}"` : ''}</span>;
 };
 
 const ProcessorFilter = (props) => (

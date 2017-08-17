@@ -3,7 +3,6 @@ import React from 'react';
 import { Filter, List, Edit, Create } from 'admin-on-rest';
 import { ReferenceField, Datagrid, SelectField, UrlField, FunctionField, ChipField, TextField, DateField, RichTextField, ImageField, NumberField } from 'admin-on-rest';
 import { NumberInput, DisabledInput, BooleanInput, LongTextInput, SelectInput, TextInput } from 'admin-on-rest';
-import { EditButton, ShowButton } from 'admin-on-rest';
 import { Show, SimpleShowLayout, SimpleForm, TabbedForm, FormTab } from 'admin-on-rest';
 import RichTextInput from 'aor-rich-text-input';
 import { DependentInput } from 'aor-dependent-input';
@@ -13,30 +12,8 @@ import RawJsonRecordSpecificField from '../component/RawJsonRecordSpecificField'
 
 export const HistIcon = Icon;
 
-const HistShowTitle = ({ record }) => {
-    return <span>Raw Json with ID. {record ? `"${record.id}"` : ''}</span>;
-};
-
-const HistTitle = ({ record }) => {
-    return <span>ID. {record ? `"${record.id}"` : ''}</span>;
-};
-
-const HistFilter = (props) => (
-    <Filter {...props}>
-        <TextInput label="Search" source="q" alwaysOn />
-    </Filter>
-);
-
-export const HistShow = (props) => (
-    <Show title={<HistShowTitle />} {...props}>
-        <SimpleShowLayout>
-	    <RawJsonRecordField />
-        </SimpleShowLayout>
-    </Show>
-);
-
 export const HistList = (props) => (
-    <List {...props} title="Process History" filters={<HistFilter />}>
+    <List {...props} title="Process History" >
         <Datagrid bodyOptions={{ stripedRows: true, showRowHover: true}} >
             <TextField source="cuid" label="id" />
             <TextField source="file_name" label="Processed" />
@@ -45,7 +22,6 @@ export const HistList = (props) => (
             <NumberField source="process_milliseconds" label="Time Spent (ms.)" />
             <TextField source="last_modified_timestamp" label="Last Update" />
             <TextField source="status" label="Status" />
-            <ShowButton />
         </Datagrid>
     </List>
 );
