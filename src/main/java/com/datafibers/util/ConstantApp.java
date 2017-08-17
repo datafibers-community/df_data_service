@@ -74,9 +74,9 @@ public final class ConstantApp {
     public static final String FLINK_DUMMY_JOB_ID = "00000000000000000000000000000000";
 
     // HTTP req/res constants
-    public static final String CONTENT_TYPE = "content-type";
-    public static final String APPLICATION_JSON_CHARSET_UTF_8 = "application/json; charset=utf-8";
-    public static final String TEXT_HTML = "text/html";
+    public static final String HTTP_HEADER_CONTENT_TYPE = "content-type";
+    public static final String HTTP_HEADER_APPLICATION_JSON_CHARSET = "application/json; charset=utf-8";
+    public static final String HTTP_HEADER_TOTAL_COUNT = "X-Total-Count";
 
     // HTTP status codes
     public static final int STATUS_CODE_OK = 200;

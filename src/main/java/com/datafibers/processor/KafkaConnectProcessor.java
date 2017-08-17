@@ -252,7 +252,7 @@ public class KafkaConnectProcessor {
                     /*mongoClient.insert(mongoCOLLECTION, dfJobResponsed.toJson(), r -> routingContext
                             .response().setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
                             .putHeader("Access-Control-Allow-Origin", "*")
-                            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+                            .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
                             .end(Json.encodePrettily(dfJobResponsed)));*/
                 });
 

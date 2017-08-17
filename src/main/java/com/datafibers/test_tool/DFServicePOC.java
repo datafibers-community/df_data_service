@@ -668,7 +668,7 @@ public class DFServicePOC extends AbstractVerticle {
             mongo.insert(COLLECTION, dfJob.toJson(), r -> routingContext
                     .response().setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
                     .putHeader("Access-Control-Allow-Origin", "*")
-                    .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+                    .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
                     .end(Json.encodePrettily(dfJob)));
         }
     }
@@ -941,8 +941,8 @@ public class DFServicePOC extends AbstractVerticle {
                                             routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
                                                     .end(DFAPIMessage.getResponseMessage(9003));
                                         } else {
-                                            routingContext.response().putHeader(ConstantApp.CONTENT_TYPE,
-                                                            ConstantApp.APPLICATION_JSON_CHARSET_UTF_8).end();
+                                            routingContext.response().putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE,
+                                                            ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET).end();
                                         }
                                     }
                             );
@@ -987,8 +987,8 @@ public class DFServicePOC extends AbstractVerticle {
                                             routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
                                                     .end(DFAPIMessage.getResponseMessage(9003));
                                         } else {
-                                            routingContext.response().putHeader(ConstantApp.CONTENT_TYPE,
-                                                            ConstantApp.APPLICATION_JSON_CHARSET_UTF_8).end();
+                                            routingContext.response().putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE,
+                                                            ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET).end();
                                         }
                                     }
                             );
@@ -1808,7 +1808,7 @@ public class DFServicePOC extends AbstractVerticle {
                 JsonArray resArr = res.result().getJsonArray("result");
                 routingContext.response()
                         .putHeader("Access-Control-Allow-Origin", "*")
-                        .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+                        .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
                         .end(Json.encodePrettily(resArr));
             } else {
                 res.cause().printStackTrace();
@@ -1845,7 +1845,7 @@ public class DFServicePOC extends AbstractVerticle {
                         .put("topics", config().getString("kafka.topic.df.metadata", "df_meta"))).toString();
         try {
             HttpResponse<String> res = Unirest.get(restURI + "/metadata_sink_connect/status")
-                    .header("accept", ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+                    .header("accept", ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
                     .asString();
 
             if(res.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND) { // Add the meta sink
@@ -1860,13 +1860,13 @@ public class DFServicePOC extends AbstractVerticle {
                             dfMetaSchemaSubject + "/versions";
 
             HttpResponse<String> schmeaRes = Unirest.get(schemaRegistryRestURL + "/latest")
-                    .header("accept", ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+                    .header("accept", ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
                     .asString();
 
             if(schmeaRes.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND) { // Add the meta sink schema
                 LOG.info("Metadata schema is not available, so create it.");
                 Unirest.post(schemaRegistryRestURL)
-                        .header("accept", ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+                        .header("accept", ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
                         .header("Content-Type", ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
                         .body(new JSONObject().put("schema", config().getString("df.metadata.schema",
                                 "{\"type\":\"record\"," +

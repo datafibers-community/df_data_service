@@ -60,7 +60,7 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
                             // {"subject":"Kafka-value","version":1,"id":1,"schema":"\"string\""}
                             HttpResponse<JsonNode> resSubject = Unirest
                                     .get(restURI + "/" + subject + "/versions/latest")
-                                    .header("accept", ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+                                    .header("accept", ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
                                     .asJson();
                             if (resSubject == null) {
                                 status_code = ConstantApp.STATUS_CODE_BAD_REQUEST;
@@ -225,7 +225,7 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
         });
 
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
-        postRestClientRequest.setAcceptHeader(Arrays.asList(DFMediaType.APPLICATION_SCHEMAREGISTRY_JSON));
+        postRestClientRequest.setAcceptHeader(Arrays.asList(DFMediaType.APPLICATION_SCHEMA_REGISTRY_JSON));
         JSONObject object = new JSONObject().put("schema", schema.toString());
         LOG.debug("Schema object.toString(): " + object.toString());
         postRestClientRequest.end(object.toString());
@@ -261,7 +261,7 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
             });
 
             postRestClientRequest2.setContentType(MediaType.APPLICATION_JSON);
-            postRestClientRequest2.setAcceptHeader(Arrays.asList(DFMediaType.APPLICATION_SCHEMAREGISTRY_JSON));
+            postRestClientRequest2.setAcceptHeader(Arrays.asList(DFMediaType.APPLICATION_SCHEMA_REGISTRY_JSON));
             JSONObject jsonToBeSubmitted = new JSONObject().put(ConstantApp.COMPATIBILITY, compatibility);
             LOG.debug("Compatibility object2.toString(): " + jsonToBeSubmitted.toString());
             postRestClientRequest2.end(jsonToBeSubmitted.toString());
@@ -330,7 +330,7 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
         });
 
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
-        postRestClientRequest.setAcceptHeader(Arrays.asList(DFMediaType.APPLICATION_SCHEMAREGISTRY_JSON));
+        postRestClientRequest.setAcceptHeader(Arrays.asList(DFMediaType.APPLICATION_SCHEMA_REGISTRY_JSON));
         jsonForSubmit = new JSONObject().put("schema", schema1.toString());
         LOG.debug("Schema send to update is: " + jsonForSubmit.toString());
 
@@ -366,7 +366,7 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
             });
 
             postRestClientRequest2.setContentType(MediaType.APPLICATION_JSON);
-            postRestClientRequest2.setAcceptHeader(Arrays.asList(DFMediaType.APPLICATION_SCHEMAREGISTRY_JSON));
+            postRestClientRequest2.setAcceptHeader(Arrays.asList(DFMediaType.APPLICATION_SCHEMA_REGISTRY_JSON));
 
             JSONObject jsonToBeSubmitted = new JSONObject().put(ConstantApp.COMPATIBILITY, compatibility);
             postRestClientRequest2.end(jsonToBeSubmitted.toString());

@@ -673,9 +673,9 @@ public class DFDataProcessor extends AbstractVerticle {
         mongo.runCommand("aggregate", command, res -> {
             if (res.succeeded()) {
                 JsonArray resArr = res.result().getJsonArray("result");
-                routingContext.response()
-                        .putHeader("Access-Control-Allow-Origin", "*")
-                        .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+                HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                        .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                        .putHeader(ConstantApp.HTTP_HEADER_TOTAL_COUNT, resArr.size() + "")
                         .end(Json.encodePrettily(resArr));
             } else {
                 res.cause().printStackTrace();
@@ -1443,7 +1443,7 @@ public class DFDataProcessor extends AbstractVerticle {
                         .put("topics", config().getString("kafka.topic.df.metadata", "df_meta"))).toString();
         try {
             HttpResponse<String> res = Unirest.get(restURI + "/metadata_sink_connect/status")
-                    .header("accept", ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+                    .header("accept", ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
                     .asString();
 
             if(res.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND) { // Add the meta sink
@@ -1458,12 +1458,12 @@ public class DFDataProcessor extends AbstractVerticle {
                     dfMetaSchemaSubject + "/versions";
 
             HttpResponse<String> schmeaRes = Unirest.get(schemaRegistryRestURL + "/latest")
-                    .header("accept", ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+                    .header("accept", ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
                     .asString();
 
             if(schmeaRes.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND) { // Add the meta sink schema
                 Unirest.post(schemaRegistryRestURL)
-                        .header("accept", ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+                        .header("accept", ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
                         .header("Content-Type", ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
                         .body(new JSONObject().put("schema", config().getString("df.metadata.schema",
                                 "{\"type\":\"record\"," +
