@@ -211,13 +211,19 @@ public class FlinkTransformProcessor {
                     });
 
             postRestClientRequest.exceptionHandler(exception -> {
-
                 // Still delete once exception happens
                 mongoClient.removeDocument(mongoCOLLECTION, new JsonObject().put("_id", id),
                         ar -> HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                 .setStatusCode(ConstantApp.STATUS_CODE_OK)
                                 .end(DFAPIMessage.getResponseMessage(9007)));
                 LOG.info(DFAPIMessage.logResponseMessage(9012, id));
+            });
+
+            restClient.exceptionHandler(exception -> {
+                HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                        .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                        .end(DFAPIMessage.getResponseMessage(9028));
+                LOG.error(DFAPIMessage.logResponseMessage(9028, exception.getMessage()));
             });
 
             postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
@@ -263,7 +269,8 @@ public class FlinkTransformProcessor {
                 // The update syntax: {$set, the json object containing the fields to update}
                 new JsonObject().put("$set", dfJob.toJson()), v -> {
                     if (v.failed()) {
-                        routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
+                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
                                 .end(DFAPIMessage.getResponseMessage(9003));
                         LOG.error(DFAPIMessage.logResponseMessage(9003, id));
                     } else {

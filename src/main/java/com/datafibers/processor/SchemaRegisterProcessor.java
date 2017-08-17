@@ -211,9 +211,17 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
 
         postRestClientRequest.exceptionHandler(exception -> {
             HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                    .setStatusCode(ConstantApp.STATUS_CODE_OK)
-                    .end(DFAPIMessage.logResponseMessage(9006,
-                            "schema create exception - " + exception.toString()));
+                    .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                    .end(DFAPIMessage.getResponseMessage(9006));
+            LOG.error(DFAPIMessage.logResponseMessage(9006, exception.toString()));
+
+        });
+
+        rc_schema.exceptionHandler(exception -> {
+            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                    .end(DFAPIMessage.getResponseMessage(9028));
+            LOG.error(DFAPIMessage.logResponseMessage(9028, exception.getMessage()));
         });
 
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
@@ -240,9 +248,16 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
                         && routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_OK) {
                     HelpFunc.responseCorsHandleAddOn(routingContext.response())
                             .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                            .end(DFAPIMessage.logResponseMessage(9006,
-                                    "schema create compatibility exception - " + exception.toString()));
+                            .end(DFAPIMessage.getResponseMessage(9006));
+                    LOG.error(DFAPIMessage.logResponseMessage(9006, exception.toString()));
                 }
+            });
+
+            rc_schema.exceptionHandler(exception -> {
+                HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                        .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                        .end(DFAPIMessage.getResponseMessage(9028));
+                LOG.error(DFAPIMessage.logResponseMessage(9028, exception.getMessage()));
             });
 
             postRestClientRequest2.setContentType(MediaType.APPLICATION_JSON);
@@ -301,10 +316,17 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
         );
 
         postRestClientRequest.exceptionHandler(exception -> {
-            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                    .putHeader("Access-Control-Allow-Origin", "*")
-                    .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
-                    .end("Update one schema POST request exception - " + exception.toString());
+            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                    .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                    .end(DFAPIMessage.getResponseMessage(9023));
+            DFAPIMessage.logResponseMessage(9023, "UPDATE_SCHEMA_FAILED");
+        });
+
+        rc_schema.exceptionHandler(exception -> {
+            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                    .end(DFAPIMessage.getResponseMessage(9028));
+            LOG.error(DFAPIMessage.logResponseMessage(9028, exception.getMessage()));
         });
 
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
@@ -331,10 +353,16 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
                         && routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_OK) {
                     HelpFunc.responseCorsHandleAddOn(routingContext.response())
                             .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                            .end(DFAPIMessage.logResponseMessage(9023,
-                                    "SCHEMA_UPDATE_EXCEPTION - " + exception.toString()));
+                            .end(DFAPIMessage.getResponseMessage(9023));
                     LOG.error(DFAPIMessage.logResponseMessage(9023, "SCHEMA_UPDATE"));
                 }
+            });
+
+            rc_schema.exceptionHandler(exception -> {
+                HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                        .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                        .end(DFAPIMessage.getResponseMessage(9028));
+                LOG.error(DFAPIMessage.logResponseMessage(9028, exception.getMessage()));
             });
 
             postRestClientRequest2.setContentType(MediaType.APPLICATION_JSON);

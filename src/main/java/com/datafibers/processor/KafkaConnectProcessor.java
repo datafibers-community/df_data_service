@@ -107,9 +107,16 @@ public class KafkaConnectProcessor {
 
         postRestClientRequest.exceptionHandler(exception -> {
             HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                    .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
                     .end(DFAPIMessage.getResponseMessage(9006));
             LOG.error(DFAPIMessage.logResponseMessage(9006, dfJobResponsed.getId()));
+        });
+
+        restClient.exceptionHandler(exception -> {
+            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                    .end(DFAPIMessage.getResponseMessage(9028));
+            LOG.error(DFAPIMessage.logResponseMessage(9028, exception.getMessage()));
         });
 
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
@@ -149,6 +156,13 @@ public class KafkaConnectProcessor {
                     .end(DFAPIMessage.getResponseMessage(9021));
             LOG.error(DFAPIMessage.logResponseMessage(9021,
                     "UPDATE_IN_KAFKA_CONNECT_SERVER_FAILED"));
+        });
+
+        restClient.exceptionHandler(exception -> {
+            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                    .end(DFAPIMessage.getResponseMessage(9028));
+            LOG.error(DFAPIMessage.logResponseMessage(9028, exception.getMessage()));
         });
 
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
@@ -204,13 +218,19 @@ public class KafkaConnectProcessor {
                 });
 
         postRestClientRequest.exceptionHandler(exception -> {
-
             // Once REST API forward is successful, delete the record to the local repository
             mongoClient.removeDocument(mongoCOLLECTION, new JsonObject().put("_id", id),
                     ar -> HelpFunc.responseCorsHandleAddOn(routingContext.response())
                             .setStatusCode(ConstantApp.STATUS_CODE_OK)
                             .end(DFAPIMessage.getResponseMessage(9007)));
             LOG.info(DFAPIMessage.logResponseMessage(1002, "CANNOT_FIND_CONNECT_NAME_IN_KAFKA_CONNECT"));
+        });
+
+        restClient.exceptionHandler(exception -> {
+            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                    .end(DFAPIMessage.getResponseMessage(9028));
+            LOG.error(DFAPIMessage.logResponseMessage(9028, exception.getMessage()));
         });
 
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
@@ -237,10 +257,16 @@ public class KafkaConnectProcessor {
                 });
 
         postRestClientRequest.exceptionHandler(exception -> {
-            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                    .putHeader("Access-Control-Allow-Origin", "*")
-                    .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                    .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
                     .end(DFAPIMessage.getResponseMessage(9006));
+        });
+
+        restClient.exceptionHandler(exception -> {
+            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                    .end(DFAPIMessage.getResponseMessage(9028));
+            LOG.error(DFAPIMessage.logResponseMessage(9028, exception.getMessage()));
         });
 
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
