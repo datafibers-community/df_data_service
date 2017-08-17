@@ -15,8 +15,8 @@ export default translate(({ style, translate }) => (
             avatar={<Avatar backgroundColor="#FFEB3B" icon={<LightBulbIcon />} />}
         />
         <CardActions style={{ textAlign: 'right' }}>
-            <FlatButton label={translate('pos.dashboard.welcome.aor_button')} icon={<HomeIcon />} href="https://marmelab.com/admin-on-rest/" />
-            <FlatButton label={translate('pos.dashboard.welcome.demo_button')} icon={<CodeIcon />} href="https://github.com/marmelab/admin-on-rest-demo" />
+            <FlatButton label={translate('pos.dashboard.welcome.aor_button')} icon={<HomeIcon />} href="http://www.datafibers.com/" />
+            <FlatButton label={translate('pos.dashboard.welcome.demo_button')} icon={<CodeIcon />} href="https://github.com/datafibers-community/" />
         </CardActions>
     </Card>
 ));
