@@ -1006,7 +1006,7 @@ public class DFDataProcessor extends AbstractVerticle {
 
         // Find and set default connector.class
         if(!dfJob.getConnectorConfig().containsKey(ConstantApp.PK_KAFKA_CONNECTOR_CLASS) ||
-                dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_CONNECTOR_CLASS) != null) {
+                dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_CONNECTOR_CLASS) == null) {
             String connectorClass = mongoDFInstalled.findConnectorClassName(dfJob.getConnectorType());
             if(connectorClass == null || connectorClass.isEmpty()) {
                 LOG.info(DFAPIMessage.logResponseMessage(9024, mongoId + " - " + connectorClass));
