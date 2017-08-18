@@ -78,17 +78,14 @@ export const TransformEdit = (props) => (
 		            <LongTextInput source="connectorConfig.['trans.sql']" label="Stream SQL Statement, such as select * from ..." validate={[ required ]} />
 		        </DependentInput>
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_FLINK_SCRIPT">
-                    <LongTextInput source="connectorConfig.topics" label="Topics to Sink Data From (use , seperate multiple values" />
-		            <LongTextInput source="connectorConfig.['mongodb.collections']" label="Collections Where to Sink the Files (use , seperate multiple values)" />
-                    <TextInput source="connectorConfig.['mongodb.database']" label="The Database Name" />
-                    <NumberInput source="connectorConfig.['bulk.size']" label="The Bulk Size of Rows to Sink" step={1} />
-                </DependentInput>	
+                    <TextInput source="connectorConfig.['topic.in']" label="A Topic to Read Data" style={{ display: 'inline-block' }} validate={[ required ]} />
+                    <TextInput source="connectorConfig.['topic.out']" label="A Topic to Write Data" style={{ display: 'inline-block', marginLeft: 32 }} validate={[ required ]} />
+                    <LongTextInput source="connectorConfig.['group.id']" label="Consumer ID to Read Data. (Optional)" />
+		            <LongTextInput source="connectorConfig.['sink.key.fields']" label="List of Commas Separated Columns for Keys in Sink" />
+		            <LongTextInput source="connectorConfig.['trans.script']" label="Stream SQL Statement, such as select * from ..." validate={[ required ]} />
+		        </DependentInput>
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_FLINK_UDF">
-                    <LongTextInput source="connectorConfig.topics" label="Topics to Sink Data From (use , seperate multiple values" />
-                    <BooleanInput source="connectorConfig.['hive.integration']" label="Enable Hive Metadata" style={{ display: 'inline-block' }} />
-                    <DisabledInput source="connectorConfig.['hive.metastore_uris']" label="Hive Metastore URL" style={{ display: 'inline-block' , marginLeft: 32 }} />
-		            <DisabledInput source="connectorConfig.['hdfs.url']" label="HDFS URL" style={{ display: 'inline-block', marginLeft: 32 }} />
-                    <NumberInput source="connectorConfig.['flush.size']" label="The Bulk Size of Rows to Sink" step={1} />
+                    <TextInput source="connectorConfig.['trans.jar']" label="UDF Jar File Name" validate={[ required ]} />
                 </DependentInput>
 	        </FormTab>
             <FormTab label="State">
@@ -96,7 +93,7 @@ export const TransformEdit = (props) => (
                     <Datagrid>
                         <TextField source="jobId" label="Engine Job ID." />
                         <ChipField source="taskState" label="Engine Job State" />
-                        <TextField source="subTaskId" label="Subtask ID." />
+                        <TextField source="subTaskId" label="Engine Job ID." />
                         <ChipField source="status" label="Subtask State" />
                         <TextField source="name" label="Subtask Desc." />
                         <ShowButton />

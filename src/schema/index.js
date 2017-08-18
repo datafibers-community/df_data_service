@@ -5,7 +5,7 @@ import Avatar from 'material-ui/Avatar';
 import LightBulbIcon from 'material-ui/svg-icons/action/lightbulb-outline';
 import { Card, CardHeader, CardText } from 'material-ui/Card';
 import { Filter, List, Edit, Create } from 'admin-on-rest';
-import { Datagrid, SelectField, FunctionField, ChipField, TextField, DateField, RichTextField, NumberField } from 'admin-on-rest';
+import { Datagrid, SelectField, FunctionField, ChipField, TextField, DateField, RichTextField, NumberField, ReferenceManyField } from 'admin-on-rest';
 import { SelectArrayInput, AutocompleteInput, NumberInput, DisabledInput, BooleanInput, LongTextInput, SelectInput, TextInput, ReferenceInput, ReferenceArrayInput } from 'admin-on-rest';
 import { ShowButton, EditButton } from 'admin-on-rest';
 import { Show, SimpleShowLayout, SimpleForm, TabbedForm, FormTab } from 'admin-on-rest';
@@ -91,6 +91,18 @@ export const SchemaEdit = (props) => (
                         { id: 'boolean',  name: 'Boolean 0 (false) or 1 (true)' },
                         { id: 'null',  name: 'Null' }]} />
                 </EmbeddedArrayInput>
+            </FormTab>
+            <FormTab label="Tasks Related">
+                <ReferenceManyField addLabel={false} reference="connect" target="id">
+                    <Datagrid>
+                            <TextField source="id" label="id" />
+                            <TextField source="taskSeq" label="task seq." />
+                            <TextField source="name" label="name" />
+                            <TextField source="connectorType" label="task type" />
+                            <ChipField source="status" label="status" />
+                        <ShowButton />
+                    </Datagrid>
+                </ReferenceManyField>
             </FormTab>
         </TabbedForm>
     </Edit>
