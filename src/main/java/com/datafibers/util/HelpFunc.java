@@ -1,6 +1,7 @@
 package com.datafibers.util;
 
 import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -8,6 +9,8 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import io.vertx.ext.mongo.FindOptions;
 import io.vertx.ext.web.RoutingContext;
+import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
@@ -95,13 +98,14 @@ public class HelpFunc {
      * will be cleaned as {"connectorConfig":{"test":"test"}}
      *
      * This will also remove any comments in "\/* *\/"
+     * This is deprecated once new UI is released
      *
-     * @param JSON_STRING
+     * @param jsonString
      * @param key_ingored_mark: If the
      * @return cleaned json string
      */
-    public static String cleanJsonConfig(String JSON_STRING, String key_pattern, String key_ingored_mark) {
-        JSONObject json = new JSONObject(JSON_STRING.replaceAll("\\s+?/\\*.*?\\*/", ""));
+    public static String cleanJsonConfigIgnored(String jsonString, String key_pattern, String key_ingored_mark) {
+        JSONObject json = new JSONObject(jsonString.replaceAll("\\s+?/\\*.*?\\*/", ""));
         int index = 0;
         int index_found = 0;
         String json_key_to_check;
@@ -123,12 +127,39 @@ public class HelpFunc {
     }
 
     /**
-     * A default short-cut call for cleanJsonConfig
+     * This function will search topics in connectorConfig. If the topics are array, convert it to string.
+     *
+     * @param jsonString
+     * @return cleaned json string
+     */
+    public static String convertTopicsFromArrayToString(String jsonString, String topicsKeyAliasString) {
+        JSONObject json = new JSONObject(jsonString.replaceAll("\\s+?/\\*.*?\\*/", ""));
+        if(json.has("connectorConfig")) {
+            for(String topicsKey : topicsKeyAliasString.split(",")) {
+                if(json.getJSONObject("connectorConfig").has(topicsKey)) {
+                    Object topicsObj = json.getJSONObject("connectorConfig").get(topicsKey);
+                    if(topicsObj instanceof JSONArray){ // if it is array, convert it to , separated string
+                        JSONArray topicsJsonArray = (JSONArray) topicsObj;
+                        json.getJSONObject("connectorConfig")
+                                .put(topicsKey, topicsJsonArray.join(",").replace("\"", ""));
+                    }
+                }
+            }
+        }
+        return json.toString();
+    }
+
+    /**
+     * A default short-cut call for clean raw json for connectConfig.
+     * List of cleaning functions will be called through this
      * @param JSON_STRING
      * @return cleaned json string
      */
     public static String cleanJsonConfig(String JSON_STRING) {
-        return cleanJsonConfig(JSON_STRING, "connectorConfig_", "config_ignored");
+        String cleanedJsonString;
+        cleanedJsonString = cleanJsonConfigIgnored(JSON_STRING, "connectorConfig_", "config_ignored");
+        cleanedJsonString = convertTopicsFromArrayToString(cleanedJsonString, ConstantApp.PK_DF_TOPICS_ALIAS);
+        return cleanedJsonString;
     }
 
     /**
@@ -176,7 +207,7 @@ public class HelpFunc {
                 .putHeader("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, X-Total-Count")
                 .putHeader("Access-Control-Expose-Headers", "X-Total-Count")
                 .putHeader("Access-Control-Max-Age", "60")
-                .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8);
+                .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET);
     }
 
     /**
@@ -196,5 +227,118 @@ public class HelpFunc {
 
     public static FindOptions getMongoSortFindOption(RoutingContext routingContext) {
         return getMongoSortFindOption(routingContext, "_sort", "_order");
+    }
+
+    /**
+     * Get Connector or Transform sub-task status from task array on specific status keys
+     * {
+     *  "name": "59852ad67985372a792eafce",
+     *  "connector": {
+     *  "state": "RUNNING",
+     *  "worker_id": "127.0.1.1:8083"
+     *  },
+     *  "tasks": [
+     *  {
+     *      "state": "RUNNING",
+     *      "id": 0,
+     *      "worker_id": "127.0.1.1:8083"
+     *  }
+     *  ]
+     * }
+     * @param taskStatus Responsed json object
+     * @return
+     */
+    public static String getTaskStatusKafka(JSONObject taskStatus) {
+
+        if(taskStatus.has("connector")) {
+            // Check sub-task status ony if the high level task is RUNNING
+            if(taskStatus.getJSONObject("connector").getString("state")
+                    .equalsIgnoreCase(ConstantApp.DF_STATUS.RUNNING.name()) &&
+                    taskStatus.has("tasks")) {
+                JSONArray subTask = taskStatus.getJSONArray("tasks");
+                String status = ConstantApp.DF_STATUS.RUNNING.name();
+                for (int i = 0; i < subTask.length(); i++) {
+                    if (!subTask.getJSONObject(i).getString("state")
+                            .equalsIgnoreCase(ConstantApp.DF_STATUS.RUNNING.name())) {
+                        status = ConstantApp.DF_STATUS.RWE.name();
+                        break;
+                    }
+                }
+                return status;
+            } else {
+                return taskStatus.getJSONObject("connector").getString("state");
+            }
+        } else {
+            return ConstantApp.DF_STATUS.NONE.name();
+        }
+    }
+
+    public static String getTaskStatusFlink(JSONObject taskStatus) {
+        if(taskStatus.has("state")) {
+            // Check sub-task status ony if the high level task is RUNNING
+            if(taskStatus.getString("state").equalsIgnoreCase(ConstantApp.DF_STATUS.RUNNING.name()) &&
+                    taskStatus.has("vertices")) {
+                JSONArray subTask = taskStatus.getJSONArray("vertices");
+                String status = ConstantApp.DF_STATUS.RUNNING.name();
+                for (int i = 0; i < subTask.length(); i++) {
+                    if (!subTask.getJSONObject(i).getString("status")
+                            .equalsIgnoreCase(ConstantApp.DF_STATUS.RUNNING.name())) {
+                        status = ConstantApp.DF_STATUS.RWE.name();
+                        break;
+                    }
+                }
+                return status;
+            } else {
+                return taskStatus.getString("state");
+            }
+        } else {
+            return ConstantApp.DF_STATUS.NONE.name();
+        }
+    }
+
+    /**
+     * Sort JsonArray when we do not use mongodb
+     * @param routingContext
+     * @param jsonArray
+     * @return
+     */
+    public static JSONArray sortJsonArray(RoutingContext routingContext, JSONArray jsonArray) {
+
+        String sortKey = HelpFunc.coalesce(routingContext.request().getParam("_sort"), "id");
+        String sortOrder = HelpFunc.coalesce(routingContext.request().getParam("_order"), "ASC");
+
+        JSONArray sortedJsonArray = new JSONArray();
+
+        List<JSONObject> jsonValues = new ArrayList<>();
+        for (int i = 0; i < jsonArray.length(); i++) {
+            jsonValues.add(jsonArray.getJSONObject(i));
+        }
+        Collections.sort( jsonValues, new Comparator<JSONObject>() {
+
+            @Override
+            public int compare(JSONObject a, JSONObject b) {
+                String valA = new String();
+                String valB = new String();
+
+                try {
+                    valA = a.get(sortKey).toString();
+                    valB = b.get(sortKey).toString();
+                }
+                catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
+                if(sortOrder.equalsIgnoreCase("ASC")) {
+                    return valA.compareTo(valB);
+                } else {
+                    return -valA.compareTo(valB);
+                }
+            }
+        });
+
+        for (int i = 0; i < jsonArray.length(); i++) {
+            sortedJsonArray.put(jsonValues.get(i));
+        }
+        return sortedJsonArray;
     }
 }

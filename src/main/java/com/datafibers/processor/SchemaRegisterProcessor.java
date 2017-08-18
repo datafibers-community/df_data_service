@@ -9,10 +9,9 @@ import io.vertx.core.WorkerExecutor;
 import io.vertx.ext.web.RoutingContext;
 import java.net.ConnectException;
 import java.util.Arrays;
-
-import org.apache.hadoop.fs.DF;
 import org.bson.types.ObjectId;
 import org.json.JSONException;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.apache.log4j.Logger;
 import com.datafibers.util.ConstantApp;
@@ -34,20 +33,17 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
      */
     public static void forwardGetAllSchemas(Vertx vertx, RoutingContext routingContext,
                                             String schema_registry_host_and_port) {
-        LOG.debug("SchemaRegisterProcessor.forwardGetAllSchemas is called ");
         StringBuffer returnString = new StringBuffer();
         WorkerExecutor executor = vertx.createSharedWorkerExecutor("forwardGetAllSchemas_pool_" + new ObjectId(),
                 ConstantApp.WORKER_POOL_SIZE, ConstantApp.MAX_RUNTIME);
         executor.executeBlocking(future -> {
-            // Call some blocking API that takes a significant amount of time to return
             String restURI = "http://" + schema_registry_host_and_port + "/subjects";
             int status_code = ConstantApp.STATUS_CODE_OK;
-
-            LOG.debug("Starting List All Subjects @" + restURI);
-
             try {
-                HttpResponse<String> res = Unirest.get(restURI)
-                        .header("accept", ConstantApp.AVRO_REGISTRY_CONTENT_TYPE).asString();
+                HttpResponse<String> res = Unirest
+                        .get(restURI)
+                        .header("accept", ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
+                        .asString();
 
                 if (res == null) {
                     status_code = ConstantApp.STATUS_CODE_BAD_REQUEST;
@@ -59,69 +55,58 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
                     LOG.debug("All subjects received are " + subjects);
                     StringBuffer strBuff = new StringBuffer();
                     int count = 0;
-
                     if (subjects.compareToIgnoreCase("[]") != 0) { // Has active subjects
                         for (String subject : subjects.substring(2, subjects.length() - 2).split("\",\"")) {
                             // {"subject":"Kafka-value","version":1,"id":1,"schema":"\"string\""}
                             HttpResponse<JsonNode> resSubject = Unirest
                                     .get(restURI + "/" + subject + "/versions/latest")
-                                    .header("accept", ConstantApp.APPLICATION_JSON_CHARSET_UTF_8).asJson();
-
+                                    .header("accept", ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                                    .asJson();
                             if (resSubject == null) {
                                 status_code = ConstantApp.STATUS_CODE_BAD_REQUEST;
                             } else if (resSubject.getStatus() != ConstantApp.STATUS_CODE_OK) {
                                 status_code = resSubject.getStatus();
                             } else {
-                                String schema = resSubject.getBody().toString();
-
+                                JSONObject jsonSchema = resSubject.getBody().getObject();
                                 String compatibility =
                                         getCompatibilityOfSubject(schema_registry_host_and_port, subject);
-                                LOG.debug("compatibility: " + compatibility);
-
-                                if (compatibility != null && !compatibility.isEmpty()) {
-                                    JSONObject jsonSchema = new JSONObject(schema);
-                                    jsonSchema.put(ConstantApp.COMPATIBILITY, compatibility);
-                                    schema = jsonSchema.toString();
-                                }
-
-                                LOG.debug("schema: " + schema);
-
-                                if (count == 0) {
+                                if (compatibility == null || compatibility.isEmpty())
+                                    compatibility = "NONE";
+                                jsonSchema.put(ConstantApp.COMPATIBILITY, compatibility);
+                                // Resample subject to id, id to schema id
+                                jsonSchema.put("schemaId", jsonSchema.get("id"));
+                                jsonSchema.put("id", subject);
+                                String schema = jsonSchema.toString();
+                                if (count == 0)
                                     strBuff.append("[");
-                                }
-
-                                count++;
+                                count ++;
                                 strBuff.append(schema).append(",");
                             }
                         }
-
-                        LOG.debug("strBuf.toString(): " + strBuff.toString() + ", count = " + count);
-
-                        if (count > 0) {
+                        if (count > 0)
                             returnString.append(strBuff.toString().substring(0, strBuff.toString().length() - 1) + "]");
-                        }
-
                         LOG.debug("returnString: " + returnString.toString());
-
                     }
                 }
             } catch (JSONException | UnirestException e) {
-                LOG.error("SchemaRegisterProcessor - forwardGetAllSchemas() - Exception message: " + e.getCause());
-                e.printStackTrace();
+                LOG.error(DFAPIMessage.logResponseMessage(9027, " exception -" + e.getCause()));
                 status_code = ConstantApp.STATUS_CODE_BAD_REQUEST;
             }
-
-            LOG.debug("status_code:" + status_code);
             future.complete(status_code);
         }, res -> {
             Object result = HelpFunc.coalesce(res.result(), ConstantApp.STATUS_CODE_BAD_REQUEST);
-            HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                    .setStatusCode(Integer.parseInt(result.toString()))
-                    .putHeader("X-Total-Count", "3" )
-                    .end(HelpFunc.stringToJsonFormat(returnString.toString()));
+            try {
+                HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                        .setStatusCode(Integer.parseInt(result.toString()))
+                        .putHeader("X-Total-Count", new JSONArray(returnString.toString()).length() + "")
+                        .end(HelpFunc.stringToJsonFormat(
+                                HelpFunc.sortJsonArray(routingContext,
+                                        new JSONArray(returnString.toString())).toString()));
+            } catch (JSONException je) {
+                LOG.error(DFAPIMessage.logResponseMessage(9027, " exception -" + je.getCause()));
+            }
             executor.close();
         });
-
     }
 
     /**
@@ -175,9 +160,8 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
             future.complete(status_code);
         }, res -> {
             Object result = HelpFunc.coalesce(res.result(), ConstantApp.STATUS_CODE_BAD_REQUEST);
-            routingContext.response().setStatusCode(Integer.parseInt(result.toString()))
-                    .putHeader("Access-Control-Allow-Origin", "*")
-                    .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                    .setStatusCode(Integer.parseInt(result.toString()))
                     .end(HelpFunc.stringToJsonFormat(returnString.toString()));
             executor.close();
         });
@@ -198,7 +182,15 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
 
         JSONObject jsonObj = new JSONObject(routingContext.getBodyAsString());
         schema = jsonObj.getJSONObject(ConstantApp.SCHEMA);
-        subject = jsonObj.getString(ConstantApp.SUBJECT);
+        // get subject from id and assign it to subject
+        subject = jsonObj.getString("id");
+        jsonObj.put(ConstantApp.SUBJECT, subject);
+        // Set schema name from subject if it does not has name or empty
+        if(!schema.has("name")) {
+            schema.put("name", subject);
+        } else if (schema.getString("name").isEmpty()) {
+            schema.put("name", subject);
+        }
         compatibility = jsonObj.optString(ConstantApp.COMPATIBILITY);
         LOG.debug("Schema|subject|compatibility: " + schema.toString() + "|" + subject + "|" + compatibility);
 
@@ -208,27 +200,32 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
         final RestClientRequest postRestClientRequest = rc_schema.post(restURI, String.class,
                 portRestResponse -> {
                     String rs = portRestResponse.getBody();
-
                     if (rs != null) {
                         LOG.info("Add schema status code " + portRestResponse.statusCode());
-                        routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_OK)
-                                .putHeader("Access-Control-Allow-Origin", "*")
-                                .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                                .end();
+                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                .end(DFAPIMessage.logResponseMessage(1025, "schema is created"));
                     }
                 }
         );
 
         postRestClientRequest.exceptionHandler(exception -> {
-            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                    .putHeader("Access-Control-Allow-Origin", "*")
-                    .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
-                    .end();
+            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                    .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                    .end(DFAPIMessage.getResponseMessage(9006));
+            LOG.error(DFAPIMessage.logResponseMessage(9006, exception.toString()));
+
+        });
+
+        rc_schema.exceptionHandler(exception -> {
+            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                    .end(DFAPIMessage.getResponseMessage(9028));
+            LOG.error(DFAPIMessage.logResponseMessage(9028, exception.getMessage()));
         });
 
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
-        postRestClientRequest.setAcceptHeader(Arrays.asList(DFMediaType.APPLICATION_SCHEMAREGISTRY_JSON));
-
+        postRestClientRequest.setAcceptHeader(Arrays.asList(DFMediaType.APPLICATION_SCHEMA_REGISTRY_JSON));
         JSONObject object = new JSONObject().put("schema", schema.toString());
         LOG.debug("Schema object.toString(): " + object.toString());
         postRestClientRequest.end(object.toString());
@@ -239,25 +236,32 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
             final RestClientRequest postRestClientRequest2 = rc_schema.put(restURI, portRestResponse -> {
                 LOG.info("Update Config Compatibility status code " + portRestResponse.statusCode());
                 if (routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_OK) {
-                    routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_OK)
-                            .putHeader("Access-Control-Allow-Origin", "*")
-                            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                            .end();
+                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                            .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                            .end(DFAPIMessage.logResponseMessage(1025,
+                                    "schema is created with proper compatibility "));
                 }
             });
 
             postRestClientRequest2.exceptionHandler(exception -> {
                 if (routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_CONFLICT
                         && routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_OK) {
-                    routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                            .putHeader("Access-Control-Allow-Origin", "*")
-                            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
-                            .end();
+                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                            .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                            .end(DFAPIMessage.getResponseMessage(9006));
+                    LOG.error(DFAPIMessage.logResponseMessage(9006, exception.toString()));
                 }
             });
 
+            rc_schema.exceptionHandler(exception -> {
+                HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                        .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                        .end(DFAPIMessage.getResponseMessage(9028));
+                LOG.error(DFAPIMessage.logResponseMessage(9028, exception.getMessage()));
+            });
+
             postRestClientRequest2.setContentType(MediaType.APPLICATION_JSON);
-            postRestClientRequest2.setAcceptHeader(Arrays.asList(DFMediaType.APPLICATION_SCHEMAREGISTRY_JSON));
+            postRestClientRequest2.setAcceptHeader(Arrays.asList(DFMediaType.APPLICATION_SCHEMA_REGISTRY_JSON));
             JSONObject jsonToBeSubmitted = new JSONObject().put(ConstantApp.COMPATIBILITY, compatibility);
             LOG.debug("Compatibility object2.toString(): " + jsonToBeSubmitted.toString());
             postRestClientRequest2.end(jsonToBeSubmitted.toString());
@@ -304,25 +308,29 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
                     String rs = portRestResponse.getBody();
                     if (rs != null) {
                         LOG.info("Update schema status code: " + portRestResponse.statusCode());
-                        routingContext
-                                .response().setStatusCode(ConstantApp.STATUS_CODE_OK)
-                                .putHeader("Access-Control-Allow-Origin", "*")
-                                .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                                .end();
+                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                .end(DFAPIMessage.getResponseMessage(1017));
                     }
                 }
         );
 
         postRestClientRequest.exceptionHandler(exception -> {
-            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                    .putHeader("Access-Control-Allow-Origin", "*")
-                    .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
-                    .end("Update one schema POST request exception - " + exception.toString());
+            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                    .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                    .end(DFAPIMessage.getResponseMessage(9023));
+            DFAPIMessage.logResponseMessage(9023, "UPDATE_SCHEMA_FAILED");
+        });
+
+        rc_schema.exceptionHandler(exception -> {
+            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                    .end(DFAPIMessage.getResponseMessage(9028));
+            LOG.error(DFAPIMessage.logResponseMessage(9028, exception.getMessage()));
         });
 
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
-        postRestClientRequest.setAcceptHeader(Arrays.asList(DFMediaType.APPLICATION_SCHEMAREGISTRY_JSON));
-
+        postRestClientRequest.setAcceptHeader(Arrays.asList(DFMediaType.APPLICATION_SCHEMA_REGISTRY_JSON));
         jsonForSubmit = new JSONObject().put("schema", schema1.toString());
         LOG.debug("Schema send to update is: " + jsonForSubmit.toString());
 
@@ -333,10 +341,9 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
             restURI = "http://" + schema_registry_host_and_port + "/config/" + subject;
             final RestClientRequest postRestClientRequest2 = rc_schema.put(restURI, portRestResponse -> {
                 if (routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_OK) {
-                    routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_OK)
-                            .putHeader("Access-Control-Allow-Origin", "*")
-                            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                            .end(portRestResponse.statusMessage());
+                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                            .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                            .end(DFAPIMessage.logResponseMessage(1017, "SCHEMA_UPDATE"));
                     LOG.info(DFAPIMessage.logResponseMessage(1017, "SCHEMA_UPDATE"));
                 }
             });
@@ -344,17 +351,22 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
             postRestClientRequest2.exceptionHandler(exception -> {
                 if (routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_CONFLICT
                         && routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_OK) {
-                    routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                            .putHeader("Access-Control-Allow-Origin", "*")
-                            .putHeader(ConstantApp.CONTENT_TYPE, "application/vnd.schemaregistry.v1+json")
-                            .end("Update one schema - compatibility POST request exception - "
-                                    + exception.toString());
+                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                            .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                            .end(DFAPIMessage.getResponseMessage(9023));
                     LOG.error(DFAPIMessage.logResponseMessage(9023, "SCHEMA_UPDATE"));
                 }
             });
 
+            rc_schema.exceptionHandler(exception -> {
+                HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                        .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                        .end(DFAPIMessage.getResponseMessage(9028));
+                LOG.error(DFAPIMessage.logResponseMessage(9028, exception.getMessage()));
+            });
+
             postRestClientRequest2.setContentType(MediaType.APPLICATION_JSON);
-            postRestClientRequest2.setAcceptHeader(Arrays.asList(DFMediaType.APPLICATION_SCHEMAREGISTRY_JSON));
+            postRestClientRequest2.setAcceptHeader(Arrays.asList(DFMediaType.APPLICATION_SCHEMA_REGISTRY_JSON));
 
             JSONObject jsonToBeSubmitted = new JSONObject().put(ConstantApp.COMPATIBILITY, compatibility);
             postRestClientRequest2.end(jsonToBeSubmitted.toString());

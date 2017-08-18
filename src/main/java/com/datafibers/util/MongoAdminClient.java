@@ -6,6 +6,8 @@ import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.MongoIterable;
 import static com.mongodb.client.model.Filters.eq;
+import static com.mongodb.client.model.Filters.exists;
+import static com.mongodb.client.model.Filters.gte;
 
 import io.vertx.core.json.JsonObject;
 import org.bson.Document;
@@ -37,7 +39,7 @@ public class MongoAdminClient {
 
     public MongoAdminClient truncateCollection(String colName) {
         if(collectionExists(colName))
-        this.database.getCollection(colName).deleteMany(new Document());
+        this.database.getCollection(colName).deleteMany(exists("_id")); //TODO consider to add date filter
         return this;
     }
 
@@ -79,5 +81,9 @@ public class MongoAdminClient {
     public String findConnectorClassName(String connectorType) {
         String connectorClass = this.collection.find(eq("connectorType", connectorType)).first().toJson();
         return new JsonObject(connectorClass).getString("class");
+    }
+
+    public void close() {
+        this.mongoClient.close();
     }
 }

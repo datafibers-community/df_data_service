@@ -28,7 +28,7 @@ customHeaderTemplate =
     var connect = nga.entity('ps').label('CONNECTS');
 	var transform = nga.entity('tr').label('TRANSFORMS');
 	var schema = nga.entity('schema').identifier(nga.field('subject')).label('TOPICS');
-    var installed_connects = nga.entity('installed_connects').identifier(nga.field('class')).label('INSTALLED').readOnly();
+    var installed_connects = nga.entity('config').identifier(nga.field('class')).label('INSTALLED').readOnly();
     var process_history = nga.entity('hist').identifier(nga.field('uid')).label('HISTORY').readOnly();
 
     // set the fields of the connect entity list view
@@ -97,7 +97,6 @@ customHeaderTemplate =
         "file.location" : "/home/vagrant/df_data/ /* Folder where to read the files. */",
         "file.glob" : "*.{json,csv} /* File glob to filter file */",
         "file.overwrite" : "true /* Whether over-written file will re-extract */",
-        "schema.subject" : "test-value /* The subject name in schema registry */",
         "schema.registry.uri" : "http://localhost:8081",
         "tasks.max" : "1 /* Number of tasks in parallel. */",
         "topic" : "stock /* The single Kafka topic name having data streamed. */"
@@ -171,8 +170,6 @@ customHeaderTemplate =
         "group.id" : "fink_table /* Kafka consumer id. */",
         "topic.in" : "stock /* The Kafka topic to query data */",
         "topic.out" : "output /* The Kafka topic to output data */",
-        "schema.subject.in" : "stock-value /* The schema subject name for the topic input */",
-        "schema.subject.out" : "output-value /* The schema subject name for the topic output */",
         "trans.script" : "select(\"name\") /* The Flink Stream Table API */"
         })
         .template('<ma-field ng-if="entry.values.connectorType == \'TRANSFORM_FLINK_SCRIPT\'" field="::field" value="entry.values[field.name()]" entry="entry" entity="::entity" form="formController.form" datastore="::formController.dataStore"></ma-field>', true),
@@ -182,8 +179,6 @@ customHeaderTemplate =
         "group.id" : "fink_sql /* Kafka consumer id. */",
         "topic.in" : "stock /* The Kafka topic to query data */",
         "topic.out" : "output /* The Kafka topic to output data */",
-        "schema.subject.in" : "stock-value /* The schema subject name for the topic input */",
-        "schema.subject.out" : "output-value /* The schema subject name for the topic output */",
         "sink.key.fields":"name /* List of commas separated columns for keys in sink */",
         "trans.sql" : "SELECT name, symbol from stock /* The Flink Stream SQL query.*/"
         })
@@ -208,8 +203,7 @@ customHeaderTemplate =
     ]);
 
     schema.creationView().fields([
-        nga.field('id', 'number').format('0o').label('Topic ID'),
-        nga.field('subject').label('Topic Name'),
+        nga.field('id').label('Topic Name'),
         nga.field('version').label('Topic Schema Version'),
         nga.field('schema', 'json').label('Topic Schema'),
         nga.field('compatibility', 'choice').choices([

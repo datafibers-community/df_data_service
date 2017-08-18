@@ -7,6 +7,8 @@ import com.hubrick.vertx.rest.RestClient;
 import com.hubrick.vertx.rest.RestClientRequest;
 import io.vertx.core.Vertx;
 import io.vertx.core.WorkerExecutor;
+import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.RoutingContext;
@@ -26,6 +28,7 @@ import com.datafibers.flinknext.DFRemoteStreamEnvironment;
 import com.datafibers.flinknext.Kafka09AvroTableSink;
 import com.datafibers.flinknext.Kafka09AvroTableSource;
 import com.datafibers.model.DFJobPOPJ;
+import org.json.JSONObject;
 
 public class FlinkTransformProcessor {
     private static final Logger LOG = Logger.getLogger(FlinkTransformProcessor.class);
@@ -150,7 +153,8 @@ public class FlinkTransformProcessor {
                 We need distinguish this by checking if the task is removed from repo. If removed, it is not exception
                 Or else, it is true exception.
                  */
-                LOG.error(DFAPIMessage.logResponseMessage(9010, dfJob.getId()));
+                LOG.error(DFAPIMessage.logResponseMessage(9010, "jobId = " + dfJob.getId() +
+                "exception - " + e.getCause()));
                 // e.printStackTrace();
             }
 
@@ -197,8 +201,8 @@ public class FlinkTransformProcessor {
                         if (portRestResponse.statusCode() == ConstantApp.STATUS_CODE_OK) {
                             // Once REST API forward is successful, delete the record to the local repository
                             mongoClient.removeDocument(mongoCOLLECTION, new JsonObject().put("_id", id),
-                                    ar -> routingContext
-                                            .response()
+                                    ar -> HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                            .setStatusCode(ConstantApp.STATUS_CODE_OK)
                                             .end(DFAPIMessage.getResponseMessage(1002, id)));
                             LOG.info(DFAPIMessage.logResponseMessage(1002, "CANCEL_FLINK_JOB " + id));
                         } else {
@@ -207,13 +211,19 @@ public class FlinkTransformProcessor {
                     });
 
             postRestClientRequest.exceptionHandler(exception -> {
-
                 // Still delete once exception happens
                 mongoClient.removeDocument(mongoCOLLECTION, new JsonObject().put("_id", id),
                         ar -> HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                                .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                                .setStatusCode(ConstantApp.STATUS_CODE_OK)
                                 .end(DFAPIMessage.getResponseMessage(9007)));
                 LOG.info(DFAPIMessage.logResponseMessage(9012, id));
+            });
+
+            restClient.exceptionHandler(exception -> {
+                HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                        .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                        .end(DFAPIMessage.getResponseMessage(9028));
+                LOG.error(DFAPIMessage.logResponseMessage(9028, exception.getMessage()));
             });
 
             postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
@@ -259,7 +269,8 @@ public class FlinkTransformProcessor {
                 // The update syntax: {$set, the json object containing the fields to update}
                 new JsonObject().put("$set", dfJob.toJson()), v -> {
                     if (v.failed()) {
-                        routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
+                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
                                 .end(DFAPIMessage.getResponseMessage(9003));
                         LOG.error(DFAPIMessage.logResponseMessage(9003, id));
                     } else {
@@ -294,5 +305,68 @@ public class FlinkTransformProcessor {
         } catch (Exception e) {
             LOG.error(DFAPIMessage.logResponseMessage(9013, "jarFile-" + jarFile));
         }
+    }
+
+    /**
+     * This method first decode the REST GET request to DFJobPOPJ object. Then, it updates its job status and repack
+     * for Kafka REST GET. After that, it forward the new GET to Flink API.
+     * Once REST API forward is successful, response.
+     *
+     * @param routingContext This is the contect from REST API
+     * @param restClient This is vertx non-blocking rest client used for forwarding
+     * @param taskId This is the id used to look up status
+     */
+    public static void forwardGetAsGetOne(RoutingContext routingContext, RestClient restClient, String taskId, String jobId) {
+        // Create REST Client for Kafka Connect REST Forward
+        final RestClientRequest postRestClientRequest =
+                restClient.get(ConstantApp.FLINK_REST_URL + "/" + jobId, String.class,
+                        portRestResponse -> {
+                            JsonObject jo = new JsonObject(portRestResponse.getBody());
+                            JsonArray subTaskArray = jo.getJsonArray("vertices");
+                            for (int i = 0; i < subTaskArray.size(); i++) {
+                                subTaskArray.getJsonObject(i)
+                                        .put("subTaskId", subTaskArray.getJsonObject(i).getString("id"))
+                                        .put("id", taskId + "_" + subTaskArray.getJsonObject(i).getString("id"))
+                                        .put("jobId", jo.getString("jid"))
+                                        .put("dfTaskState", HelpFunc.getTaskStatusKafka(new JSONObject(jo.toString())))
+                                        .put("taskState", jo.getString("state"));
+                            }
+                            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                    .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                    .putHeader("X-Total-Count", subTaskArray.size() + "" )
+                                    .end(Json.encodePrettily(subTaskArray.getList()));
+                            LOG.info(DFAPIMessage.logResponseMessage(1024, taskId));
+                        });
+
+        // Return a lost status when there is exception
+        postRestClientRequest.exceptionHandler(exception -> {
+            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                    .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                    //.setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                    .end(Json.encodePrettily(new JsonObject()
+                            .put("id", taskId)
+                            .put("jobId", jobId)
+                            .put("state", ConstantApp.DF_STATUS.LOST.name())
+                            .put("jobState", ConstantApp.DF_STATUS.LOST.name())
+                            .put("subTask", new JsonArray().add("NULL"))));
+            LOG.error(DFAPIMessage.logResponseMessage(9006, taskId));
+        });
+
+        restClient.exceptionHandler(exception -> {
+            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                    .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                    //.setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                    .end(Json.encodePrettily(new JsonObject()
+                            .put("id", taskId)
+                            .put("jobId", jobId)
+                            .put("state", ConstantApp.DF_STATUS.LOST.name())
+                            .put("jobState", ConstantApp.DF_STATUS.LOST.name())
+                            .put("subTask", new JsonArray().add("NULL"))));
+            LOG.error(DFAPIMessage.logResponseMessage(9028, taskId));
+        });
+
+        postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
+        postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
+        postRestClientRequest.end();
     }
 }

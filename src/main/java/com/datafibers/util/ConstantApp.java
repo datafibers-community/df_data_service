@@ -16,10 +16,16 @@ public final class ConstantApp {
 
     // DF REST endpoint URLs for all processors, connects and transforms
     public static final String DF_PROCESSOR_REST_URL = "/api/df/processor";
+    public static final String DF_PROCESSOR_REST_URL_WILD = "/api/df/processor*";
+    public static final String DF_PROCESSOR_REST_URL_WITH_ID = DF_PROCESSOR_REST_URL + "/:id";
+
+    // DF REST endpoint URLs for all processors installed information and default config
+    public static final String DF_PROCESSOR_CONFIG_REST_URL = "/api/df/config";
+    public static final String DF_PROCESSOR_CONFIG_REST_URL_WILD = "/api/df/config*";
+    public static final String DF_PROCESSOR_CONFIG_REST_URL_WITH_ID = DF_PROCESSOR_CONFIG_REST_URL + "/:id";
 
     // DF Connects REST endpoint URLs
     public static final String DF_CONNECTS_REST_URL = "/api/df/ps";
-    public static final String DF_CONNECTS_INSTALLED_CONNECTS_REST_URL = "/api/df/installed_connects";
     public static final String DF_CONNECTS_REST_URL_WILD = "/api/df/ps*";
     public static final String DF_CONNECTS_REST_URL_WITH_ID = DF_CONNECTS_REST_URL + "/:id";
 
@@ -30,7 +36,6 @@ public final class ConstantApp {
 
     // DF Transforms REST endpoint URLs
     public static final String DF_TRANSFORMS_REST_URL = "/api/df/tr";
-    public static final String DF_TRANSFORMS_INSTALLED_TRANSFORMS_REST_URL = "/api/df/installed_transforms";
     public static final String DF_TRANSFORMS_REST_URL_WILD = "/api/df/tr*";
     public static final String DF_TRANSFORMS_REST_URL_WITH_ID = DF_TRANSFORMS_REST_URL + "/:id";
     public static final String DF_TRANSFORMS_UPLOAD_FILE_REST_URL_WILD = "/api/df/uploaded_files*";
@@ -46,15 +51,15 @@ public final class ConstantApp {
     public static final String DF_PROCESS_HIST_REST_URL = "/api/df/hist";
     public static final String DF_PROCESS_HIST_URL_WILD = "/api/df/hist*";
 
-    // DF default configuration endpoint URLs
-    public static final String DF_PROCESS_DEFAULT_CONFIG_REST_URL = "/api/df/default_config";
-    public static final String DF_PROCESS_DEFAULT_CONFIG_URL_WILD = "/api/df/default_config*";
-    public static final String DF_PROCESS_DEFAULT_CONFIG_REST_URL_WITH_ID = DF_PROCESS_DEFAULT_CONFIG_REST_URL + "/:id";
-
     // DF log endpoint URLs
     public static final String DF_LOGGING_REST_URL = "/api/df/logs";
     public static final String DF_LOGGING_REST_URL_WILD = "/api/df/logs*";
     public static final String DF_LOGGING_REST_URL_WITH_ID = DF_LOGGING_REST_URL + "/:id";
+
+    // DF task status endpoint URLs
+    public static final String DF_TASK_STATUS_REST_URL = "/api/df/status";
+    public static final String DF_TASK_STATUS_REST_URL_WILD = "/api/df/status*";
+    public static final String DF_TASK_STATUS_REST_URL_WITH_ID = DF_TASK_STATUS_REST_URL + "/:id";
 
     // Kafka Connect endpoint URLs
     public static final String KAFKA_CONNECT_REST_URL = "/connectors";
@@ -69,9 +74,9 @@ public final class ConstantApp {
     public static final String FLINK_DUMMY_JOB_ID = "00000000000000000000000000000000";
 
     // HTTP req/res constants
-    public static final String CONTENT_TYPE = "content-type";
-    public static final String APPLICATION_JSON_CHARSET_UTF_8 = "application/json; charset=utf-8";
-    public static final String TEXT_HTML = "text/html";
+    public static final String HTTP_HEADER_CONTENT_TYPE = "content-type";
+    public static final String HTTP_HEADER_APPLICATION_JSON_CHARSET = "application/json; charset=utf-8";
+    public static final String HTTP_HEADER_TOTAL_COUNT = "X-Total-Count";
 
     // HTTP status codes
     public static final int STATUS_CODE_OK = 200;
@@ -91,7 +96,9 @@ public final class ConstantApp {
         PAUSED,             // The Kafka connector/task has been administratively paused.
         FAILED,             // The Kafka connector/task has failed.
         LOST,               // The Kafka connect restart and lost the connector job in DF repository.
-        CANCELED,
+        CANCELED,           // Job (Flink) is canceled
+        RWE,                // Connector/Transform is running with one of task is failed - RUNNING_WITH_ERROR
+        FINISHED,
         NONE
     }
 
@@ -149,6 +156,7 @@ public final class ConstantApp {
     public static final String PK_KAFKA_CONSUMER_GROURP = "group.id";
     public static final String PK_KAFKA_SCHEMA_REGISTRY_HOST_PORT = "schema.registry";
     public static final String PK_KAFKA_CONNECTOR_CLASS = "connector.class";
+    public static final String PK_DF_TOPICS_ALIAS = "topics,topic.in";
     public static final String PK_FLINK_TABLE_SINK_KEYS = "sink.key.fields";
 
     public static final String PK_KAFKA_TOPIC_INPUT = "topic.in";

@@ -1,5 +1,6 @@
 package com.datafibers.service;
 
+import com.datafibers.model.DFLogPOPJ;
 import com.datafibers.processor.SchemaRegisterProcessor;
 import com.datafibers.util.DFAPIMessage;
 import com.datafibers.util.MongoAdminClient;
@@ -26,8 +27,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import org.apache.log4j.Level;
 import org.bson.types.ObjectId;
-import org.json.JSONArray;
 import org.json.JSONObject;
 import org.apache.log4j.Logger;
 import com.datafibers.flinknext.DFRemoteStreamEnvironment;
@@ -52,6 +54,8 @@ import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
 import org.log4mongo.MongoDbAppender;
+import org.log4mongo.MongoDbPatternLayout;
+import scala.collection.immutable.Stream;
 
 /**
  * DF Producer is used to route producer service to kafka connect rest or lunch locally.
@@ -101,6 +105,8 @@ public class DFDataProcessor extends AbstractVerticle {
 
     @Override
     public void start(Future<Void> fut) {
+        // Turn off
+        // Logger.getLogger("io.vertx.core.impl.BlockedThreadChecker").setLevel(Level.OFF);
 
         /**
          * Get all application configurations
@@ -148,7 +154,7 @@ public class DFDataProcessor extends AbstractVerticle {
 
         // Cleanup Log in mongodb
         if (config().getBoolean("db.log.cleanup.on.start", Boolean.TRUE))
-            new MongoAdminClient(repo_hostname, repo_port, repo_db).truncateCollection(COLLECTION_LOG);
+            new MongoAdminClient(repo_hostname, repo_port, repo_db).truncateCollection(COLLECTION_LOG).close();
 
         // Set dynamic logging to MongoDB
         MongoDbAppender mongoAppender = new MongoDbAppender();
@@ -159,20 +165,18 @@ public class DFDataProcessor extends AbstractVerticle {
         mongoAppender.activateOptions();
         Logger.getRootLogger().addAppender(mongoAppender);
 
+        // Common rest client properties
+        final List<HttpMessageConverter> httpMessageConverters = ImmutableList.of(
+                new FormHttpMessageConverter(),
+                new StringHttpMessageConverter(),
+                new JacksonJsonHttpMessageConverter(new ObjectMapper())
+        );
 
-
-            // Common rest client properties
-            final List<HttpMessageConverter> httpMessageConverters = ImmutableList.of(
-                    new FormHttpMessageConverter(),
-                    new StringHttpMessageConverter(),
-                    new JacksonJsonHttpMessageConverter(new ObjectMapper())
-            );
-
-            final RestClientOptions restClientOptions = new RestClientOptions()
-                    .setConnectTimeout(ConstantApp.REST_CLIENT_CONNECT_TIMEOUT)
-                    .setGlobalRequestTimeout(ConstantApp.REST_CLIENT_GLOBAL_REQUEST_TIMEOUT)
-                    .setKeepAlive(ConstantApp.REST_CLIENT_KEEP_LIVE)
-                    .setMaxPoolSize(ConstantApp.REST_CLIENT_MAX_POOL_SIZE);
+        final RestClientOptions restClientOptions = new RestClientOptions()
+                .setConnectTimeout(ConstantApp.REST_CLIENT_CONNECT_TIMEOUT)
+                .setGlobalRequestTimeout(ConstantApp.REST_CLIENT_GLOBAL_REQUEST_TIMEOUT)
+                .setKeepAlive(ConstantApp.REST_CLIENT_KEEP_LIVE)
+                .setMaxPoolSize(ConstantApp.REST_CLIENT_MAX_POOL_SIZE);
 
         // Non-blocking Vertx Rest API Client to talk to Kafka Connect when needed
         if (this.kafka_connect_enabled) {
@@ -209,9 +213,6 @@ public class DFDataProcessor extends AbstractVerticle {
             }
         }
 
-        /**
-         * Create all application client
-         **/
         // Import from remote server. It is blocking at this point.
         if (this.kafka_connect_enabled && this.kafka_connect_import_start) {
             importAllFromKafkaConnect();
@@ -219,15 +220,14 @@ public class DFDataProcessor extends AbstractVerticle {
             startMetadataSink();
         }
 
-        // Start Core application
-        startWebApp((http) -> completeStartup(http, fut));
-
         // Regular update Kafka connects/Flink transform status
         vertx.setPeriodic(ConstantApp.REGULAR_REFRESH_STATUS_TO_REPO, id -> {
             if(this.kafka_connect_enabled) updateKafkaConnectorStatus();
             if(this.transform_engine_flink_enabled) updateFlinkJobStatus();
         });
 
+        // Start Core application
+        startWebApp((http) -> completeStartup(http, fut));
         LOG.info("********* DataFibers Services is started :) *********");
     }
 
@@ -237,8 +237,11 @@ public class DFDataProcessor extends AbstractVerticle {
         Router router = Router.router(vertx);
 
         // Job including both Connects and Transforms Rest API definition
+        router.options(ConstantApp.DF_PROCESSOR_REST_URL_WITH_ID).handler(this::corsHandle);
         router.options(ConstantApp.DF_PROCESSOR_REST_URL).handler(this::corsHandle);
         router.get(ConstantApp.DF_PROCESSOR_REST_URL).handler(this::getAllProcessor);
+        router.get(ConstantApp.DF_PROCESSOR_REST_URL_WITH_ID).handler(this::getOne);
+        router.route(ConstantApp.DF_PROCESSOR_REST_URL_WILD).handler(BodyHandler.create());
 
         // Connects Rest API definition
         router.options(ConstantApp.DF_CONNECTS_REST_URL_WITH_ID).handler(this::corsHandle);
@@ -279,10 +282,22 @@ public class DFDataProcessor extends AbstractVerticle {
         // Logging Rest API definition
         router.options(ConstantApp.DF_LOGGING_REST_URL_WITH_ID).handler(this::corsHandle);
         router.options(ConstantApp.DF_LOGGING_REST_URL).handler(this::corsHandle);
-        router.get(ConstantApp.DF_LOGGING_REST_URL_WITH_ID).handler(this::getAllLogs);
+        router.get(ConstantApp.DF_LOGGING_REST_URL).handler(this::getAllLogs);
+        router.get(ConstantApp.DF_LOGGING_REST_URL_WITH_ID).handler(this::getOneLogs);
+        router.route(ConstantApp.DF_LOGGING_REST_URL_WILD).handler(BodyHandler.create());
+
+        // Status Rest API definition
+        router.options(ConstantApp.DF_TASK_STATUS_REST_URL_WITH_ID).handler(this::corsHandle);
+        router.options(ConstantApp.DF_TASK_STATUS_REST_URL).handler(this::corsHandle);
+        router.get(ConstantApp.DF_TASK_STATUS_REST_URL_WITH_ID).handler(this::getOneStatus);
+        router.get(ConstantApp.DF_TASK_STATUS_REST_URL_WILD).handler(this::getOneStatus);
 
         // Get all installed connect or transform
-        router.get(ConstantApp.DF_CONNECTS_INSTALLED_CONNECTS_REST_URL).handler(this::getAllInstalledConnects);
+        router.options(ConstantApp.DF_PROCESSOR_CONFIG_REST_URL_WITH_ID).handler(this::corsHandle);
+        router.options(ConstantApp.DF_PROCESSOR_CONFIG_REST_URL).handler(this::corsHandle);
+        router.get(ConstantApp.DF_PROCESSOR_CONFIG_REST_URL).handler(this::getAllProcessorConfigs);
+        router.get(ConstantApp.DF_PROCESSOR_CONFIG_REST_URL_WITH_ID).handler(this::getOneProcessorConfig);
+        router.route(ConstantApp.DF_PROCESSOR_CONFIG_REST_URL_WILD).handler(BodyHandler.create());
 
         // Process History
         router.options(ConstantApp.DF_PROCESS_HIST_REST_URL).handler(this::corsHandle);
@@ -304,8 +319,10 @@ public class DFDataProcessor extends AbstractVerticle {
     @Override
     public void stop() throws Exception {
         this.mongo.close();
+        this.mongoDFInstalled.close();
         this.rc.close();
         this.rc_schema.close();
+        this.rc_flink.close();
     }
 
     /**
@@ -538,107 +555,19 @@ public class DFDataProcessor extends AbstractVerticle {
     }
 
     /**
-     * Get all DF connects
-     *
+     * List all configurations for Connect or Transforms
      * @param routingContext
      *
-     * @api {get} /ps 1.List all logging information for specific df task
+     * @api {get} /config 4.List processor lib
      * @apiVersion 0.1.1
-     * @apiName getAllLogs
+     * @apiName getAllProcessorConfigs
      * @apiGroup All
      * @apiPermission none
-     * @apiDescription This is where we get data for all log information.
-     * @apiSuccess	{JsonObject[]}	logs    List of all log information.
-     *
-     * @apiSuccessExample {json} Success-Response:
-     *     HTTP/1.1 200 OK
-     *     [ {
-     *          "_id" : ObjectId("59827ca37985374c290c0bfd"),
-     *          "timestamp" : ISODate("2017-08-03T01:30:11.720Z"),
-     *          "level" : "INFO",
-     *          "thread" : "vert.x-eventloop-thread-0",
-     *          "message" : "{\"code\":\"1015\",\"message\":\"INFO - IMPORT_ACTIVE_CONNECTS_STARTED_AT_STARTUP\",\"comments\":\"CONNECT_IMPORT\"}",
-     *          "loggerName" : {
-     *          "fullyQualifiedClassName" : "com.datafibers.service.DFDataProcessor",
-     *          "package" : [
-     *          "com",
-     *          "datafibers",
-     *          "service",
-     *          "DFDataProcessor"
-     *          ],
-     *          "className" : "DFDataProcessor"
-     *          },
-     *          "fileName" : "DFDataProcessor.java",
-     *          "method" : "importAllFromKafkaConnect",
-     *          "lineNumber" : "1279",
-     *          "class" : {
-     *          "fullyQualifiedClassName" : "com.datafibers.service.DFDataProcessor",
-     *          "package" : [
-     *          "com",
-     *          "datafibers",
-     *          "service",
-     *          "DFDataProcessor"
-     *          ],
-     *          "className" : "DFDataProcessor"
-     *          },
-     *          "host" : {
-     *          "process" : "19497@vagrant",
-     *          "name" : "vagrant",
-     *          "ip" : "127.0.1.1"
-     *          }
-     *          }
-     *     ]
-     * @apiSampleRequest http://localhost:8080/api/logs/:id
+     * @apiDescription This is where get list of configured or installed connect/transform jar or libraries.
+     * @apiSuccess	{JsonObject[]}	config    List of processors' configuration.
+     * @apiSampleRequest http://localhost:8080/api/df/config
      */
-    private void getAllLogs(RoutingContext routingContext) {
-
-        final String id = routingContext.request().getParam("id");
-        if (id == null) {
-            routingContext.response()
-                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
-                    .end(DFAPIMessage.getResponseMessage(9000));
-            LOG.error(DFAPIMessage.getResponseMessage(9000, id));
-        } else {
-            JsonObject searchCondition = new JsonObject().put("message", new JsonObject().put("$regex", id));
-            mongo.findWithOptions(COLLECTION_LOG, searchCondition, HelpFunc.getMongoSortFindOption(routingContext),
-                    results -> {
-                        List<JsonObject> jobs = results.result();
-                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                                .putHeader("X-Total-Count", jobs.size() + "" )
-                                .end(Json.encodePrettily(jobs));
-                    }
-            );
-        }
-
-    }
-
-    /**
-     * List all installed Connects
-     * @param routingContext
-     *
-     * @api {get} /installed_connects 2.List installed connect lib
-     * @apiVersion 0.1.1
-     * @apiName getAllInstalledConnects
-     * @apiGroup Connect
-     * @apiPermission none
-     * @apiDescription This is where get list of launched or installed connect jar or libraries.
-     * @apiSuccess	{JsonObject[]}	connects    List of connects installed and launched by DataFibers.
-     * @apiSampleRequest http://localhost:8080/api/df/installed_connects
-     */
-    /**
-     * List all installed Transforms
-     * @param routingContext
-     *
-     * @api {get} /installed_transforms 2.List installed transform lib
-     * @apiVersion 0.1.1
-     * @apiName getAllInstalledTransforms
-     * @apiGroup Transform
-     * @apiPermission none
-     * @apiDescription This is where get list of launched or installed transform jar or libraries.
-     * @apiSuccess	{JsonObject[]}	transforms    List of transforms installed and launched by DataFibers.
-     * @apiSampleRequest http://localhost:8080/api/df/installed_transforms
-     */
-    private void getAllInstalledConnects(RoutingContext routingContext) {
+    private void getAllProcessorConfigs(RoutingContext routingContext) {
 
         // TODO get all installed transforms as well
         final RestClientRequest postRestClientRequest =
@@ -744,9 +673,9 @@ public class DFDataProcessor extends AbstractVerticle {
         mongo.runCommand("aggregate", command, res -> {
             if (res.succeeded()) {
                 JsonArray resArr = res.result().getJsonArray("result");
-                routingContext.response()
-                        .putHeader("Access-Control-Allow-Origin", "*")
-                        .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+                HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                        .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                        .putHeader(ConstantApp.HTTP_HEADER_TOTAL_COUNT, resArr.size() + "")
                         .end(Json.encodePrettily(resArr));
             } else {
                 res.cause().printStackTrace();
@@ -756,10 +685,49 @@ public class DFDataProcessor extends AbstractVerticle {
     }
 
     /**
+     * Get all logging information from df repo
+     * @param routingContext
+     *
+     * @api {get} /logs 3.List all df logs in the current run
+     * @apiVersion 0.1.1
+     * @apiName getAllLogs
+     * @apiGroup All
+     * @apiPermission none
+     * @apiDescription This is where get df logs.
+     * @apiSuccess	{JsonObject[]}	logs    List of processed logs.
+     * @apiSampleRequest http://localhost:8080/api/df/logs
+     */
+    private void getAllLogs(RoutingContext routingContext) {
+
+        JsonObject searchCondition;
+
+        String searchKeywords = routingContext.request().getParam("q");
+        if(searchKeywords == null || searchKeywords.isEmpty()) {
+            searchCondition = new JsonObject().put("level", new JsonObject().put("$ne", "DEBUG"));
+        } else {
+            searchCondition = new JsonObject().put("$and",
+                    new JsonArray()
+                            .add(new JsonObject().put("$where", "JSON.stringify(this).indexOf('" + searchKeywords + "') != -1"))
+                            .add(new JsonObject().put("level", new JsonObject().put("$ne", "DEBUG")))
+            );
+        }
+
+
+        mongo.findWithOptions(COLLECTION_LOG, searchCondition, HelpFunc.getMongoSortFindOption(routingContext),
+                results -> {
+                    List<JsonObject> objects = results.result();
+                    List<DFLogPOPJ> jobs = objects.stream().map(DFLogPOPJ::new).collect(Collectors.toList());
+                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                            .putHeader("X-Total-Count", jobs.size() + "" )
+                            .end(Json.encodePrettily(jobs));
+                });
+    }
+
+    /**
      * Generic getOne method for REST API End Point.
      * @param routingContext
      *
-     * @api {get} /ps/:id    3.Get a connect task
+     * @api {get} /ps/:id    3. Get a connect task
      * @apiVersion 0.1.1
      * @apiName getOne
      * @apiGroup Connect
@@ -786,7 +754,7 @@ public class DFDataProcessor extends AbstractVerticle {
             routingContext.response()
                     .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
                     .end(DFAPIMessage.getResponseMessage(9000));
-            LOG.error(DFAPIMessage.getResponseMessage(9000, id));
+            LOG.error(DFAPIMessage.getResponseMessage(9000, "id=null"));
         } else {
             mongo.findOne(COLLECTION, new JsonObject().put("_id", id), null, ar -> {
                 if (ar.succeeded()) {
@@ -814,6 +782,49 @@ public class DFDataProcessor extends AbstractVerticle {
     }
 
     /**
+     * @api {get} /config/:id    5. Get a config info.
+     * @apiVersion 0.1.1
+     * @apiName getOneProcessorConfig
+     * @apiGroup All
+     * @apiPermission none
+     * @apiDescription This is where we get config for one specific processor type.
+     * @apiParam {String}   id      config Id (aka. connectorType).
+     * @apiSuccess	{JsonObject[]}	all    One processor config.
+     * @apiSampleRequest http://localhost:8080/api/df/config/:id
+     */
+    private void getOneProcessorConfig(RoutingContext routingContext) {
+        final String id = routingContext.request().getParam("id");
+        if (id == null) {
+            routingContext.response()
+                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                    .end(DFAPIMessage.getResponseMessage(9000));
+            LOG.error(DFAPIMessage.getResponseMessage(9000, "id=null"));
+        } else {
+            mongo.findOne(COLLECTION_INSTALLED, new JsonObject().put("connectorType", id), null, ar -> {
+                if (ar.succeeded()) {
+                    if (ar.result() == null) {
+                        routingContext.response()
+                                .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
+                                .end(DFAPIMessage.getResponseMessage(9001));
+                        LOG.error(DFAPIMessage.logResponseMessage(9001, id));
+                        return;
+                    }
+                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                            .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                            .end(Json.encodePrettily(ar.result()));
+                    LOG.info(DFAPIMessage.logResponseMessage(1003, id));
+
+                } else {
+                    routingContext.response()
+                            .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
+                            .end(DFAPIMessage.getResponseMessage(9002));
+                    LOG.error(DFAPIMessage.logResponseMessage(9002, id));
+                }
+            });
+        }
+    }
+
+    /**
      * Get one schema with schema subject specified
      * 1) Retrieve a specific subject latest information:
      * curl -X GET -i http://localhost:8081/subjects/Kafka-value/versions/latest
@@ -821,7 +832,7 @@ public class DFDataProcessor extends AbstractVerticle {
      * 2) Retrieve a specific subject compatibility:
      * curl -X GET -i http://localhost:8081/config/finance-value
      *
-     * @api {get} /schema/:subject   2.Get a schema
+     * @api {get} /schema/:subject   2. Get a schema
      * @apiVersion 0.1.1
      * @apiName getOneSchema
      * @apiGroup Schema
@@ -833,6 +844,132 @@ public class DFDataProcessor extends AbstractVerticle {
      */
     private void getOneSchema(RoutingContext routingContext) {
         SchemaRegisterProcessor.forwardGetOneSchema(vertx, routingContext, schema_registry_host_and_port);
+    }
+
+    /**
+     * Get one task logs with task id specified from repo
+     *
+     * @api {get} /logs/:taskId   2. Get a task status
+     * @apiVersion 0.1.1
+     * @apiName getOneLogs
+     * @apiGroup All
+     * @apiPermission none
+     * @apiDescription This is where we get task logs with specified task id.
+     * @apiParam {String}   taskId      taskId for connect or transform.
+     * @apiSuccess	{JsonObject[]}	logs    logs of the task.
+     * @apiSampleRequest http://localhost:8080/api/df/logs/:taskId
+     *
+     *
+     * @apiSuccessExample {json} Success-Response:
+     *     HTTP/1.1 200 OK
+     *     [ {
+     *          "_id" : ObjectId("59827ca37985374c290c0bfd"),
+     *          "timestamp" : ISODate("2017-08-03T01:30:11.720Z"),
+     *          "level" : "INFO",
+     *          "thread" : "vert.x-eventloop-thread-0",
+     *          "message" : "{\"code\":\"1015\",\"message\":\"INFO - IMPORT_ACTIVE_CONNECTS_STARTED_AT_STARTUP\",\"comments\":\"CONNECT_IMPORT\"}",
+     *          "loggerName" : {
+     *          "fullyQualifiedClassName" : "com.datafibers.service.DFDataProcessor",
+     *          "package" : [
+     *          "com",
+     *          "datafibers",
+     *          "service",
+     *          "DFDataProcessor"
+     *          ],
+     *          "className" : "DFDataProcessor"
+     *          },
+     *          "fileName" : "DFDataProcessor.java",
+     *          "method" : "importAllFromKafkaConnect",
+     *          "lineNumber" : "1279",
+     *          "class" : {
+     *          "fullyQualifiedClassName" : "com.datafibers.service.DFDataProcessor",
+     *          "package" : [
+     *          "com",
+     *          "datafibers",
+     *          "service",
+     *          "DFDataProcessor"
+     *          ],
+     *          "className" : "DFDataProcessor"
+     *          },
+     *          "host" : {
+     *          "process" : "19497@vagrant",
+     *          "name" : "vagrant",
+     *          "ip" : "127.0.1.1"
+     *          }
+     *          }
+     *     ]
+     * @apiSampleRequest http://localhost:8080/api/logs/:id
+     */
+    private void getOneLogs(RoutingContext routingContext) {
+
+        final String id = routingContext.request().getParam("id");
+        if (id == null) {
+            routingContext.response()
+                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                    .end(DFAPIMessage.getResponseMessage(9000));
+            LOG.error(DFAPIMessage.getResponseMessage(9000, id));
+        } else {
+            JsonObject searchCondition = new JsonObject().put("message", new JsonObject().put("$regex", id));
+            mongo.findWithOptions(COLLECTION_LOG, searchCondition, HelpFunc.getMongoSortFindOption(routingContext),
+                    results -> {
+                        List<JsonObject> jobs = results.result();
+                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                .putHeader("X-Total-Count", jobs.size() + "" )
+                                .end(Json.encodePrettily(jobs));
+                    }
+            );
+        }
+
+    }
+
+    /**
+     * Get one task status with task id specified
+     *
+     * @api {get} /status/:taskId   2. Get a task status
+     * @apiVersion 0.1.1
+     * @apiName getOneStatus
+     * @apiGroup All
+     * @apiPermission none
+     * @apiDescription This is where we get task status with specified task id.
+     * @apiParam {String}   taskId      taskId for connect or transform.
+     * @apiSuccess	{JsonObject[]}	status    status of the task.
+     * @apiSampleRequest http://localhost:8080/api/df/status/:taskId
+     */
+    private void getOneStatus(RoutingContext routingContext) {
+        final String id = routingContext.request().getParam("id");
+        if (id == null) {
+            routingContext.response()
+                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                    .end(DFAPIMessage.getResponseMessage(9000));
+            LOG.error(DFAPIMessage.getResponseMessage(9000, id));
+        } else {
+            mongo.findOne(COLLECTION, new JsonObject().put("_id", id), null, ar -> {
+                if (ar.succeeded()) {
+                    if (ar.result() == null) {
+                        routingContext.response()
+                                .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
+                                .end(DFAPIMessage.getResponseMessage(9001));
+                        LOG.error(DFAPIMessage.logResponseMessage(9001, id));
+                        return;
+                    }
+                    DFJobPOPJ dfJob = new DFJobPOPJ(ar.result());
+                    if(dfJob.getConnectorCategory().equalsIgnoreCase("CONNECT")) {
+                        // Find status from Kafka Connect
+                        KafkaConnectProcessor.forwardGetAsGetOne(routingContext, rc, id);
+                    }
+                    if(dfJob.getConnectorCategory().equalsIgnoreCase("TRANSFORM")) {
+                        // Find status from Flink API
+                        FlinkTransformProcessor.forwardGetAsGetOne(routingContext, rc_flink, id,
+                                dfJob.getFlinkIDFromJobConfig());
+                    }
+                } else {
+                    routingContext.response()
+                            .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
+                            .end(DFAPIMessage.getResponseMessage(9002));
+                    LOG.error(DFAPIMessage.logResponseMessage(9002, id));
+                }
+            });
+        }
     }
 
     /**
@@ -869,13 +1006,13 @@ public class DFDataProcessor extends AbstractVerticle {
 
         // Find and set default connector.class
         if(!dfJob.getConnectorConfig().containsKey(ConstantApp.PK_KAFKA_CONNECTOR_CLASS) ||
-                dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_CONNECTOR_CLASS) != null) {
+                dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_CONNECTOR_CLASS) == null) {
             String connectorClass = mongoDFInstalled.findConnectorClassName(dfJob.getConnectorType());
             if(connectorClass == null || connectorClass.isEmpty()) {
-                LOG.info(DFAPIMessage.logResponseMessage(1018, mongoId + " - " + connectorClass));
+                LOG.info(DFAPIMessage.logResponseMessage(9024, mongoId + " - " + connectorClass));
             } else {
                 dfJob.getConnectorConfig().put(ConstantApp.PK_KAFKA_CONNECTOR_CLASS, connectorClass);
-                LOG.info(DFAPIMessage.logResponseMessage(9024, mongoId + " - " + connectorClass));
+                LOG.info(DFAPIMessage.logResponseMessage(1018, mongoId + " - " + connectorClass));
             }
         }
 
@@ -1114,8 +1251,10 @@ public class DFDataProcessor extends AbstractVerticle {
                                         dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL),
                                         mongo, COLLECTION, this.flink_server_host + ":" + this.flink_server_port,
                                         routingContext, this.schema_registry_host_and_port,
-                                        dfJob.getConnectorConfig().get(ConstantApp.PK_SCHEMA_SUB_INPUT),
-                                        dfJob.getConnectorConfig().get(ConstantApp.PK_SCHEMA_SUB_OUTPUT),
+                                        HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_SCHEMA_SUB_INPUT),
+                                                dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_INPUT)),
+                                        HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_SCHEMA_SUB_OUTPUT),
+                                                dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_OUTPUT)),
                                         dfJob.getConnectorConfig().get(ConstantApp.PK_FLINK_TABLE_SINK_KEYS),
                                         rc_flink);
 
@@ -1304,7 +1443,7 @@ public class DFDataProcessor extends AbstractVerticle {
                         .put("topics", config().getString("kafka.topic.df.metadata", "df_meta"))).toString();
         try {
             HttpResponse<String> res = Unirest.get(restURI + "/metadata_sink_connect/status")
-                    .header("accept", ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+                    .header("accept", ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
                     .asString();
 
             if(res.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND) { // Add the meta sink
@@ -1319,12 +1458,12 @@ public class DFDataProcessor extends AbstractVerticle {
                     dfMetaSchemaSubject + "/versions";
 
             HttpResponse<String> schmeaRes = Unirest.get(schemaRegistryRestURL + "/latest")
-                    .header("accept", ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+                    .header("accept", ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
                     .asString();
 
             if(schmeaRes.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND) { // Add the meta sink schema
                 Unirest.post(schemaRegistryRestURL)
-                        .header("accept", ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+                        .header("accept", ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
                         .header("Content-Type", ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
                         .body(new JSONObject().put("schema", config().getString("df.metadata.schema",
                                 "{\"type\":\"record\"," +
@@ -1375,7 +1514,7 @@ public class DFDataProcessor extends AbstractVerticle {
             HttpResponse<String> res = Unirest.get(restURI)
                     .header("accept", "application/json").asString();
             String resStr = res.getBody();
-            LOG.info(DFAPIMessage.logResponseMessage(1011, resStr));
+            LOG.debug(DFAPIMessage.logResponseMessage(1011, resStr));
 
             if (resStr.compareToIgnoreCase("[]") != 0 && !resStr.equalsIgnoreCase("[null]")) { //Has active connectors
                 for (String connectName: resStr.substring(2,resStr.length()-2).split("\",\"")) {
@@ -1406,8 +1545,7 @@ public class DFDataProcessor extends AbstractVerticle {
 
                     // Sometime, the status is still missing for active connectors (active <> running)
                     String resStatus = (resConnectorStatus.getStatus() == 200) ?
-                            resConnectorStatus.getBody().getObject().getJSONObject("connector")
-                                    .getString("state") :
+                            HelpFunc.getTaskStatusKafka(resConnectorStatus.getBody().getObject()) :
                             ConstantApp.DF_STATUS.LOST.name();
 
                     mongo.count(COLLECTION, new JsonObject().put("connectUid", connectName), count -> {
@@ -1514,7 +1652,7 @@ public class DFDataProcessor extends AbstractVerticle {
                                         .header("accept", "application/json").asJson();
                         resStatus = resConnectorStatus.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND ?
                                 ConstantApp.DF_STATUS.LOST.name():// Not find - Mark status as LOST
-                                resConnectorStatus.getBody().getObject().getJSONObject("connector").getString("state");
+                                HelpFunc.getTaskStatusKafka(resConnectorStatus.getBody().getObject());
 
                         // Do change detection on status
                         if (statusRepo.compareToIgnoreCase(resStatus) != 0) { //status changes
@@ -1563,33 +1701,36 @@ public class DFDataProcessor extends AbstractVerticle {
                     if(!json.getString("jobConfig").equalsIgnoreCase("{}"))
                         jobId = new JsonObject(json.getString("jobConfig")).getString(ConstantApp.PK_FLINK_SUBMIT_JOB_ID);
                     // Get task status
+                    String resStatus;
                     try {
                         HttpResponse<JsonNode> resConnectorStatus =
                                 Unirest.get(restURI + "/" + jobId).header("accept", "application/json").asJson();
-                        String resStatus = resConnectorStatus.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND ?
+                        resStatus = resConnectorStatus.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND ?
                             ConstantApp.DF_STATUS.LOST.name():// Not find - Mark status as LOST
-                            resConnectorStatus.getBody().getObject().getString("state");
-
-                        // Do change detection on status
-                        if (statusRepo.compareToIgnoreCase(resStatus) != 0) { //status changes
-                            DFJobPOPJ updateJob = new DFJobPOPJ(json);
-                            updateJob.setStatus(resStatus);
-
-                            mongo.updateCollection(COLLECTION, new JsonObject().put("_id", updateJob.getId()),
-                                    // The update syntax: {$set, the json object containing the fields to update}
-                                    new JsonObject().put("$set", updateJob.toJson()), v -> {
-                                        if (v.failed()) {
-                                            LOG.error(DFAPIMessage.logResponseMessage(9003, taskId + "cause:" + v.cause()));
-                                        } else {
-                                            LOG.info(DFAPIMessage.logResponseMessage(1021, taskId));
-                                        }
-                                    }
-                            );
-                        } else {
-                            LOG.debug(DFAPIMessage.logResponseMessage(1022, taskId));
-                        }
+                                HelpFunc.getTaskStatusFlink(resConnectorStatus.getBody().getObject());
                     } catch (UnirestException ue) {
-                        //LOG.error(DFAPIMessage.logResponseMessage(9006, "TRANSFORM_STATUS_REFRESH:" + ue.getCause()));
+                        // When jobId not found, set status LOST with error message.
+                        LOG.info(DFAPIMessage.logResponseMessage(9006, "TRANSFORM_STATUS_REFRESH:" + "DELETE_LOST_TRANSFORMS"));
+                        resStatus = ConstantApp.DF_STATUS.LOST.name();
+                    }
+
+                    // Do change detection on status
+                    if (statusRepo.compareToIgnoreCase(resStatus) != 0) { //status changes
+                        DFJobPOPJ updateJob = new DFJobPOPJ(json);
+                        updateJob.setStatus(resStatus);
+
+                        mongo.updateCollection(COLLECTION, new JsonObject().put("_id", updateJob.getId()),
+                                // The update syntax: {$set, the json object containing the fields to update}
+                                new JsonObject().put("$set", updateJob.toJson()), v -> {
+                                    if (v.failed()) {
+                                        LOG.error(DFAPIMessage.logResponseMessage(9003, taskId + "cause:" + v.cause()));
+                                    } else {
+                                        LOG.info(DFAPIMessage.logResponseMessage(1021, taskId));
+                                    }
+                                }
+                        );
+                    } else {
+                        LOG.debug(DFAPIMessage.logResponseMessage(1022, taskId));
                     }
                 }
             } else {
