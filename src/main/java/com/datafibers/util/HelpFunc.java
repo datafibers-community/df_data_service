@@ -303,6 +303,7 @@ public class HelpFunc {
                 .putHeader("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, X-Total-Count")
                 .putHeader("Access-Control-Expose-Headers", "X-Total-Count")
                 .putHeader("Access-Control-Max-Age", "60")
+                .putHeader("X-Total-Count", "1" ) // Overwrite this in the sub call
                 .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET);
     }
 

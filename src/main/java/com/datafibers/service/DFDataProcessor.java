@@ -1548,7 +1548,7 @@ public class DFDataProcessor extends AbstractVerticle {
                             HelpFunc.getTaskStatusKafka(resConnectorStatus.getBody().getObject()) :
                             ConstantApp.DF_STATUS.LOST.name();
 
-                    LOG.info("resConfig.getObject().toString() = " + resConfig.getObject().toString());
+                    LOG.debug("resConfig.getObject().toString() = " + resConfig.getObject().toString());
 
                     mongo.count(COLLECTION, new JsonObject().put("connectUid", connectName), count -> {
                         if (count.succeeded()) {

@@ -31,10 +31,15 @@ public class CLIParser {
         options.addOption("m", "mode", true, "running vertx mode, <arg>=cluster|standalone");
         options.addOption("a", "admin", true,
                 "run admin tools, <arg>=function_name, such as " +
-                        "\n Function Name: cleanmongo - clean up repository data" +
+                        "\n Function Name: remove_tasks - remove all tasks/processors from repo." +
                         "\n Usage: " +
-                        "\n -a cleanmongo" +
-                        "\n -a cleanmongo(localhost,27017,df,df_processor)");
+                        "\n -a remove_tasks" +
+                        "\n -a remove_tasks(localhost,27017,db_name,db_collection_name)" +
+                        "\n Function Name: import_df_install - rebuild df_install configs" +
+                        "\n Usage: " +
+                        "\n -a import_df_install" +
+                        "\n -a import_df_install(localhost,27017,db_name,db_collection_name)"
+        );
     }
 
     public CommandLine parse() {

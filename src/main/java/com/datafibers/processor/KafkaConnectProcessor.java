@@ -140,6 +140,7 @@ public class KafkaConnectProcessor {
                                          String mongoCOLLECTION, DFJobPOPJ dfJobResponsed) {
         final String id = routingContext.request().getParam("id");
         LOG.info(DFAPIMessage.logResponseMessage(1016, id));
+        LOG.debug("WILL_PUT_TO_KAFKA_CONNECT - " + dfJobResponsed.toKafkaConnectJsonConfig().toString());
 
         final RestClientRequest postRestClientRequest =
                 restClient.put(

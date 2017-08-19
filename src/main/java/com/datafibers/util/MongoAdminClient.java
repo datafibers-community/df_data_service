@@ -5,6 +5,7 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.MongoIterable;
+import static com.mongodb.client.model.Filters.ne;
 import static com.mongodb.client.model.Filters.eq;
 import static com.mongodb.client.model.Filters.exists;
 import static com.mongodb.client.model.Filters.gte;
@@ -40,6 +41,12 @@ public class MongoAdminClient {
     public MongoAdminClient truncateCollection(String colName) {
         if(collectionExists(colName))
         this.database.getCollection(colName).deleteMany(exists("_id")); //TODO consider to add date filter
+        return this;
+    }
+
+    public MongoAdminClient truncateCollectionExcept(String colName, String key, String value) {
+        if(collectionExists(colName))
+            this.database.getCollection(colName).deleteMany(ne(key, value));
         return this;
     }
 
