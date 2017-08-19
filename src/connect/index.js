@@ -62,41 +62,41 @@ export const ConnectEdit = (props) => (
                 <DisabledInput source="taskSeq" label="Task Sequence" />
                 <TextInput source="name" label="Name" validate={[ required ]} />
                 <SelectField source="connectorType" label="Task Type" validate={[ required ]} choices={[
-                        { id: 'CONNECT_KAFKA_SOURCE_AVRO', name: 'Source Avro Files' },
-                        { id: 'CONNECT_KAFKA_HDFS_SINK', name: 'Sink Hadoop|Hive' },
-                        { id: 'CONNECT_MONGODB_SINK',  name: 'Sink MongoDB' },
+                        { id: 'CONNECT_SOURCE_KAFKA_AvroFile', name: 'Source Avro Files' },
+                        { id: 'CONNECT_SINK_HDFS_AvroFile', name: 'Sink Hadoop|Hive' },
+                        { id: 'CONNECT_SINK_MONGODB_AvroDB',  name: 'Sink MongoDB' },
                 ]} />
 
                 <ChipField source="status" label="Task Status" />
                 <LongTextInput source="description" label="Task Description" />
-                <NumberInput source="connectorConfig.['tasks.max']" label="Number of Sub-task to Submit" step={1}/>
+                <NumberInput source="connectorConfig.tasks_max" label="Number of Sub-task to Submit" step={1}/>
             </FormTab>
             <FormTab label="Setting">
                 <DisabledInput source="connectorConfig.cuid" label="ID or CUID or Name"/>
-                <TextField source="connectorConfig.['connector.class']" label="Connect Class Library" style={{ maxWidth: 544 }} />
-                <LongTextInput source="connectorConfig.['schema.registry.uri']" label="Schema Registry URI, such as http://localhost:8081" />
-                <DependentInput dependsOn="connectorType" value="CONNECT_KAFKA_SOURCE_AVRO">
+                <TextField source="connectorConfig.connector_class" label="Connect Class Library" style={{ maxWidth: 544 }} />
+                <LongTextInput source="connectorConfig.schema_registry_uri" label="Schema Registry URI, such as http://localhost:8081" />
+                <DependentInput dependsOn="connectorType" value="CONNECT_SOURCE_KAFKA_AvroFile">
                 <ReferenceInput source="connectorConfig.topic" label="Choose a topic to write data" reference="schema" validate={[ required ]} allowEmpty>
                     <AutocompleteInput optionText="subject" />
                 </ReferenceInput>
-                <BooleanInput source="connectorConfig.['file.overwrite']" label="Allow File Overwrite" />
-                <TextInput source="connectorConfig.['file.location']" label="Path Where to Load the Files" style={{ display: 'inline-block' }} validate={[ required ]} />
-                <TextInput source="connectorConfig.['file.glob']" label="Pattern/Glob to Match the Files" style={{ display: 'inline-block' }} validate={[ required ]} />
+                <BooleanInput source="connectorConfig.file_overwrite" label="Allow File Overwrite" />
+                <TextInput source="connectorConfig.file_location" label="Path Where to Load the Files" style={{ display: 'inline-block' }} validate={[ required ]} />
+                <TextInput source="connectorConfig.file_glob" label="Pattern/Glob to Match the Files" style={{ display: 'inline-block' }} validate={[ required ]} />
                 </DependentInput>
-                <DependentInput dependsOn="connectorType" value="CONNECT_MONGODB_SINK">
+                <DependentInput dependsOn="connectorType" value="CONNECT_SINK_MONGODB_AvroDB">
                 <LongTextInput source="connectorConfig.topics" label="Topics to Sink Data From (use , seperate multiple values" />
                 <TextInput source="connectorConfig.host" label="MongoDB Hostname" style={{ display: 'inline-block' }} validate={[ required ]} />
                 <TextInput source="connectorConfig.port" label="MongoDB Port" style={{ display: 'inline-block', marginLeft: 32 }} validate={[ required ]} />
-                <TextInput source="connectorConfig.['mongodb.database']" label="The Database Name" />
-                <LongTextInput source="connectorConfig.['mongodb.collections']" label="Collections Where to Sink the Files (use , seperate multiple values)" />
-                <NumberInput source="connectorConfig.['bulk.size']" label="The Bulk Size of Rows to Sink" step={1} />
+                <TextInput source="connectorConfig.mongodb_database" label="The Database Name" />
+                <LongTextInput source="connectorConfig.mongodb_collections" label="Collections Where to Sink the Files (use , seperate multiple values)" />
+                <NumberInput source="connectorConfig.bulk_size" label="The Bulk Size of Rows to Sink" step={1} />
                 </DependentInput>
-                <DependentInput dependsOn="connectorType" value="CONNECT_KAFKA_HDFS_SINK">
+                <DependentInput dependsOn="connectorType" value="CONNECT_SINK_HDFS_AvroFile">
                 <LongTextInput source="connectorConfig.topics" label="Topics to Sink Data From (use , seperate multiple values" />
-                <BooleanInput source="connectorConfig.['hive.integration']" label="Enable Hive Metadata" style={{ display: 'inline-block' }} />
-                <DisabledInput source="connectorConfig.['hive.metastore_uris']" label="Hive Metastore URL" style={{ display: 'inline-block' , marginLeft: 32 }} />
-                <DisabledInput source="connectorConfig.['hdfs.url']" label="HDFS URL" style={{ display: 'inline-block', marginLeft: 32 }} />
-                <NumberInput source="connectorConfig.['flush.size']" label="The Bulk Size of Rows to Sink" step={1} />
+                <BooleanInput source="connectorConfig.hive_integration" label="Enable Hive Metadata" style={{ display: 'inline-block' }} />
+                <DisabledInput source="connectorConfig.hive_metastore_uris" label="Hive Metastore URL" style={{ display: 'inline-block' , marginLeft: 32 }} />
+                <DisabledInput source="connectorConfig.hdfs_url" label="HDFS URL" style={{ display: 'inline-block', marginLeft: 32 }} />
+                <NumberInput source="connectorConfig.flush_size" label="The Bulk Size of Rows to Sink" step={1} />
                 </DependentInput>
             </FormTab>
             <FormTab label="State">
@@ -122,41 +122,41 @@ export const ConnectCreate = (props) => (
                 <NumberInput source="taskSeq" label="Task Sequence Number, eg. 1, 2, ..." />
                 <LongTextInput source="name" label="Task Name" validate={[ required ]} />
                 <SelectInput source="connectorType" label="Task Type" validate={[ required ]} choices={[
-                        { id: 'CONNECT_KAFKA_SOURCE_AVRO', name: 'Source Avro Files' },
-                        { id: 'CONNECT_KAFKA_HDFS_SINK', name: 'Sink Hadoop|Hive' },
-                        { id: 'CONNECT_MONGODB_SINK',  name: 'Sink MongoDB' },
+                        { id: 'CONNECT_SOURCE_KAFKA_AvroFile', name: 'Source Avro Files' },
+                        { id: 'CONNECT_SINK_HDFS_AvroFile', name: 'Sink Hadoop|Hive' },
+                        { id: 'CONNECT_SINK_MONGODB_AvroDB',  name: 'Sink MongoDB' },
                 ]} />
                 <LongTextInput source="description" label="Task Description" defaultValue="This is default description." />
-                <NumberInput source="connectorConfig.['tasks.max']" label="Number of Sub-task to Submit" defaultValue={1} step={1}/>
+                <NumberInput source="connectorConfig.tasks_max" label="Number of Sub-task to Submit" defaultValue={1} step={1}/>
             </FormTab>
             <FormTab label="Setting">
-                <DependentInput dependsOn="connectorType" value="CONNECT_KAFKA_SOURCE_AVRO">
+                <DependentInput dependsOn="connectorType" value="CONNECT_SOURCE_KAFKA_AvroFile">
                     <ReferenceInput source="connectorConfig.topic" label="Choose a topic to write data" reference="schema" validate={[ required ]} allowEmpty>
                         <AutocompleteInput optionText="subject" />
                     </ReferenceInput>
-                    <LongTextInput source="connectorConfig.['schema.registry.uri']" label="Schema Registry URI, such as http://localhost:8081" validate={[ required ]} />
-                    <BooleanInput source="connectorConfig.['file.overwrite']" label="Allow File Overwrite" defaultValue={true} />
-                    <TextInput source="connectorConfig.['file.location']" label="Path Where to Load the Files" style={{ display: 'inline-block' }} defaultValue={"/home/vagrant/df_data"} validate={[ required ]} />
-                    <TextInput source="connectorConfig.['file.glob']" label="Pattern/Glob to Match the Files" style={{ display: 'inline-block', marginLeft: 32 }} validate={[ required ]} />
+                    <LongTextInput source="connectorConfig.schema_registry_uri" label="Schema Registry URI, such as http://localhost:8081" validate={[ required ]} />
+                    <BooleanInput source="connectorConfig.file_overwrite" label="Allow File Overwrite" defaultValue={true} />
+                    <TextInput source="connectorConfig.file_location" label="Path Where to Load the Files" style={{ display: 'inline-block' }} defaultValue={"/home/vagrant/df_data"} validate={[ required ]} />
+                    <TextInput source="connectorConfig.file_glob" label="Pattern/Glob to Match the Files" style={{ display: 'inline-block', marginLeft: 32 }} validate={[ required ]} />
                 </DependentInput>
-                <DependentInput dependsOn="connectorType" value="CONNECT_MONGODB_SINK">
+                <DependentInput dependsOn="connectorType" value="CONNECT_SINK_MONGODB_AvroDB">
                     <ReferenceArrayInput source="connectorConfig.topics" label="Choose topics to write data" reference="schema" validate={[ required ]} allowEmpty>
                         <SelectArrayInput optionText="subject" />
                     </ReferenceArrayInput>
                     <TextInput source="connectorConfig.host" label="MongoDB Hostname" style={{ display: 'inline-block' }} validate={[ required ]} />
                     <TextInput source="connectorConfig.port" label="MongoDB Port" style={{ display: 'inline-block', marginLeft: 32 }} validate={[ required ]} />
-                    <TextInput source="connectorConfig.['mongodb.database']" label="The Database Name" validate={[ required ]} />
-                    <LongTextInput source="connectorConfig.['mongodb.collections']" label="Collections Where to Sink the Files (use , separate multiple values)" validate={[ required ]} />
-                    <NumberInput source="connectorConfig.['bulk.size']" label="The Bulk Size of Rows to Sink" defaultValue="1" step={1} validate={[ required ]} />
+                    <TextInput source="connectorConfig.mongodb_database" label="The Database Name" validate={[ required ]} />
+                    <LongTextInput source="connectorConfig.mongodb_collections" label="Collections Where to Sink the Files (use , separate multiple values)" validate={[ required ]} />
+                    <NumberInput source="connectorConfig.bulk_size" label="The Bulk Size of Rows to Sink" defaultValue="1" step={1} validate={[ required ]} />
                 </DependentInput>
-                <DependentInput dependsOn="connectorType" value="CONNECT_KAFKA_HDFS_SINK">
+                <DependentInput dependsOn="connectorType" value="CONNECT_SINK_HDFS_AvroFile">
                     <ReferenceArrayInput source="connectorConfig.topics" label="Choose topics to write data" reference="schema" validate={[ required ]} allowEmpty>
                         <SelectArrayInput optionText="subject" />
                     </ReferenceArrayInput>
-                    <BooleanInput source="connectorConfig.['hive.integration']" label="Enable Hive Metadata" style={{ display: 'inline-block' }} validate={[ required ]} />
-                    <DisabledInput source="connectorConfig.['hive.metastore.uris']" label="Hive Metastore URL" style={{ display: 'inline-block' , marginLeft: 32 }} validate={[ required ]} />
-                    <DisabledInput source="connectorConfig.['hdfs.url']" label="HDFS URL" style={{ display: 'inline-block', marginLeft: 32 }} validate={[ required ]} />
-                    <NumberInput source="connectorConfig.['flush.size']" label="The Bulk Size of Rows to Sink" step={1} validate={[ required ]} />
+                    <BooleanInput source="connectorConfig.hive.integration" label="Enable Hive Metadata" style={{ display: 'inline-block' }} validate={[ required ]} />
+                    <DisabledInput source="connectorConfig.hive.metastore.uris" label="Hive Metastore URL" style={{ display: 'inline-block' , marginLeft: 32 }} validate={[ required ]} />
+                    <DisabledInput source="connectorConfig.hdfs.url" label="HDFS URL" style={{ display: 'inline-block', marginLeft: 32 }} validate={[ required ]} />
+                    <NumberInput source="connectorConfig.flush.size" label="The Bulk Size of Rows to Sink" step={1} validate={[ required ]} />
                 </DependentInput>
             </FormTab>
         </TabbedForm>
