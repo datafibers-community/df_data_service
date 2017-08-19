@@ -1,8 +1,5 @@
 package com.datafibers.util;
 
-import java.util.HashMap;
-import java.util.Map;
-
 public final class ConstantApp {
 
     // DF Service generic settings
@@ -137,26 +134,29 @@ public final class ConstantApp {
     public static final int WORKER_POOL_SIZE = 20; // VERT.X Worker pool size
     public static final int MAX_RUNTIME = 6000;  // VERT.X Worker timeout in 6 sec
 
+    // Properties keys for admin
+    public static final String PK_DF_TOPICS_ALIAS = "topics,topic_in";
+
     // Properties keys for UI
     public static final String PK_TRANSFORM_CUID = "cuid";
     public static final String PK_FLINK_SUBMIT_JOB_ID = "flink_job_id";
 
-    public static final String PK_SCHEMA_ID_INPUT = "schema.ids.in";
-    public static final String PK_SCHEMA_ID_OUTPUT = "schema.ids.out";
-    public static final String PK_SCHEMA_STR_INPUT = "schema.string.in";
-    public static final String PK_SCHEMA_STR_OUTPUT = "schema.string.out";
-    public static final String PK_SCHEMA_SUB_INPUT = "schema.subject.in";
-    public static final String PK_SCHEMA_SUB_OUTPUT = "schema.subject.out";
+    public static final String PK_SCHEMA_ID_INPUT = "schema_ids_in";
+    public static final String PK_SCHEMA_ID_OUTPUT = "schema_ids_out";
+    public static final String PK_SCHEMA_STR_INPUT = "schema_string_in";
+    public static final String PK_SCHEMA_STR_OUTPUT = "schema_string_out";
+    public static final String PK_SCHEMA_SUB_INPUT = "schema_subject_in";
+    public static final String PK_SCHEMA_SUB_OUTPUT = "schema_subject_out";
 
-    public static final String PK_KAFKA_HOST_PORT = "bootstrap.servers";
-    public static final String PK_KAFKA_CONSUMER_GROURP = "group.id";
-    public static final String PK_KAFKA_SCHEMA_REGISTRY_HOST_PORT = "schema.registry";
+    public static final String PK_KAFKA_HOST_PORT = "bootstrap_servers";
+    public static final String PK_KAFKA_CONSUMER_GROURP = "group_id";
+    public static final String PK_KAFKA_SCHEMA_REGISTRY_HOST_PORT = "schema_registry";
     public static final String PK_KAFKA_CONNECTOR_CLASS = "connector_class";
-    public static final String PK_DF_TOPICS_ALIAS = "topics,topic.in";
-    public static final String PK_FLINK_TABLE_SINK_KEYS = "sink.key.fields";
+    public static final String PK_FLINK_TABLE_SINK_KEYS = "sink_key_fields";
 
-    public static final String PK_KAFKA_TOPIC_INPUT = "topic.in";
-    public static final String PK_KAFKA_TOPIC_OUTPUT = "topic.out";
-    public static final String PK_TRANSFORM_SQL = "trans.sql";
-    public static final String PK_TRANSFORM_SCRIPT = "trans.script";
+    public static final String PK_KAFKA_TOPIC_INPUT = "topic_in";
+    public static final String PK_KAFKA_TOPIC_OUTPUT = "topic_out";
+    public static final String PK_TRANSFORM_SQL = "trans_sql";
+    public static final String PK_TRANSFORM_SCRIPT = "trans_script";
+    public static final String PK_TRANSFORM_JAR = "trans_jar";
 }

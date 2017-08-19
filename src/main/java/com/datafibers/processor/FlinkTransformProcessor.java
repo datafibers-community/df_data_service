@@ -83,7 +83,7 @@ public class FlinkTransformProcessor {
 
         if (topicInList.length != schemaSubjectInList.length)
             throw new DFPropertyValidationException("Number of inputTopic and inputTopicSchema Mismatch.");
-        if (engine.equalsIgnoreCase("tABLE_API") && (topicInList.length > 1 || schemaSubjectInList.length > 1))
+        if (engine.equalsIgnoreCase("TABLE_API") && (topicInList.length > 1 || schemaSubjectInList.length > 1))
             throw new DFPropertyValidationException("Script/Table API only supports single inputTopic/inputTopicSchema.");
 
         WorkerExecutor exec_flink = vertx.createSharedWorkerExecutor(dfJob.getName() + dfJob.hashCode(),

@@ -1077,6 +1077,11 @@ public class DFDataProcessor extends AbstractVerticle {
                     engine = "TABLE_API";
                 }
 
+                if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_UDF.name()) {
+                    FlinkTransformProcessor.runFlinkJar(dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_JAR),
+                            this.flink_server_host + this.flink_server_port);
+                }
+
                 // When schema name are not provided, got them from topic
                 FlinkTransformProcessor.submitFlinkJobA2A(dfJob, vertx,
                         config().getInteger("flink.trans.client.timeout", 8000), env,
@@ -1087,7 +1092,8 @@ public class DFDataProcessor extends AbstractVerticle {
                         dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_INPUT),
                         dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_OUTPUT),
                         dfJob.getConnectorConfig().get(ConstantApp.PK_FLINK_TABLE_SINK_KEYS),
-                        dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL),
+                        dfJob.getConnectorConfig().get(engine == "SQL_API" ?
+                                ConstantApp.PK_TRANSFORM_SQL:ConstantApp.PK_TRANSFORM_SCRIPT),
                         HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_SCHEMA_SUB_INPUT),
                                 dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_INPUT)),
                         HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_SCHEMA_SUB_OUTPUT),
@@ -1237,7 +1243,7 @@ public class DFDataProcessor extends AbstractVerticle {
                             if (this.transform_engine_flink_enabled && dfJob.getConnectorType().contains("FLINK") &&
                                     connectorConfigString.compareTo(before_update_connectorConfigString) != 0) {
 
-                                // TODO - if running then cancel and resubmit, else resubmit
+                                // TODO - if running then cancel and resubmit, else resubmit for flink UDF/JAR
 
                                 //here update is to cancel exiting job and submit a new one
                                 FlinkTransformProcessor.updateFlinkSQL(dfJob, vertx,
