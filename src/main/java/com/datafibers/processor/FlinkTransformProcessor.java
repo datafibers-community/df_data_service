@@ -65,7 +65,7 @@ public class FlinkTransformProcessor {
 
         // Set all properties. Note, all inputTopic related properties are set later in loop
         Properties properties = new Properties();
-        properties.setProperty(ConstantApp.PK_KAFKA_HOST_PORT, kafkaHostPort);
+        properties.setProperty(ConstantApp.PK_KAFKA_HOST_PORT.replace("_", "."), kafkaHostPort); //has to use bootstrap.servers
         properties.setProperty(ConstantApp.PK_KAFKA_CONSUMER_GROURP, groupid);
         properties.setProperty(ConstantApp.PK_SCHEMA_SUB_OUTPUT, schemaSubjectOut);
         properties.setProperty(ConstantApp.PK_KAFKA_SCHEMA_REGISTRY_HOST_PORT, SchemaRegistryHostPort);
@@ -103,10 +103,16 @@ public class FlinkTransformProcessor {
                     properties.setProperty(ConstantApp.PK_SCHEMA_STR_INPUT,
                             SchemaRegistryClient.getLatestSchemaFromProperty(properties,
                                     ConstantApp.PK_SCHEMA_SUB_INPUT).toString());
-                    LOG.debug(HelpFunc.getPropertyAsString(properties));
 
                     tableEnv.registerTableSource(topicInList[i], new Kafka09AvroTableSource(topicInList[i], properties));
+                    for (String key : properties.stringPropertyNames()) {
+                        LOG.debug("FLINK_PROPERTIES KEY:" + key + " VALUE:" + properties.getProperty(key));
+                    }
+                    LOG.debug("FLINK_TOPIC_IN = " + topicInList[i]);
+                    LOG.debug("FLINK_TRANSCRIPT = " + transScript);
                 }
+
+                LOG.debug("FLINK_TOPIC_OUT = " + topicOut);
 
                 Table result = null;
                 switch (engine.toUpperCase()) {
@@ -147,6 +153,7 @@ public class FlinkTransformProcessor {
                 flinkEnv.executeWithDFObj("DF_FLINK_A2A_" + engine.toUpperCase() + uuid, dfJob);
 
             } catch(Exception e) {
+                e.printStackTrace();
                 /*
                 TODO
                 Sometimes this is normal since we cancel from rest api through UI but the job submit in code
@@ -154,7 +161,7 @@ public class FlinkTransformProcessor {
                 Or else, it is true exception.
                  */
                 LOG.error(DFAPIMessage.logResponseMessage(9010, "jobId = " + dfJob.getId() +
-                "exception - " + e.getCause()));
+                " exception - " + e.getCause()));
                 // e.printStackTrace();
             }
 
@@ -243,7 +250,7 @@ public class FlinkTransformProcessor {
 
         final String id = routingContext.request().getParam("id");
         if(dfJob.getStatus().equalsIgnoreCase("RUNNING"))
-        cancelFlinkJob(dfJob.getJobConfig().get("flink.submit.job.id"), mongoClient, mongoCOLLECTION,
+        cancelFlinkJob(dfJob.getJobConfig().get(ConstantApp.PK_FLINK_SUBMIT_JOB_ID), mongoClient, mongoCOLLECTION,
                 routingContext, restClient);
 
         // Submit Flink UDF

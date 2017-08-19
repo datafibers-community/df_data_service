@@ -1106,7 +1106,7 @@ public class DFDataProcessor extends AbstractVerticle {
                 HelpFunc.responseCorsHandleAddOn(routingContext.response())
                         .setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
                         .end(Json.encodePrettily(dfJob)));
-        LOG.warn(DFAPIMessage.logResponseMessage(9009, dfJob.getId()));
+        LOG.info(DFAPIMessage.logResponseMessage(1000, dfJob.getId()));
     }
 
     /** Add one schema to schema registry
@@ -1238,7 +1238,8 @@ public class DFDataProcessor extends AbstractVerticle {
             mongo.findOne(COLLECTION, new JsonObject().put("_id", id),
                     new JsonObject().put("connectorConfig", 1), res -> {
                         if (res.succeeded()) {
-                            String before_update_connectorConfigString = res.result().getString("connectorConfig");
+                            String before_update_connectorConfigString = res.result()
+                                    .getJsonObject("connectorConfig").toString();
                             // Detect changes in connectConfig
                             if (this.transform_engine_flink_enabled && dfJob.getConnectorType().contains("FLINK") &&
                                     connectorConfigString.compareTo(before_update_connectorConfigString) != 0) {
@@ -1403,19 +1404,29 @@ public class DFDataProcessor extends AbstractVerticle {
                         return;
                     }
                     DFJobPOPJ dfJob = new DFJobPOPJ(ar.result());
-                    String jobId = dfJob.getJobConfig().get(ConstantApp.PK_FLINK_SUBMIT_JOB_ID);
-                    if (jobId.isEmpty()) {
-                        LOG.error(DFAPIMessage.logResponseMessage(9011, "DELETE_FLINK_JOB " + id));
-                    } else if (this.transform_engine_flink_enabled &&
-                            dfJob.getConnectorType().contains("FLINK") &&
-                            dfJob.getStatus().equalsIgnoreCase("RUNNING")) {
-                        FlinkTransformProcessor.cancelFlinkJob(jobId, mongo, COLLECTION, routingContext, rc_flink);
-                        LOG.info(DFAPIMessage.logResponseMessage(1006, id));
+
+                    String jobId = null;
+                    if(dfJob.getJobConfig() != null &&
+                            dfJob.getJobConfig().containsKey(ConstantApp.PK_FLINK_SUBMIT_JOB_ID)) {
+                        jobId = dfJob.getJobConfig().get(ConstantApp.PK_FLINK_SUBMIT_JOB_ID);
+                        if (this.transform_engine_flink_enabled &&
+                                dfJob.getConnectorType().contains("FLINK") &&
+                                dfJob.getStatus().equalsIgnoreCase("RUNNING")) {
+                            FlinkTransformProcessor.cancelFlinkJob(jobId, mongo, COLLECTION, routingContext, rc_flink);
+                            LOG.info(DFAPIMessage.logResponseMessage(1006, id));
+                        } else {
+                            mongo.removeDocument(COLLECTION, new JsonObject().put("_id", id),
+                                    remove -> HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                            .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                            .end(DFAPIMessage.getResponseMessage(1002)));
+                            LOG.info(DFAPIMessage.logResponseMessage(1002, id + "- FLINK_JOB_NOT_RUNNING"));
+                        }
                     } else {
                         mongo.removeDocument(COLLECTION, new JsonObject().put("_id", id),
-                                remove -> routingContext.response()
-                                        .end(DFAPIMessage.getResponseMessage(1003)));
-                        LOG.info(DFAPIMessage.logResponseMessage(1002, id));
+                                remove -> HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                        .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                        .end(DFAPIMessage.getResponseMessage(1002)));
+                        LOG.info(DFAPIMessage.logResponseMessage(1002, id + "- FLINK_JOB_ID_NULL"));
                     }
                 }
             });
@@ -1553,8 +1564,6 @@ public class DFDataProcessor extends AbstractVerticle {
                     String resStatus = (resConnectorStatus.getStatus() == 200) ?
                             HelpFunc.getTaskStatusKafka(resConnectorStatus.getBody().getObject()) :
                             ConstantApp.DF_STATUS.LOST.name();
-
-                    LOG.debug("resConfig.getObject().toString() = " + resConfig.getObject().toString());
 
                     mongo.count(COLLECTION, new JsonObject().put("connectUid", connectName), count -> {
                         if (count.succeeded()) {
@@ -1708,10 +1717,17 @@ public class DFDataProcessor extends AbstractVerticle {
                     String statusRepo = json.getString("status");
                     String taskId = json.getString("_id");
                     String jobId = ConstantApp.FLINK_DUMMY_JOB_ID;
-                    if(!json.getString("jobConfig").equalsIgnoreCase("{}"))
-                        jobId = new JsonObject(json.getString("jobConfig")).getString(ConstantApp.PK_FLINK_SUBMIT_JOB_ID);
-                    // Get task status
                     String resStatus;
+                    if(json.getValue("jobConfig") == null) {
+                        resStatus = ConstantApp.DF_STATUS.LOST.name();
+                    } else if (json.getJsonObject("jobConfig").containsKey(ConstantApp.PK_FLINK_SUBMIT_JOB_ID)) {
+                        jobId = json.getJsonObject("jobConfig").getString(ConstantApp.PK_FLINK_SUBMIT_JOB_ID);
+                    } else {
+                        resStatus = ConstantApp.DF_STATUS.LOST.name();
+                    }
+
+                    // Get task status
+
                     try {
                         HttpResponse<JsonNode> resConnectorStatus =
                                 Unirest.get(restURI + "/" + jobId).header("accept", "application/json").asJson();

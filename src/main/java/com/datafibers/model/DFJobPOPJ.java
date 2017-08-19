@@ -240,6 +240,7 @@ public class DFJobPOPJ {
     }
 
     public DFJobPOPJ setFlinkIDToJobConfig(String jobID) {
+        if (this.jobConfig == null) this.jobConfig = new HashMap<>();
         this.jobConfig.put(ConstantApp.PK_FLINK_SUBMIT_JOB_ID, jobID);
         return this;
     }
@@ -248,7 +249,7 @@ public class DFJobPOPJ {
     public String getFlinkIDFromJobConfig() {
         if (this.jobConfig != null)
             return this.jobConfig.get(ConstantApp.PK_FLINK_SUBMIT_JOB_ID);
-        return "flink.submit.job.id is null";
+        return ConstantApp.PK_FLINK_SUBMIT_JOB_ID + "_IS_NULL";
     }
 
     public void setUdfUpload(String tmpUDFUpload) {

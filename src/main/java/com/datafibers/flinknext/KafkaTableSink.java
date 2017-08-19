@@ -67,7 +67,7 @@ public abstract class KafkaTableSink implements UpsertStreamTableSink<Row> {
 		this.schema = SchemaRegistryClient.getLatestSchemaFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT);
 		//setIsAppendOnly(false);
 		setIsAppendOnly(true);
-		setKeyFields(properties.getProperty("sink.key.fields").split(","));
+		setKeyFields(properties.getProperty(ConstantApp.PK_FLINK_TABLE_SINK_KEYS).split(","));
 	}
 
 	/**

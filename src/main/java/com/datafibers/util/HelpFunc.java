@@ -116,6 +116,7 @@ public class HelpFunc {
         String cleanedJsonString;
         cleanedJsonString = cleanJsonConfigIgnored(JSON_STRING, "connectorConfig_", "config_ignored");
         cleanedJsonString = convertTopicsFromArrayToString(cleanedJsonString, ConstantApp.PK_DF_TOPICS_ALIAS);
+        System.out.println("cleanedJsonString = " + cleanedJsonString);
         return cleanedJsonString;
     }
 
@@ -161,17 +162,6 @@ public class HelpFunc {
         }
 
         return jarPath;
-    }
-
-    /**
-     * Print list of Properties
-     * @param prop
-     * @return
-     */
-    public static String getPropertyAsString(Properties prop) {
-        StringWriter writer = new StringWriter();
-        prop.list(new PrintWriter(writer));
-        return writer.getBuffer().toString();
     }
 
     /**
