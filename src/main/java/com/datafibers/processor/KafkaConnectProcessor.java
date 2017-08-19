@@ -167,7 +167,7 @@ public class KafkaConnectProcessor {
 
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
         postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
-        postRestClientRequest.end(dfJobResponsed.mapToJsonString(dfJobResponsed.getConnectorConfig()));
+        postRestClientRequest.end(dfJobResponsed.toKafkaConnectJsonConfig().toString());
 
         mongoClient.updateCollection(mongoCOLLECTION, new JsonObject().put("_id", id), // Select a unique document
                 // The update syntax: {$set, the json object containing the fields to update}
@@ -298,7 +298,7 @@ public class KafkaConnectProcessor {
 
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
         postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
-        postRestClientRequest.end(dfJobResponsed.mapToJsonString(dfJobResponsed.getConnectorConfig()));
+        postRestClientRequest.end(HelpFunc.mapToJsonStringFromHashMapU2D(dfJobResponsed.getConnectorConfig()));
 
         mongoClient.updateCollection(mongoCOLLECTION, new JsonObject().put("_id", id), // Select a unique document
                 // The update syntax: {$set, the json object containing the fields to update}

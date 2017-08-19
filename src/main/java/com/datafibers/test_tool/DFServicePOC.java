@@ -757,16 +757,16 @@ public class DFServicePOC extends AbstractVerticle {
 
         if (this.transform_engine_flink_enabled) {
             // Submit Flink UDF
-            if(dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_FLINK_SQL_GENE.name()) {
+            if(dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_UDF.name()) {
                 FlinkTransformProcessor.runFlinkJar(dfJob.getUdfUpload(),
                         this.flink_server_host + ":" + this.flink_server_port);
             } else {
                 String engine = "";
-                if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_FLINK_SQL_A2A.name()) {
+                if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_SQLA2A.name()) {
                     engine = "SQL_API";
                 }
 
-                if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_FLINK_SCRIPT.name()) {
+                if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_Script.name()) {
                     engine = "TABLE_API";
                 }
 
@@ -818,7 +818,7 @@ public class DFServicePOC extends AbstractVerticle {
         final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(),
                 DFJobPOPJ.class);
         LOG.debug("received the body is from updateOne:" + routingContext.getBodyAsString());
-        String connectorConfigString = dfJob.mapToJsonString(dfJob.getConnectorConfig());
+        String connectorConfigString = HelpFunc.mapToJsonStringFromHashMapD2U(dfJob.getConnectorConfig());
         JsonObject json = dfJob.toJson();
 
         if (id == null || json == null) {
@@ -887,7 +887,7 @@ public class DFServicePOC extends AbstractVerticle {
         final String id = routingContext.request().getParam("id");
         final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(), DFJobPOPJ.class);
         // LOG.debug("received the body is from updateOne:" + routingContext.getBodyAsString());
-        String connectorConfigString = dfJob.mapToJsonString(dfJob.getConnectorConfig());
+        String connectorConfigString = HelpFunc.mapToJsonStringFromHashMapD2U(dfJob.getConnectorConfig());
         JsonObject json = dfJob.toJson();
 
         LOG.info("");
@@ -1027,7 +1027,7 @@ public class DFServicePOC extends AbstractVerticle {
         LOG.debug("Body received:" + routingContext.getBodyAsString());
         final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(), DFJobPOPJ.class);
         LOG.debug("received the body is from updateOne:" + routingContext.getBodyAsString());
-        String connectorConfigString = dfJob.mapToJsonString(dfJob.getConnectorConfig());
+        String connectorConfigString = HelpFunc.mapToJsonStringFromHashMapD2U(dfJob.getConnectorConfig());
         JsonObject json = dfJob.toJson();
 
         if (id == null || json == null) {
@@ -1355,9 +1355,9 @@ public class DFServicePOC extends AbstractVerticle {
                     if (resConnectName.equalsIgnoreCase("metadata_sink_connect")) {
                         resConnectType = ConstantApp.DF_CONNECT_TYPE.INTERNAL_METADATA_COLLECT.name();
                     } else if (resConnectTypeTmp.toUpperCase().contains("SOURCE")) {
-                        resConnectType = ConstantApp.DF_CONNECT_TYPE.CONNECT_KAFKA_SOURCE.name();
+                        resConnectType = ConstantApp.DF_CONNECT_TYPE.CONNECT_SOURCE_KAFKA_AvroFile.name();
                     } else if (resConnectTypeTmp.toUpperCase().contains("SINK")) {
-                        resConnectType = ConstantApp.DF_CONNECT_TYPE.CONNECT_KAFKA_SINK.name();
+                        resConnectType = ConstantApp.DF_CONNECT_TYPE.CONNECT_SINK_KAFKA_AvroFile.name();
                     } else {
                         resConnectType = ConstantApp.DF_CONNECT_TYPE.NONE.name();
                     }
@@ -1466,9 +1466,9 @@ public class DFServicePOC extends AbstractVerticle {
                     if (resConnectName.equalsIgnoreCase("metadata_sink_connect")) {
                         resConnectType = ConstantApp.DF_CONNECT_TYPE.INTERNAL_METADATA_COLLECT.name();
                     } else if (resConnectTypeTmp.toUpperCase().contains("SOURCE")) {
-                        resConnectType = ConstantApp.DF_CONNECT_TYPE.CONNECT_KAFKA_SOURCE.name();
+                        resConnectType = ConstantApp.DF_CONNECT_TYPE.CONNECT_SOURCE_KAFKA_AvroFile.name();
                     } else if (resConnectTypeTmp.toUpperCase().contains("SINK")) {
-                        resConnectType = ConstantApp.DF_CONNECT_TYPE.CONNECT_KAFKA_SINK.name();
+                        resConnectType = ConstantApp.DF_CONNECT_TYPE.CONNECT_SINK_KAFKA_AvroFile.name();
                     } else {
                         resConnectType = ConstantApp.DF_CONNECT_TYPE.NONE.name();
                     }

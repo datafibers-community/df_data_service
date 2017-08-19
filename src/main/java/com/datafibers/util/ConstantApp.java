@@ -107,28 +107,24 @@ public final class ConstantApp {
      The pattern here is [ConnectorCategory]_[Engine]_[Details]
       */
     public enum DF_CONNECT_TYPE {
-        CONNECT_KAFKA_SOURCE,       // Kafka Connector import data into Kafka
-        CONNECT_KAFKA_SOURCE_AVRO,  // DF Generic Avro source
-        CONNECT_KAFKA_SINK,         // Kafka Connector export data out of Kafka
-        CONNECT_EVENTBUS_SOURCE,    // The plugin import data into Vertx Event Bus
-        CONNECT_EVENTBUS_SINK,      // The plugin export data out of Vertx Event Bus
-        CONNECT_KAFKA_HDFS_SOURCE,  // The plugin import data into HDFS
-        CONNECT_KAFKA_HDFS_SINK,    // The plugin export data out of HDFS
-        CONNECT_HIVE_SOURCE,        // The plugin import data into Hive
-        CONNECT_HIVE_SINK,          // The plugin export data out of Hive
-        CONNECT_MONGODB_SOURCE,       // The plugin import data into mongodb
-        CONNECT_MONGODB_SINK,         // The plugin export data out of mongodb
-        TRANSFORM_FLINK_SQL_GENE,     // Flink streaming SQL
-        TRANSFORM_FLINK_SQL_A2A,      // Flink streaming SQL from Avro to Avro
-        TRANSFORM_FLINK_SQL_J2J,      // Flink streaming SQL from Json to Json
-        TRANSFORM_FLINK_SCRIPT,       // Flink streaming of Table API
-        TRANSFORM_FLINK_UDF,          // Flink user defined jar/program
-        TRANSFORM_SPARK_SQL,          // Spark streaming SQL
-        TRANSFORM_SPARK_BATCH_SQL,    // Spark streaming SQL
-        TRANSFORM_SPARK_JOINS,        // Spark streaming of Data Join
-        TRANSFORM_SPARK_UDF,          // Spark user defined jar/program
-        TRANSFORM_HIVE_TRANS,         // Hive batch SQL
-        TRANSFORM_HIVE_JOINS,         // Hive batch join
+        CONNECT_SOURCE_KAFKA_AvroFile,
+        CONNECT_SINK_KAFKA_AvroFile,
+        CONNECT_SINK_KAFKA_FlatFile,
+        CONNECT_SOURCE_KAFKA_FlatFile,
+        CONNECT_SOURCE_KAFKA_JDBC,
+        CONNECT_SOURCE_MONGODB_AvroDB,
+        CONNECT_SINK_MONGODB_AvroDB,
+        CONNECT_SOURCE_HDFS_AvroFile,
+        CONNECT_SINK_HDFS_AvroFile,
+        TRANSFORM_EXCHANGE_FLINK_SQLA2A,
+        TRANSFORM_EXCHANGE_FLINK_Script,
+        TRANSFORM_EXCHANGE_FLINK_UDF,
+        TRANSFORM_EXCHANGE_SPARK_SQL,          // Spark streaming SQL
+        TRANSFORM_EXCHANGE_SPARK_BatchSQL,    // Spark streaming SQL
+        TRANSFORM_EXCHANGE_SPARK_JOINS,        // Spark streaming of Data Join
+        TRANSFORM_EXCHANGE_SPARK_UDF,          // Spark user defined jar/program
+        TRANSFORM_EXCHANGE_HIVE_TRANS,         // Hive batch SQL
+        TRANSFORM_EXCHANGE_HIVE_JOINS,         // Hive batch join
         INTERNAL_METADATA_COLLECT,    // Reserved metadata sinl
         NONE
     }
@@ -143,7 +139,7 @@ public final class ConstantApp {
 
     // Properties keys for UI
     public static final String PK_TRANSFORM_CUID = "cuid";
-    public static final String PK_FLINK_SUBMIT_JOB_ID = "flink.submit.job.id";
+    public static final String PK_FLINK_SUBMIT_JOB_ID = "flink_job_id";
 
     public static final String PK_SCHEMA_ID_INPUT = "schema.ids.in";
     public static final String PK_SCHEMA_ID_OUTPUT = "schema.ids.out";
@@ -155,7 +151,7 @@ public final class ConstantApp {
     public static final String PK_KAFKA_HOST_PORT = "bootstrap.servers";
     public static final String PK_KAFKA_CONSUMER_GROURP = "group.id";
     public static final String PK_KAFKA_SCHEMA_REGISTRY_HOST_PORT = "schema.registry";
-    public static final String PK_KAFKA_CONNECTOR_CLASS = "connector.class";
+    public static final String PK_KAFKA_CONNECTOR_CLASS = "connector_class";
     public static final String PK_DF_TOPICS_ALIAS = "topics,topic.in";
     public static final String PK_FLINK_TABLE_SINK_KEYS = "sink.key.fields";
 

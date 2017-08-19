@@ -1,13 +1,9 @@
 package com.datafibers.model;
 
 import com.datafibers.util.ConstantApp;
+import com.datafibers.util.HelpFunc;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.json.JsonObject;
-import org.apache.commons.lang.StringUtils;
-
-import java.io.IOException;
 import java.util.HashMap;
 
 /**
@@ -92,40 +88,14 @@ public class DFJobPOPJ {
         this.status = json.getString("status");
         this.id = json.getString("_id");
         this.udfUpload = json.getString("udfUpload");
-
-        try {
-
-            String jobConfig = json.getString("jobConfig");
-            if (jobConfig == null) {
-                this.jobConfig = null;
-            } else {
-                this.jobConfig = new ObjectMapper().readValue(jobConfig, new TypeReference<HashMap<String, String>>() {
-                });
-            }
-
-            String connectorConfig = json.getString("connectorConfig");
-            if (connectorConfig == null) {
-                this.connectorConfig = null;
-            } else {
-                this.connectorConfig = new ObjectMapper().readValue(connectorConfig,
-                        new TypeReference<HashMap<String, String>>() {
-                        });
-            }
-
-        } catch (IOException ioe) {
-            ioe.printStackTrace();
-        }
+        this.jobConfig = (json.containsKey("jobConfig") && json.getValue("jobConfig") != null) ?
+                HelpFunc.mapToHashMapFromJson(json.getJsonObject("jobConfig")) : null;
+        this.connectorConfig = (json.containsKey("connectorConfig") && json.getValue("connectorConfig") != null) ?
+                HelpFunc.mapToHashMapFromJson(json.getJsonObject("connectorConfig")) : null;
     }
 
     public DFJobPOPJ() {
         this.id = "";
-    }
-
-    public DFJobPOPJ(String id, String name, String connector_uid, String status) {
-        this.id = id;
-        this.name = name;
-        this.connectUid = connector_uid;
-        this.status = status;
     }
 
     public JsonObject toJson() {
@@ -139,8 +109,8 @@ public class DFJobPOPJ {
                 .put("connectorCategory", connectorCategory)
                 .put("description", description)
                 .put("status", status)
-                .put("jobConfig", mapToJsonString(jobConfig))
-                .put("connectorConfig", mapToJsonString(connectorConfig))
+                .put("jobConfig", jobConfig == null ? null : HelpFunc.mapToJsonFromHashMapD2U(jobConfig))
+                .put("connectorConfig", HelpFunc.mapToJsonFromHashMapD2U(connectorConfig))
                 .put("udfUpload", udfUpload);
 
         if (id != null && !id.isEmpty()) {
@@ -155,10 +125,11 @@ public class DFJobPOPJ {
      * @return a json object
      */
     public JsonObject toKafkaConnectJson() {
-        JsonObject json = new JsonObject()
-                .put("name", connectUid)
-                .put("config", mapToJsonObj(connectorConfig));
-        return json;
+        return new JsonObject().put("name", connectUid).put("config", HelpFunc.mapToJsonFromHashMapU2D(connectorConfig));
+    }
+
+    public JsonObject toKafkaConnectJsonConfig() {
+        return HelpFunc.mapToJsonFromHashMapU2D(connectorConfig);
     }
 
     /*
@@ -278,24 +249,6 @@ public class DFJobPOPJ {
         if (this.jobConfig != null)
             return this.jobConfig.get(ConstantApp.PK_FLINK_SUBMIT_JOB_ID);
         return "flink.submit.job.id is null";
-    }
-
-    public String mapToJsonString(HashMap<String, String> hm) {
-        ObjectMapper mapperObj = new ObjectMapper();
-        try {
-            return mapperObj.writeValueAsString(hm);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    public JsonObject mapToJsonObj(HashMap<String, String> hm) {
-        JsonObject json = new JsonObject();
-        for (String key : hm.keySet()) {
-            json.put(key, hm.get(key));
-        }
-        return json;
     }
 
     public void setUdfUpload(String tmpUDFUpload) {

@@ -1064,16 +1064,16 @@ public class DFDataProcessor extends AbstractVerticle {
 
         if (this.transform_engine_flink_enabled) {
             // Submit Flink UDF
-            if(dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_FLINK_SQL_GENE.name()) {
+            if(dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_UDF.name()) {
                 FlinkTransformProcessor.runFlinkJar(dfJob.getUdfUpload(),
                         this.flink_server_host + ":" + this.flink_server_port);
             } else {
                 String engine = "";
-                if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_FLINK_SQL_A2A.name()) {
+                if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_SQLA2A.name()) {
                     engine = "SQL_API";
                 }
 
-                if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_FLINK_SCRIPT.name()) {
+                if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_Script.name()) {
                     engine = "TABLE_API";
                 }
 
@@ -1151,7 +1151,7 @@ public class DFDataProcessor extends AbstractVerticle {
         final String id = routingContext.request().getParam("id");
         final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(),DFJobPOPJ.class);
 
-        String connectorConfigString = dfJob.mapToJsonString(dfJob.getConnectorConfig());
+        String connectorConfigString = HelpFunc.mapToJsonStringFromHashMapD2U(dfJob.getConnectorConfig());
         JsonObject json = dfJob.toJson();
 
         if (id == null || json == null) {
@@ -1164,7 +1164,7 @@ public class DFDataProcessor extends AbstractVerticle {
             mongo.findOne(COLLECTION, new JsonObject().put("_id", id),
                     new JsonObject().put("connectorConfig", 1), res -> {
                 if (res.succeeded()) {
-                    String before_update_connectorConfigString = res.result().getString("connectorConfig");
+                    String before_update_connectorConfigString = res.result().getJsonObject("connectorConfig").toString();
                     // Detect changes in connectConfig
                     if (this.kafka_connect_enabled && dfJob.getConnectorType().contains("CONNECT") &&
                             connectorConfigString.compareTo(before_update_connectorConfigString) != 0) {
@@ -1219,7 +1219,7 @@ public class DFDataProcessor extends AbstractVerticle {
     private void updateOneTransforms(RoutingContext routingContext) {
         final String id = routingContext.request().getParam("id");
         final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(), DFJobPOPJ.class);
-        String connectorConfigString = dfJob.mapToJsonString(dfJob.getConnectorConfig());
+        String connectorConfigString = HelpFunc.mapToJsonStringFromHashMapD2U(dfJob.getConnectorConfig());
         JsonObject json = dfJob.toJson();
 
         if (id == null || json == null) {
@@ -1532,9 +1532,9 @@ public class DFDataProcessor extends AbstractVerticle {
                     if (resConnectName.equalsIgnoreCase("metadata_sink_connect")) {
                         resConnectType = ConstantApp.DF_CONNECT_TYPE.INTERNAL_METADATA_COLLECT.name();
                     } else if (resConnectTypeTmp.toUpperCase().contains("SOURCE")) {
-                        resConnectType = ConstantApp.DF_CONNECT_TYPE.CONNECT_KAFKA_SOURCE.name();
+                        resConnectType = ConstantApp.DF_CONNECT_TYPE.CONNECT_SOURCE_KAFKA_AvroFile.name();
                     } else if (resConnectTypeTmp.toUpperCase().contains("SINK")) {
-                        resConnectType = ConstantApp.DF_CONNECT_TYPE.CONNECT_KAFKA_SINK.name();
+                        resConnectType = ConstantApp.DF_CONNECT_TYPE.CONNECT_SINK_KAFKA_AvroFile.name();
                     } else {
                         resConnectType = resConnectTypeTmp;
                     }
@@ -1548,20 +1548,24 @@ public class DFDataProcessor extends AbstractVerticle {
                             HelpFunc.getTaskStatusKafka(resConnectorStatus.getBody().getObject()) :
                             ConstantApp.DF_STATUS.LOST.name();
 
+                    LOG.info("resConfig.getObject().toString() = " + resConfig.getObject().toString());
+
                     mongo.count(COLLECTION, new JsonObject().put("connectUid", connectName), count -> {
                         if (count.succeeded()) {
                             if (count.result() == 0) {
                                 // No jobs found, then insert json data
                                 DFJobPOPJ insertJob = new DFJobPOPJ (
-                                        new JsonObject().put("name", "imported " + connectName)
+                                        new JsonObject()
+                                                .put("_id", connectName)
+                                                .put("name", "imported " + connectName)
                                                 .put("taskSeq", "0")
                                                 .put("connectUid", connectName)
                                                 .put("connectorType", resConnectType)
                                                 .put("connectorCategory", "CONNECT")
                                                 .put("status", resStatus)
                                                 .put("jobConfig", new JsonObject()
-                                                .put("comments", "This is imported from Kafka Connect.").toString())
-                                                .put("connectorConfig", resConfig.getObject().toString())
+                                                .put("comments", "This is imported from Kafka Connect."))
+                                                .put("connectorConfig", new JsonObject(resConfig.getObject().toString()))
                                 );
                                 mongo.insert(COLLECTION, insertJob.toJson(), ar -> {
                                     if (ar.failed()) {

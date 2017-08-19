@@ -247,19 +247,19 @@ public class FlinkTransformProcessor {
                 routingContext, restClient);
 
         // Submit Flink UDF
-        if(dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_FLINK_UDF.name()) {
+        if(dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_UDF.name()) {
             FlinkTransformProcessor.runFlinkJar(dfJob.getUdfUpload(), jobManagerHostPort);
         }
 
         // Submit Flink SQL A2A - Avro to Avro
-        if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_FLINK_SQL_A2A.name()) {
+        if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_SQLA2A.name()) {
             submitFlinkJobA2A(dfJob, vertx, maxRunTime, flinkEnv, kafkaHostPort,
                     SchemaRegistryHostPort, groupid, inputTopic, outputTopic, sinkKeys, transSql, schemSubject, schemaSubjectOut,
                     mongoClient, mongoCOLLECTION, "SQL_API");
         }
 
         // Submit Flink Table API Job
-        if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_FLINK_SCRIPT.name()) {
+        if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_Script.name()) {
             submitFlinkJobA2A(dfJob, vertx, maxRunTime, flinkEnv, kafkaHostPort,
                     SchemaRegistryHostPort, groupid, inputTopic, outputTopic, sinkKeys, transSql, schemSubject, schemaSubjectOut,
                     mongoClient, mongoCOLLECTION, "TABLE_API");
