@@ -215,6 +215,13 @@ public class FlinkTransformProcessor {
                         } else {
                             LOG.error(DFAPIMessage.logResponseMessage(9026, id));
                         }
+
+                        portRestResponse.exceptionHandler(exception -> {
+                            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                    .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                    .end(DFAPIMessage.getResponseMessage(9029));
+                            LOG.error(DFAPIMessage.logResponseMessage(9029, id));
+                        });
                     });
 
             postRestClientRequest.exceptionHandler(exception -> {
@@ -343,6 +350,13 @@ public class FlinkTransformProcessor {
                                     .putHeader("X-Total-Count", subTaskArray.size() + "" )
                                     .end(Json.encodePrettily(subTaskArray.getList()));
                             LOG.info(DFAPIMessage.logResponseMessage(1024, taskId));
+
+                            portRestResponse.exceptionHandler(exception -> {
+                                HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                        .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                        .end(DFAPIMessage.getResponseMessage(9029));
+                                LOG.error(DFAPIMessage.logResponseMessage(9029, taskId));
+                            });
                         });
 
         // Return a lost status when there is exception

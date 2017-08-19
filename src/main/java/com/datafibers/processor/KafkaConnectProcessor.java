@@ -7,8 +7,6 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.RoutingContext;
 import java.util.Arrays;
-import java.util.List;
-
 import org.apache.log4j.Logger;
 import com.datafibers.model.DFJobPOPJ;
 import com.datafibers.util.ConstantApp;
@@ -16,7 +14,6 @@ import com.datafibers.util.HelpFunc;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.RestClient;
 import com.hubrick.vertx.rest.RestClientRequest;
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 public class KafkaConnectProcessor {
@@ -55,6 +52,13 @@ public class KafkaConnectProcessor {
                                     .putHeader("X-Total-Count", subTaskArray.size() + "" )
                                     .end(Json.encodePrettily(subTaskArray.getList()));
                             LOG.info(DFAPIMessage.logResponseMessage(1023, taskId));
+
+                            portRestResponse.exceptionHandler(exception -> {
+                                HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                        .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                        .end(DFAPIMessage.getResponseMessage(9029));
+                                LOG.error(DFAPIMessage.logResponseMessage(9029, taskId));
+                            });
                         });
 
         postRestClientRequest.exceptionHandler(exception -> {
@@ -103,6 +107,13 @@ public class KafkaConnectProcessor {
                                     .setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
                                     .end(Json.encodePrettily(dfJobResponsed)));
                     LOG.info(DFAPIMessage.logResponseMessage(1000, dfJobResponsed.getId()));
+
+                    portRestResponse.exceptionHandler(exception -> {
+                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                .end(DFAPIMessage.getResponseMessage(9029));
+                        LOG.error(DFAPIMessage.logResponseMessage(9029, dfJobResponsed.getId()));
+                    });
                 });
 
         postRestClientRequest.exceptionHandler(exception -> {
@@ -149,6 +160,13 @@ public class KafkaConnectProcessor {
                         String.class, portRestResponse -> {
                             LOG.debug("KAFKA_SERVER_ACK: " + portRestResponse.statusMessage() + " "
                                     + portRestResponse.statusCode());
+
+                            portRestResponse.exceptionHandler(exception -> {
+                                HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                        .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                        .end(DFAPIMessage.getResponseMessage(9029));
+                                LOG.error(DFAPIMessage.logResponseMessage(9029, dfJobResponsed.getId()));
+                            });
                         });
 
         postRestClientRequest.exceptionHandler(exception -> {
@@ -216,6 +234,13 @@ public class KafkaConnectProcessor {
                     } else {
                         LOG.error(DFAPIMessage.logResponseMessage(9022, id));
                     }
+
+                    portRestResponse.exceptionHandler(exception -> {
+                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                .end(DFAPIMessage.getResponseMessage(9029));
+                        LOG.error(DFAPIMessage.logResponseMessage(9029, dfJobResponsed.getId()));
+                    });
                 });
 
         postRestClientRequest.exceptionHandler(exception -> {
@@ -237,80 +262,5 @@ public class KafkaConnectProcessor {
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
         postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
         postRestClientRequest.end(DFAPIMessage.getResponseMessage(1002));
-    }
-
-    /**
-     * This is new service poc
-     */
-    public static void DF_forwardPOSTAsAddOne(RoutingContext routingContext, RestClient restClient, MongoClient mongoClient,
-                                              String mongoCOLLECTION, DFJobPOPJ dfJobResponsed) {
-        // Create REST Client for Kafka Connect REST Forward
-        final RestClientRequest postRestClientRequest = restClient.post(ConstantApp.KAFKA_CONNECT_REST_URL, String.class,
-                portRestResponse -> {
-                    String rs = portRestResponse.getBody();
-                    JsonObject jo = new JsonObject(rs);
-                    // Once REST API forward is successful, add the record to the local repository
-                    /*mongoClient.insert(mongoCOLLECTION, dfJobResponsed.toJson(), r -> routingContext
-                            .response().setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
-                            .putHeader("Access-Control-Allow-Origin", "*")
-                            .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
-                            .end(Json.encodePrettily(dfJobResponsed)));*/
-                });
-
-        postRestClientRequest.exceptionHandler(exception -> {
-            HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                    .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                    .end(DFAPIMessage.getResponseMessage(9006));
-        });
-
-        restClient.exceptionHandler(exception -> {
-            HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
-                    .end(DFAPIMessage.getResponseMessage(9028));
-            LOG.error(DFAPIMessage.logResponseMessage(9028, exception.getMessage()));
-        });
-
-        postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
-        postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
-        postRestClientRequest.end(dfJobResponsed.toKafkaConnectJson().toString());
-
-    }
-
-    /**
-     * This new service poc
-     */
-    public static void DF_forwardPUTAsUpdateOne(RoutingContext routingContext, RestClient restClient, MongoClient mongoClient,
-                                         String mongoCOLLECTION, DFJobPOPJ dfJobResponsed) {
-        final String id = routingContext.request().getParam("id");
-        LOG.info("connectorConfig has change. Will forward to Kafka Connect.");
-
-        final RestClientRequest postRestClientRequest =
-                restClient.put(
-                        ConstantApp.KAFKA_CONNECT_PLUGIN_CONFIG.
-                                replace("CONNECTOR_NAME_PLACEHOLDER", dfJobResponsed.getConnectUid()),
-                        String.class, portRestResponse -> {
-                        });
-
-        postRestClientRequest.exceptionHandler(exception -> {
-            HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                    .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                    .end(DFAPIMessage.getResponseMessage(9006));
-        });
-
-        postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
-        postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
-        postRestClientRequest.end(HelpFunc.mapToJsonStringFromHashMapU2D(dfJobResponsed.getConnectorConfig()));
-
-        mongoClient.updateCollection(mongoCOLLECTION, new JsonObject().put("_id", id), // Select a unique document
-                // The update syntax: {$set, the json object containing the fields to update}
-                new JsonObject().put("$set", dfJobResponsed.toJson()), v -> {
-                    if (v.failed()) {
-                        routingContext.response()
-                                .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
-                                .end(DFAPIMessage.getResponseMessage(9003));
-                    } else {
-                        HelpFunc.responseCorsHandleAddOn(routingContext.response()).end();
-                    }
-                });
     }
 }
