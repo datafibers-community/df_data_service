@@ -1510,7 +1510,7 @@ public class DFDataProcessor extends AbstractVerticle {
             }
 
             // Add the avro schema for metadata as well
-            String dfMetaSchemaSubject = config().getString("kafka.topic.df.metadata", "df_meta") + "-value";
+            String dfMetaSchemaSubject = config().getString("kafka.topic.df.metadata", "df_meta");
             String schemaRegistryRestURL = "http://" + this.schema_registry_host_and_port + "/subjects/" +
                     dfMetaSchemaSubject + "/versions";
 
