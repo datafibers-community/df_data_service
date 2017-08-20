@@ -58,6 +58,11 @@ public final class ConstantApp {
     public static final String DF_TASK_STATUS_REST_URL_WILD = "/api/df/status*";
     public static final String DF_TASK_STATUS_REST_URL_WITH_ID = DF_TASK_STATUS_REST_URL + "/:id";
 
+    // DF subject/topic to tasks mapping endpoint URLs
+    public static final String DF_SUBJECT_TO_TASK_REST_URL = "/api/df/s2t";
+    public static final String DF_SUBJECT_TO_TASK_REST_URL_WILD = "/api/df/s2t*";
+    public static final String DF_SUBJECT_TO_TASK_REST_URL_WITH_ID = DF_SUBJECT_TO_TASK_REST_URL + "/:id";
+
     // Kafka Connect endpoint URLs
     public static final String KAFKA_CONNECT_REST_URL = "/connectors";
     public static final String KAFKA_CONNECT_PLUGIN_REST_URL = "/connector-plugins";
@@ -136,6 +141,8 @@ public final class ConstantApp {
 
     // Properties keys for admin
     public static final String PK_DF_TOPICS_ALIAS = "topics,topic_in";
+    public static final String PK_DF_TOPIC_ALIAS = "topic,topic_out";
+    public static final String PK_DF_ALL_TOPIC_ALIAS = PK_DF_TOPICS_ALIAS + "," + PK_DF_TOPIC_ALIAS;
 
     // Properties keys for UI
     public static final String PK_TRANSFORM_CUID = "cuid";

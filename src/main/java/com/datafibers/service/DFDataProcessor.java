@@ -292,6 +292,12 @@ public class DFDataProcessor extends AbstractVerticle {
         router.get(ConstantApp.DF_TASK_STATUS_REST_URL_WITH_ID).handler(this::getOneStatus);
         router.get(ConstantApp.DF_TASK_STATUS_REST_URL_WILD).handler(this::getOneStatus);
 
+        // Subject to Task Rest API definition
+        router.options(ConstantApp.DF_SUBJECT_TO_TASK_REST_URL_WITH_ID).handler(this::corsHandle);
+        router.options(ConstantApp.DF_SUBJECT_TO_TASK_REST_URL).handler(this::corsHandle);
+        router.get(ConstantApp.DF_SUBJECT_TO_TASK_REST_URL_WITH_ID).handler(this::getAllTasksOneTopic);
+        router.get(ConstantApp.DF_SUBJECT_TO_TASK_REST_URL_WILD).handler(this::getAllTasksOneTopic);
+
         // Get all installed connect or transform
         router.options(ConstantApp.DF_PROCESSOR_CONFIG_REST_URL_WITH_ID).handler(this::corsHandle);
         router.options(ConstantApp.DF_PROCESSOR_CONFIG_REST_URL).handler(this::corsHandle);
@@ -721,6 +727,40 @@ public class DFDataProcessor extends AbstractVerticle {
                             .putHeader("X-Total-Count", jobs.size() + "" )
                             .end(Json.encodePrettily(jobs));
                 });
+    }
+    /**
+     * Get all tasks information using specific topic
+     * @param routingContext
+     *
+     * @api {get} /s2t 5.List all df tasks using specific topic
+     * @apiVersion 0.1.1
+     * @apiName getAllTasksOneTopic
+     * @apiGroup All
+     * @apiPermission none
+     * @apiDescription This is where get list of tasks using specific topic.
+     * @apiSuccess	{JsonObject[]}	topic    List of tasks related to the topic.
+     * @apiSampleRequest http://localhost:8080/api/df/s2t
+     */
+    private void getAllTasksOneTopic(RoutingContext routingContext) {
+        final String topic = routingContext.request().getParam("id");
+        JsonObject searchCondition =
+                HelpFunc.getContainsTopics("connectorConfig", ConstantApp.PK_DF_ALL_TOPIC_ALIAS, topic);
+        LOG.debug("SEARCH = " + searchCondition);
+        if (topic == null) {
+            routingContext.response()
+                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                    .end(DFAPIMessage.getResponseMessage(9000));
+            LOG.error(DFAPIMessage.getResponseMessage(9000, "TOPIC_IS_NULL"));
+        } else {
+            mongo.find(COLLECTION, searchCondition,
+                    results -> {
+                        List<JsonObject> objects = results.result();
+                        List<DFJobPOPJ> jobs = objects.stream().map(DFJobPOPJ::new).collect(Collectors.toList());
+                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                .putHeader("X-Total-Count", jobs.size() + "" )
+                                .end(Json.encodePrettily(jobs));
+                    });
+        }
     }
 
     /**

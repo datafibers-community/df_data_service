@@ -342,7 +342,7 @@ public class FlinkTransformProcessor {
                                         .put("subTaskId", subTaskArray.getJsonObject(i).getString("id"))
                                         .put("id", taskId + "_" + subTaskArray.getJsonObject(i).getString("id"))
                                         .put("jobId", jo.getString("jid"))
-                                        .put("dfTaskState", HelpFunc.getTaskStatusKafka(new JSONObject(jo.toString())))
+                                        .put("dfTaskState", HelpFunc.getTaskStatusFlink(new JSONObject(jo.toString())))
                                         .put("taskState", jo.getString("state"));
                             }
                             HelpFunc.responseCorsHandleAddOn(routingContext.response())

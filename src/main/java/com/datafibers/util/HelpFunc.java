@@ -1,13 +1,8 @@
 package com.datafibers.util;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import io.vertx.ext.mongo.FindOptions;
@@ -248,6 +243,26 @@ public class HelpFunc {
         } else {
             return ConstantApp.DF_STATUS.NONE.name();
         }
+    }
+
+    /**
+     * Search the json object in the list of keys contains specified values
+     * @param jo
+     * @param keyString
+     * @param containsValue
+     * @return searchCondition
+     */
+    public static JsonObject getContainsTopics(String keyRoot, String keyString, String containsValue) {
+        JsonArray ja = new JsonArray();
+        for(String key : keyString.split(",")) {
+                ja.add(new JsonObject()
+                        .put(keyRoot+ "." + key,
+                                new JsonObject().put("$regex", ".*" + containsValue + ".*")
+                        )
+                );
+        }
+        return new JsonObject().put("$or", ja);
+
     }
 
     public static String mapToJsonStringFromHashMapD2U(HashMap<String, String> hm) {
