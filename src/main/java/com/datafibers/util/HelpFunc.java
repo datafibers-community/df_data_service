@@ -3,8 +3,6 @@ package com.datafibers.util;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import io.vertx.ext.mongo.FindOptions;
@@ -26,47 +24,13 @@ public class HelpFunc {
     final static String colon = ":";
 
     /**
-     * Generate a file name for the UDF Jar uploaded to avoid naming conflict
-     * @param inputName
-     * @return fileName
+     * Loop the enum of ConnectType to add all connects to the list by l
      */
-    public static String generateUniqueFileName(String inputName) {
-        Date curDate = new Date();
-        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
-        String DateToStr = format.format(curDate);
+    public static void addSpecifiedConnectTypetoList(List<String> list, String type_regx) {
 
-        DateToStr = DateToStr.replaceAll(space, underscore);
-        DateToStr = DateToStr.replaceAll(colon, underscore);
-
-        // nextInt excludes the top value so we have to add 1 to include the top value
-        Random rand = new Random();
-        int randomNum = rand.nextInt((max - min) + 1) + min;
-
-        if (inputName != null && inputName.indexOf(period) > 0) {
-            int firstPart = inputName.indexOf(period);
-            String fileName = inputName.substring(0, firstPart);
-            String fileExtension = inputName.substring(firstPart + 1);
-            DateToStr = fileName + underscore + DateToStr + underscore + randomNum + "." + fileExtension;
-        } else {
-            DateToStr = inputName + underscore + DateToStr + underscore + randomNum;
+        for (ConstantApp.DF_CONNECT_TYPE item : ConstantApp.DF_CONNECT_TYPE.values()) {
+            if(item.name().matches(type_regx)) list.add(item.name());
         }
-
-        return DateToStr;
-    }
-
-    /**
-     * Get the current folder of the running jar file
-     * @return jarFilePath
-     */
-    public String getCurrentJarRunnigFolder() {
-        String jarPath = getClass().getProtectionDomain().getCodeSource().getLocation().getPath();  // "/home/vagrant/df-data-service-1.0-SNAPSHOT-fat.jar";
-        int i = jarPath.lastIndexOf("/");
-
-        if (i > 0) {
-            jarPath = jarPath.substring(0, i + 1);
-        }
-
-        return jarPath;
     }
 
     /**
@@ -78,18 +42,6 @@ public class HelpFunc {
      */
     public static <T> T coalesce(T a, T b) {
         return a == null ? b : a;
-    }
-
-    /**
-     * Comparing string ease of lambda expression
-     * @param a
-     * @param b
-     * @param <T>
-     * @return object
-     */
-    public static <T> T strCompare(String a, String b, T c, T d) {
-        if (a.equalsIgnoreCase(b)) return c;
-                else return d;
     }
 
     /**
@@ -159,55 +111,52 @@ public class HelpFunc {
         String cleanedJsonString;
         cleanedJsonString = cleanJsonConfigIgnored(JSON_STRING, "connectorConfig_", "config_ignored");
         cleanedJsonString = convertTopicsFromArrayToString(cleanedJsonString, ConstantApp.PK_DF_TOPICS_ALIAS);
+        System.out.println("cleanedJsonString = " + cleanedJsonString);
         return cleanedJsonString;
     }
 
     /**
-     * Print list of Properties
-     * @param prop
-     * @return
+     * Generate a file name for the UDF Jar uploaded to avoid naming conflict
+     * @param inputName
+     * @return fileName
      */
-    public static String getPropertyAsString(Properties prop) {
-        StringWriter writer = new StringWriter();
-        prop.list(new PrintWriter(writer));
-        return writer.getBuffer().toString();
-    }
+    public static String generateUniqueFileName(String inputName) {
+        Date curDate = new Date();
+        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
+        String DateToStr = format.format(curDate);
 
-    /**
-     * Loop the enum of ConnectType to add all connects to the list by l
-     */
-    public static void addSpecifiedConnectTypetoList(List<String> list, String type_regx) {
+        DateToStr = DateToStr.replaceAll(space, underscore);
+        DateToStr = DateToStr.replaceAll(colon, underscore);
 
-        for (ConstantApp.DF_CONNECT_TYPE item : ConstantApp.DF_CONNECT_TYPE.values()) {
-            if(item.name().matches(type_regx)) list.add(item.name());
+        // nextInt excludes the top value so we have to add 1 to include the top value
+        Random rand = new Random();
+        int randomNum = rand.nextInt((max - min) + 1) + min;
+
+        if (inputName != null && inputName.indexOf(period) > 0) {
+            int firstPart = inputName.indexOf(period);
+            String fileName = inputName.substring(0, firstPart);
+            String fileExtension = inputName.substring(firstPart + 1);
+            DateToStr = fileName + underscore + DateToStr + underscore + randomNum + "." + fileExtension;
+        } else {
+            DateToStr = inputName + underscore + DateToStr + underscore + randomNum;
         }
+
+        return DateToStr;
     }
 
     /**
-     * Convert string to Json format by remove first " and end " and replace \" to "
-     * @param srcStr String to format
-     * @return String formatted
+     * Get the current folder of the running jar file
+     * @return jarFilePath
      */
-    public static String stringToJsonFormat(String srcStr) {
-        if (srcStr.isEmpty()) return "[]";
-        // .replace("\"\"", "\"") is used to fix issue on STRING SCHEMA,
-        // where the origin schema show as "schema":"\"string\"" == replace as ==> "schema":""string""
-        // Then, replace as "schema":"string"
-        return srcStr.replace("\"{", "{").replace("}\"", "}").replace("\\\"", "\"").replace("\"\"", "\"");
-    }
+    public String getCurrentJarRunnigFolder() {
+        String jarPath = getClass().getProtectionDomain().getCodeSource().getLocation().getPath();  // "/home/vagrant/df-data-service-1.0-SNAPSHOT-fat.jar";
+        int i = jarPath.lastIndexOf("/");
 
-    /**
-     * This is mainly to bypass security control for response.
-     * @param response
-     */
-    public static HttpServerResponse responseCorsHandleAddOn(HttpServerResponse response) {
-        return response
-                .putHeader("Access-Control-Allow-Origin", "*")
-                .putHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
-                .putHeader("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, X-Total-Count")
-                .putHeader("Access-Control-Expose-Headers", "X-Total-Count")
-                .putHeader("Access-Control-Max-Age", "60")
-                .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET);
+        if (i > 0) {
+            jarPath = jarPath.substring(0, i + 1);
+        }
+
+        return jarPath;
     }
 
     /**
@@ -294,6 +243,98 @@ public class HelpFunc {
         } else {
             return ConstantApp.DF_STATUS.NONE.name();
         }
+    }
+
+    /**
+     * Search the json object in the list of keys contains specified values
+     * @param jo
+     * @param keyString
+     * @param containsValue
+     * @return searchCondition
+     */
+    public static JsonObject getContainsTopics(String keyRoot, String keyString, String containsValue) {
+        JsonArray ja = new JsonArray();
+        for(String key : keyString.split(",")) {
+                ja.add(new JsonObject()
+                        .put(keyRoot+ "." + key,
+                                new JsonObject().put("$regex", ".*" + containsValue + ".*")
+                        )
+                );
+        }
+        return new JsonObject().put("$or", ja);
+
+    }
+
+    public static String mapToJsonStringFromHashMapD2U(HashMap<String, String> hm) {
+        return mapToJsonFromHashMapD2U(hm).toString();
+    }
+
+    public static JsonObject mapToJsonFromHashMapD2U(HashMap<String, String> hm) {
+        JsonObject json = new JsonObject();
+        for (String key : hm.keySet()) {
+            json.put(key.replace('.','_'), hm.get(key)); // replace . in keys so that kafka connect property with . has no issues
+        }
+        return json;
+    }
+
+    public static String mapToJsonStringFromHashMapU2D(HashMap<String, String> hm) {
+        return mapToJsonFromHashMapU2D(hm).toString();
+    }
+
+    public static JsonObject mapToJsonFromHashMapU2D(HashMap<String, String> hm) {
+        JsonObject json = new JsonObject();
+        for (String key : hm.keySet()) {
+            json.put(key.replace('_','.'), hm.get(key)); // replace . in keys so that kafka connect property with . has no issues
+        }
+        return json;
+    }
+
+    public static HashMap<String, String> mapToHashMapFromJson( JsonObject jo) {
+        HashMap<String, String> hm = new HashMap();
+        for (String key : jo.fieldNames()) {
+            hm.put(key, jo.getString(key));
+        }
+        return hm;
+    }
+
+    /**
+     * This is mainly to bypass security control for response.
+     * @param response
+     */
+    public static HttpServerResponse responseCorsHandleAddOn(HttpServerResponse response) {
+        return response
+                .putHeader("Access-Control-Allow-Origin", "*")
+                .putHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
+                .putHeader("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, X-Total-Count")
+                .putHeader("Access-Control-Expose-Headers", "X-Total-Count")
+                .putHeader("Access-Control-Max-Age", "60")
+                .putHeader("X-Total-Count", "1" ) // Overwrite this in the sub call
+                .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET);
+    }
+
+    /**
+     * Convert string to Json format by remove first " and end " and replace \" to "
+     * @param srcStr String to format
+     * @return String formatted
+     */
+    public static String stringToJsonFormat(String srcStr) {
+        if (srcStr.isEmpty()) return "[]";
+        // .replace("\"\"", "\"") is used to fix issue on STRING SCHEMA,
+        // where the origin schema show as "schema":"\"string\"" == replace as ==> "schema":""string""
+        // Then, replace as "schema":"string"
+        return srcStr.replace("\"{", "{").replace("}\"", "}").replace("\\\"", "\"").replace("\"\"", "\"");
+    }
+
+    /**
+     * Comparing string ease of lambda expression
+     * @param a
+     * @param b
+     * @param <T>
+     * @return object
+     */
+    public static <T> T strCompare(String a, String b, T c, T d) {
+        if (a.equalsIgnoreCase(b)) return c;
+        else return d;
     }
 
     /**

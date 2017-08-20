@@ -73,15 +73,16 @@ public class DFInitService {
 
     public static void runAdminTools() {
         String adminTool = StringUtils.substringAfterLast(runningMode, "ADMIN_TOOL_");
-        if (adminTool.equalsIgnoreCase("cleanmongo")) {
-            LOG.info("Clean up all history data in MongoDB repository");
-            LOG.info("Drop collection df.df_processor");
-            new MongoAdminClient("localhost", 27017, "DEFAULT_DB").dropCollection("df_processor");
+        if (adminTool.equalsIgnoreCase("remove_tasks")) {
+            LOG.info("Clean up all tasks (except internal) from repository");
+            new MongoAdminClient("localhost", 27017, "DEFAULT_DB")
+                    .truncateCollectionExcept("df_processor", "connectorCategory", "INTERNAL");
         }
 
-        if (adminTool.contains("cleanmongo(")) {
+        if (adminTool.contains("remove_tasks(")) {
             String[] para = StringUtils.substringBetween(adminTool, "(", ")").split(",");
-            new MongoAdminClient(para[0], Integer.parseInt(para[1]), para[2]).dropCollection(para[3]);
+            new MongoAdminClient(para[0], Integer.parseInt(para[1]), para[2])
+                    .truncateCollectionExcept(para[3], "connectorCategory", "INTERNAL");
         }
     }
 }

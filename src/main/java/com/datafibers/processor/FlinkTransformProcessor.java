@@ -65,7 +65,7 @@ public class FlinkTransformProcessor {
 
         // Set all properties. Note, all inputTopic related properties are set later in loop
         Properties properties = new Properties();
-        properties.setProperty(ConstantApp.PK_KAFKA_HOST_PORT, kafkaHostPort);
+        properties.setProperty(ConstantApp.PK_KAFKA_HOST_PORT.replace("_", "."), kafkaHostPort); //has to use bootstrap.servers
         properties.setProperty(ConstantApp.PK_KAFKA_CONSUMER_GROURP, groupid);
         properties.setProperty(ConstantApp.PK_SCHEMA_SUB_OUTPUT, schemaSubjectOut);
         properties.setProperty(ConstantApp.PK_KAFKA_SCHEMA_REGISTRY_HOST_PORT, SchemaRegistryHostPort);
@@ -83,7 +83,7 @@ public class FlinkTransformProcessor {
 
         if (topicInList.length != schemaSubjectInList.length)
             throw new DFPropertyValidationException("Number of inputTopic and inputTopicSchema Mismatch.");
-        if (engine.equalsIgnoreCase("tABLE_API") && (topicInList.length > 1 || schemaSubjectInList.length > 1))
+        if (engine.equalsIgnoreCase("TABLE_API") && (topicInList.length > 1 || schemaSubjectInList.length > 1))
             throw new DFPropertyValidationException("Script/Table API only supports single inputTopic/inputTopicSchema.");
 
         WorkerExecutor exec_flink = vertx.createSharedWorkerExecutor(dfJob.getName() + dfJob.hashCode(),
@@ -103,10 +103,16 @@ public class FlinkTransformProcessor {
                     properties.setProperty(ConstantApp.PK_SCHEMA_STR_INPUT,
                             SchemaRegistryClient.getLatestSchemaFromProperty(properties,
                                     ConstantApp.PK_SCHEMA_SUB_INPUT).toString());
-                    LOG.debug(HelpFunc.getPropertyAsString(properties));
 
                     tableEnv.registerTableSource(topicInList[i], new Kafka09AvroTableSource(topicInList[i], properties));
+                    for (String key : properties.stringPropertyNames()) {
+                        LOG.debug("FLINK_PROPERTIES KEY:" + key + " VALUE:" + properties.getProperty(key));
+                    }
+                    LOG.debug("FLINK_TOPIC_IN = " + topicInList[i]);
+                    LOG.debug("FLINK_TRANSCRIPT = " + transScript);
                 }
+
+                LOG.debug("FLINK_TOPIC_OUT = " + topicOut);
 
                 Table result = null;
                 switch (engine.toUpperCase()) {
@@ -147,6 +153,7 @@ public class FlinkTransformProcessor {
                 flinkEnv.executeWithDFObj("DF_FLINK_A2A_" + engine.toUpperCase() + uuid, dfJob);
 
             } catch(Exception e) {
+                e.printStackTrace();
                 /*
                 TODO
                 Sometimes this is normal since we cancel from rest api through UI but the job submit in code
@@ -154,7 +161,7 @@ public class FlinkTransformProcessor {
                 Or else, it is true exception.
                  */
                 LOG.error(DFAPIMessage.logResponseMessage(9010, "jobId = " + dfJob.getId() +
-                "exception - " + e.getCause()));
+                " exception - " + e.getCause()));
                 // e.printStackTrace();
             }
 
@@ -208,6 +215,13 @@ public class FlinkTransformProcessor {
                         } else {
                             LOG.error(DFAPIMessage.logResponseMessage(9026, id));
                         }
+
+                        portRestResponse.exceptionHandler(exception -> {
+                            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                    .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                    .end(DFAPIMessage.getResponseMessage(9029));
+                            LOG.error(DFAPIMessage.logResponseMessage(9029, id));
+                        });
                     });
 
             postRestClientRequest.exceptionHandler(exception -> {
@@ -243,23 +257,23 @@ public class FlinkTransformProcessor {
 
         final String id = routingContext.request().getParam("id");
         if(dfJob.getStatus().equalsIgnoreCase("RUNNING"))
-        cancelFlinkJob(dfJob.getJobConfig().get("flink.submit.job.id"), mongoClient, mongoCOLLECTION,
+        cancelFlinkJob(dfJob.getJobConfig().get(ConstantApp.PK_FLINK_SUBMIT_JOB_ID), mongoClient, mongoCOLLECTION,
                 routingContext, restClient);
 
         // Submit Flink UDF
-        if(dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_FLINK_UDF.name()) {
+        if(dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_UDF.name()) {
             FlinkTransformProcessor.runFlinkJar(dfJob.getUdfUpload(), jobManagerHostPort);
         }
 
         // Submit Flink SQL A2A - Avro to Avro
-        if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_FLINK_SQL_A2A.name()) {
+        if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_SQLA2A.name()) {
             submitFlinkJobA2A(dfJob, vertx, maxRunTime, flinkEnv, kafkaHostPort,
                     SchemaRegistryHostPort, groupid, inputTopic, outputTopic, sinkKeys, transSql, schemSubject, schemaSubjectOut,
                     mongoClient, mongoCOLLECTION, "SQL_API");
         }
 
         // Submit Flink Table API Job
-        if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_FLINK_SCRIPT.name()) {
+        if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_Script.name()) {
             submitFlinkJobA2A(dfJob, vertx, maxRunTime, flinkEnv, kafkaHostPort,
                     SchemaRegistryHostPort, groupid, inputTopic, outputTopic, sinkKeys, transSql, schemSubject, schemaSubjectOut,
                     mongoClient, mongoCOLLECTION, "TABLE_API");
@@ -328,7 +342,7 @@ public class FlinkTransformProcessor {
                                         .put("subTaskId", subTaskArray.getJsonObject(i).getString("id"))
                                         .put("id", taskId + "_" + subTaskArray.getJsonObject(i).getString("id"))
                                         .put("jobId", jo.getString("jid"))
-                                        .put("dfTaskState", HelpFunc.getTaskStatusKafka(new JSONObject(jo.toString())))
+                                        .put("dfTaskState", HelpFunc.getTaskStatusFlink(new JSONObject(jo.toString())))
                                         .put("taskState", jo.getString("state"));
                             }
                             HelpFunc.responseCorsHandleAddOn(routingContext.response())
@@ -336,6 +350,13 @@ public class FlinkTransformProcessor {
                                     .putHeader("X-Total-Count", subTaskArray.size() + "" )
                                     .end(Json.encodePrettily(subTaskArray.getList()));
                             LOG.info(DFAPIMessage.logResponseMessage(1024, taskId));
+
+                            portRestResponse.exceptionHandler(exception -> {
+                                HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                        .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                        .end(DFAPIMessage.getResponseMessage(9029));
+                                LOG.error(DFAPIMessage.logResponseMessage(9029, taskId));
+                            });
                         });
 
         // Return a lost status when there is exception

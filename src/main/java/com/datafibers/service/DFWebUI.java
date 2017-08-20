@@ -20,6 +20,8 @@ public class DFWebUI extends AbstractVerticle {
 
         // Bind web ui
         routerWeb.route("/admin/*").handler(StaticHandler.create("admin").setCachingEnabled(false));
+        // Bind new web ui
+        routerWeb.route("/dfa/*").handler(StaticHandler.create("dfa").setCachingEnabled(false));
         // Bind api doc
         routerWeb.route("/api/*").handler(StaticHandler.create("apidoc").setCachingEnabled(true));
         // Bind landing page

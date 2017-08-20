@@ -72,6 +72,7 @@ public final class DFAPIMessage {
         messageMap.put(9026, "ID_DELETE_EXCEPTION_IN_FLINK_REST");
         messageMap.put(9027, "FORWARD_GET_ALL_SCHEMA");
         messageMap.put(9028, "REST_CLIENT_EXCEPTION");
+        messageMap.put(9029, "REST_CLIENT_RESPONSE_EXCEPTION");
     }
 
     public static String getResponseMessage(int responseCode, String comments) {
