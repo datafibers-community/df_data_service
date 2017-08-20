@@ -53,6 +53,7 @@ class App extends Component {
                 <Resource name="logs" options={{ label: 'Logging' }} icon={LoggingIcon} list={LoggingList} remove={Delete} show={LoggingShow} />
                 <Resource name="hist" options={{ label: 'History' }} icon={HistIcon} list={HistList} />
                 <Resource name="status" />
+                <Resource name="s2t" />
 //                <Resource name="customers" list={VisitorList} edit={VisitorEdit} remove={VisitorDelete} icon={VisitorIcon}/>
 //                <Resource name="commands" list={CommandList} edit={CommandEdit} remove={Delete} icon={CommandIcon} options={{ label: 'Orders' }}/>
 //                <Resource name="products" list={ProductList} create={ProductCreate} edit={ProductEdit} remove={Delete} icon={ProductIcon} />

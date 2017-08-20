@@ -17,6 +17,7 @@ import RawJsonRecordField from '../component/RawJsonRecordField';
 import RawJsonRecordSpecificField from '../component/RawJsonRecordSpecificField';
 import EmbeddedArrayInput from '../component/EmbeddedArrayInput';
 import EmbeddedArrayField from '../component/EmbeddedArrayField';
+import ShowProcessorButton from '../buttons/ShowProcessorButton';
 
 export const SchemaIcon = Icon;
 
@@ -93,14 +94,14 @@ export const SchemaEdit = (props) => (
                 </EmbeddedArrayInput>
             </FormTab>
             <FormTab label="Tasks Related">
-                <ReferenceManyField addLabel={false} reference="connect" target="id">
+                <ReferenceManyField addLabel={false} reference="s2t" target="id">
                     <Datagrid>
                             <TextField source="id" label="id" />
                             <TextField source="taskSeq" label="task seq." />
                             <TextField source="name" label="name" />
                             <TextField source="connectorType" label="task type" />
                             <ChipField source="status" label="status" />
-                        <ShowButton />
+                        <ShowProcessorButton />
                     </Datagrid>
                 </ReferenceManyField>
             </FormTab>
