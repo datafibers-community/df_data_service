@@ -40,7 +40,6 @@ class App extends Component {
                 customSagas={sagas}
                 customRoutes={customRoutes}
                 authClient={authClient}
-                dashboard={Dashboard}
                 loginPage={Login}
                 appLayout={Layout}
                 menu={Menu}
