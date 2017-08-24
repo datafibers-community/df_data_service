@@ -1,6 +1,8 @@
 package com.datafibers.test_tool;
+import com.datafibers.service.DFInitService;
 import com.datafibers.util.ConstantApp;
 import com.datafibers.util.HelpFunc;
+import com.datafibers.util.MongoAdminClient;
 import io.vertx.core.json.JsonObject;
 import org.apache.commons.codec.DecoderException;
 import java.io.IOException;
@@ -11,9 +13,9 @@ import java.io.IOException;
 public class JsonTest {
 
     public static void main(String[] args) throws IOException, DecoderException {
-        System.out.println("TestCase_Simple Avro Producer");
-        String JSON_STRING = "{\"description\":\"This is default description.\",\"connectorConfig\":{\"tasks.max\":\"1\",\"topics\":[\"test_value\",\"output_value\"],\"file.overwrite\":true,\"file.location\":\"/home/vagrant/df_data\",\"file.glob\":\"*.json\"},\"connectorType\":\"CONNECT_KAFKA_SOURCE_AVRO\",\"name\":\"test\",\"taskSeq\":1}";
-        //System.out.println(HelpFunc.getContainsTopics(new JsonObject(JSON_STRING), "connectorConfig", ConstantApp.PK_DF_TOPICS_ALIAS, "df"));
-
+        new MongoAdminClient("localhost", 27017, "DEFAULT_DB")
+                .useCollection("df_installed")
+                .importJsonInputStream(DFInitService.class.getResourceAsStream("/import/df_installed.json"))
+                .close();
     }
 }

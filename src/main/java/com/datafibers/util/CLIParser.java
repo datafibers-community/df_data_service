@@ -15,11 +15,11 @@ public class CLIParser {
     private static final Logger LOG = Logger.getLogger(CLIParser.class);
     private String[] args = null;
     private Options options = new Options();
-    public static String run_mode;
-    public static String service_mode;
-    public static String test_mode;
-    public static String admin_tool;
-    public static String debug_mode;
+    public static String run_mode = "";
+    public static String service_mode = "";
+    public static String test_mode = "";
+    public static String admin_tool = "";
+    public static String debug_mode = "";
 
 
     public CLIParser(String[] args) {
@@ -35,7 +35,7 @@ public class CLIParser {
                         "\n Usage: " +
                         "\n -a remove_tasks" +
                         "\n -a remove_tasks(localhost,27017,db_name,db_collection_name)" +
-                        "\n Function Name: import_df_install - rebuild df_install configs" +
+                        "\n Function Name: import_df_install (short for idi) - rebuild df_install configs" +
                         "\n Usage: " +
                         "\n -a import_df_install" +
                         "\n -a import_df_install(localhost,27017,db_name,db_collection_name)"
@@ -84,17 +84,12 @@ public class CLIParser {
                 } else {
                     this.test_mode = "TEST_CASE_1";
                 }
-            } else {
-                this.test_mode = "NO_TEST";
             }
 
             if (cmd.hasOption("a")) {
                 if(cmd.getOptionValue("a") != null)
                     this.admin_tool = "ADMIN_TOOL_" + cmd.getOptionValue("a");
-            } else {
-                this.admin_tool = "NO_ADMIN_TOOL";
             }
-
 
         } catch (ParseException e) {
             LOG.warn(DFAPIMessage.logResponseMessage(9020, "exception - " + e.getCause()));

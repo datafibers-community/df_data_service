@@ -10,8 +10,14 @@ import static com.mongodb.client.model.Filters.eq;
 import static com.mongodb.client.model.Filters.exists;
 import static com.mongodb.client.model.Filters.gte;
 
+import com.mongodb.client.model.BulkWriteOptions;
+import com.mongodb.client.model.InsertOneModel;
 import io.vertx.core.json.JsonObject;
 import org.bson.Document;
+
+import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * MongoDB Client
@@ -63,7 +69,7 @@ public class MongoAdminClient {
     }
 
     public MongoAdminClient useCollection(String colName) {
-        if(!collectionExists(colName))
+        if(collectionExists(colName))
             this.collection = this.database.getCollection(colName);
         return this;
     }
@@ -85,9 +91,72 @@ public class MongoAdminClient {
         return false;
     }
 
-    public String findConnectorClassName(String connectorType) {
-        String connectorClass = this.collection.find(eq("connectorType", connectorType)).first().toJson();
-        return new JsonObject(connectorClass).getString("class");
+    /**
+     * Lookup A collection using specific key and value and return value from another value
+     * @param lkpKey
+     * @param lkpValue
+     * @param lkpReturnedKey
+     * @return lkpReturnedKValue
+     */
+    public String lkpCollection(String lkpKey, String lkpValue, String lkpReturnedKey) {
+        String connectorClass = this.collection.find(eq(lkpKey, lkpValue)).first().toJson();
+        return new JsonObject(connectorClass).getString(lkpReturnedKey);
+    }
+
+    public MongoAdminClient importJsonFile(String fileNamePath) {
+        int count = 0;
+        int batch = 100;
+
+        List<InsertOneModel<Document>> docs = new ArrayList<>();
+
+        try (BufferedReader br = new BufferedReader(new FileReader(fileNamePath))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                docs.add(new InsertOneModel<>(Document.parse(line)));
+                count++;
+                if (count == batch) {
+                    this.collection.bulkWrite(docs, new BulkWriteOptions().ordered(false));
+                    docs.clear();
+                    count = 0;
+                }
+            }
+        } catch (IOException fnfe) {
+            fnfe.printStackTrace();
+        }
+
+        if (count > 0) {
+            collection.bulkWrite(docs, new BulkWriteOptions().ordered(false));
+        }
+
+        return this;
+    }
+
+    public MongoAdminClient importJsonInputStream(InputStream fileInputStream) {
+        int count = 0;
+        int batch = 100;
+
+        List<InsertOneModel<Document>> docs = new ArrayList<>();
+
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(fileInputStream))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                docs.add(new InsertOneModel<>(Document.parse(line)));
+                count++;
+                if (count == batch) {
+                    this.collection.bulkWrite(docs, new BulkWriteOptions().ordered(false));
+                    docs.clear();
+                    count = 0;
+                }
+            }
+        } catch (IOException fnfe) {
+            fnfe.printStackTrace();
+        }
+
+        if (count > 0) {
+            collection.bulkWrite(docs, new BulkWriteOptions().ordered(false));
+        }
+
+        return this;
     }
 
     public void close() {
