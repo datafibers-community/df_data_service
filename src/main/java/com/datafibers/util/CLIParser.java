@@ -30,12 +30,12 @@ public class CLIParser {
         options.addOption("u", "webui", true, "enable web, <arg>=ui|noui");
         options.addOption("m", "mode", true, "running vertx mode, <arg>=cluster|standalone");
         options.addOption("a", "admin", true,
-                "run admin tools, <arg>=function_name, such as " +
-                        "\n Function Name: remove_tasks - remove all tasks/processors from repo." +
+                "run admin tools, <arg>=Function, such as " +
+                        "\n Function: remove_tasks - remove all tasks/processors from repo." +
                         "\n Usage: " +
                         "\n -a remove_tasks" +
                         "\n -a remove_tasks(localhost,27017,db_name,db_collection_name)" +
-                        "\n Function Name: import_df_install (short for idi) - rebuild df_install configs" +
+                        "\n Function: import_df_install (aka. idi) - rebuild df_install configs" +
                         "\n Usage: " +
                         "\n -a import_df_install" +
                         "\n -a import_df_install(localhost,27017,db_name,db_collection_name)"
