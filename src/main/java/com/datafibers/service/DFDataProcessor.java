@@ -1047,7 +1047,8 @@ public class DFDataProcessor extends AbstractVerticle {
         // Find and set default connector.class
         if(!dfJob.getConnectorConfig().containsKey(ConstantApp.PK_KAFKA_CONNECTOR_CLASS) ||
                 dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_CONNECTOR_CLASS) == null) {
-            String connectorClass = mongoDFInstalled.findConnectorClassName(dfJob.getConnectorType());
+            String connectorClass =
+                    mongoDFInstalled.lkpCollection("connectorType", dfJob.getConnectorType(), "class");
             if(connectorClass == null || connectorClass.isEmpty()) {
                 LOG.info(DFAPIMessage.logResponseMessage(9024, mongoId + " - " + connectorClass));
             } else {
@@ -1510,7 +1511,7 @@ public class DFDataProcessor extends AbstractVerticle {
             }
 
             // Add the avro schema for metadata as well
-            String dfMetaSchemaSubject = config().getString("kafka.topic.df.metadata", "df_meta") + "-value";
+            String dfMetaSchemaSubject = config().getString("kafka.topic.df.metadata", "df_meta");
             String schemaRegistryRestURL = "http://" + this.schema_registry_host_and_port + "/subjects/" +
                     dfMetaSchemaSubject + "/versions";
 

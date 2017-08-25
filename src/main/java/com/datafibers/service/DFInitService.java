@@ -74,15 +74,37 @@ public class DFInitService {
     public static void runAdminTools() {
         String adminTool = StringUtils.substringAfterLast(runningMode, "ADMIN_TOOL_");
         if (adminTool.equalsIgnoreCase("remove_tasks")) {
-            LOG.info("Clean up all tasks (except internal) from repository");
+            LOG.info("Clean up all tasks (except internal) from repo at localhost:27017/DEFAULT_DB/df_processor");
             new MongoAdminClient("localhost", 27017, "DEFAULT_DB")
-                    .truncateCollectionExcept("df_processor", "connectorCategory", "INTERNAL");
+                    .truncateCollectionExcept("df_processor", "connectorCategory", "INTERNAL")
+                    .close();
         }
 
         if (adminTool.contains("remove_tasks(")) {
             String[] para = StringUtils.substringBetween(adminTool, "(", ")").split(",");
+            LOG.info("Clean up all tasks (except internal) from repo at "
+                    +  para[0] + ":" + para[1] + "/" + para[2] + "/" + para[3]);
             new MongoAdminClient(para[0], Integer.parseInt(para[1]), para[2])
-                    .truncateCollectionExcept(para[3], "connectorCategory", "INTERNAL");
+                    .truncateCollectionExcept(para[3], "connectorCategory", "INTERNAL")
+                    .close();
+
+        }
+
+        if (adminTool.equalsIgnoreCase("import_df_install") ||
+                adminTool.equalsIgnoreCase("idi")) {
+            LOG.info("Import Connect Metadata to repo at localhost:27017/DEFAULT_DB/df_installed");
+            new MongoAdminClient("localhost", "27017", "DEFAULT_DB", "df_installed")
+                    .importJsonInputStream(DFInitService.class.getResourceAsStream("/import/df_installed.json"))
+                    .close();
+        }
+
+        if (adminTool.contains("import_df_install(") || adminTool.contains("idi(")) {
+            String[] para = StringUtils.substringBetween(adminTool, "(", ")").split(",");
+            LOG.info("Clean up all tasks (except internal) from repo at "
+                    +  para[0] + ":" + para[1] + "/" + para[2] + "/" + para[3]);
+            new MongoAdminClient(para[0], para[1], para[2], para[3])
+                    .importJsonInputStream(DFInitService.class.getResourceAsStream("/import/df_installed.json"))
+                    .close();
         }
     }
 }
