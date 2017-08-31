@@ -106,8 +106,7 @@ export const ConnectEdit = (props) => (
                         <ChipField source="taskState" label="Engine Job State" />
                         <TextField source="subTaskId" label="Subtask ID." />
                         <ChipField source="state" label="Subtask State" />
-                        <TextField source="worker_id" label="Worker ID." />
-                        <ShowButton />
+                        <TextField source="taskTrace" label="Trace" />
                     </Datagrid>
                 </ReferenceManyField>
             </FormTab>
