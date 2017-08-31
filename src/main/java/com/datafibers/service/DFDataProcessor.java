@@ -106,7 +106,7 @@ public class DFDataProcessor extends AbstractVerticle {
     @Override
     public void start(Future<Void> fut) {
         // Turn off
-        // Logger.getLogger("io.vertx.core.impl.BlockedThreadChecker").setLevel(Level.OFF);
+        Logger.getLogger("io.vertx.core.impl.BlockedThreadChecker").setLevel(Level.OFF);
 
         /**
          * Get all application configurations
