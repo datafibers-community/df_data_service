@@ -38,13 +38,22 @@ public class KafkaConnectProcessor {
                         portRestResponse -> {
                             JsonObject jo = new JsonObject(portRestResponse.getBody());
                             JsonArray subTaskArray = jo.getJsonArray("tasks");
-                            for (int i = 0; i < subTaskArray.size(); i++) {
-                                subTaskArray.getJsonObject(i)
-                                        .put("subTaskId", subTaskArray.getJsonObject(i).getInteger("id"))
-                                        .put("id", taskId + "_" + subTaskArray.getJsonObject(i).getInteger("id"))
-                                        .put("jobId", taskId)
-                                        .put("dfTaskState", HelpFunc.getTaskStatusKafka(new JSONObject(jo.toString())))
-                                        .put("taskState", jo.getJsonObject("connector").getString("state"));
+                            if(subTaskArray.size() > 0) {
+                                for (int i = 0; i < subTaskArray.size(); i++) {
+                                    subTaskArray.getJsonObject(i)
+                                            .put("subTaskId", subTaskArray.getJsonObject(i).getInteger("id"))
+                                            .put("id", taskId + "_" + subTaskArray.getJsonObject(i).getInteger("id"))
+                                            .put("jobId", taskId)
+                                            .put("dfTaskState", HelpFunc.getTaskStatusKafka(new JSONObject(jo.toString())))
+                                            .put("taskState", jo.getJsonObject("connector").getString("state"));
+                                }
+                            } else { // when tasks is empty, return an dummy row
+                                subTaskArray.add(new JsonObject().put("subTaskId", "e")
+                                .put("id", taskId + "_e" )
+                                .put("jobId", taskId)
+                                .put("dfTaskState", HelpFunc.getTaskStatusKafka(new JSONObject(jo.toString())))
+                                .put("taskState", jo.getJsonObject("connector").getString("state"))
+                                .put("taskTrace", jo.getJsonObject("connector").getString("trace")));
                             }
 
                             HelpFunc.responseCorsHandleAddOn(routingContext.response())
