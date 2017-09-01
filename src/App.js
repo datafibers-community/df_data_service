@@ -47,8 +47,8 @@ class App extends Component {
             >
                 <Resource name="processor" options={{ label: 'All' }} icon={ProcessorIcon} list={ProcessorList} show={ProcessorShow} />
                 <Resource name="ps" options={{ label: 'Connect' }} icon={ConnectIcon} list={ConnectList} create={ConnectCreate} edit={ConnectEdit} remove={Delete} show={ConnectShow} />
-                <Resource name="tr" options={{ label: 'Transform' }} icon={TransformIcon} list={TransformList} edit={TransformEdit} create={TransformCreate} remove={Delete}  show={ConnectShow} />
-                <Resource name="schema" options={{ label: 'Topic' }} icon={SchemaIcon} list={SchemaList} create={SchemaCreate} edit={SchemaEdit} show={SchemaShow} />
+                <Resource name="tr" options={{ label: 'Transform' }} icon={TransformIcon} list={TransformList} edit={TransformEdit} create={TransformCreate} remove={Delete} show={TransformShow} />
+                <Resource name="schema" options={{ label: 'Topic' }} icon={SchemaIcon} list={SchemaList} create={SchemaCreate} edit={SchemaEdit} remove={Delete} show={SchemaShow} />
                 <Resource name="logs" options={{ label: 'Logging' }} icon={LoggingIcon} list={LoggingList} remove={Delete} show={LoggingShow} />
                 <Resource name="hist" options={{ label: 'History' }} icon={HistIcon} list={HistList} />
                 <Resource name="status" />
