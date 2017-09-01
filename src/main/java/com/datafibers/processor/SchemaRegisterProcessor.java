@@ -1,11 +1,14 @@
 package com.datafibers.processor;
 
+import com.datafibers.model.DFJobPOPJ;
 import com.datafibers.util.DFAPIMessage;
 import com.datafibers.util.DFMediaType;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.RestClientRequest;
 import io.vertx.core.Vertx;
 import io.vertx.core.WorkerExecutor;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.RoutingContext;
 import java.net.ConnectException;
 import java.util.Arrays;
@@ -370,6 +373,63 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
 
             JSONObject jsonToBeSubmitted = new JSONObject().put(ConstantApp.COMPATIBILITY, compatibility);
             postRestClientRequest2.end(jsonToBeSubmitted.toString());
+        }
+    }
+
+    /**
+     * This method first decode the REST DELETE request to DFJobPOPJ object. Then, it updates its job status and repack
+     * for SR REST DELETE. After that, it forward the new DELETE to Schema Registry.
+     *
+     * @param routingContext This is the contect from REST API
+     * @param rc_schema This is vertx non-blocking rest client used for forwarding
+     * @param schema_registry_host_and_port Schema Registry Rest
+     */
+    public static void forwardDELETEAsDeleteOne (RoutingContext routingContext, RestClient rc_schema,
+                                                 String schema_registry_host_and_port) {
+        final String subject = routingContext.request().getParam("id");
+        if(subject == null) {
+            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                    .end(DFAPIMessage.getResponseMessage(9000));
+            LOG.error(DFAPIMessage.logResponseMessage(9000, subject));
+        } else {
+            String restURI = "http://" + schema_registry_host_and_port + "/subjects/" + subject;
+            // Create REST Client for Kafka Connect REST Forward
+            final RestClientRequest postRestClientRequest =
+                    rc_schema.delete(restURI, String.class, portRestResponse -> {
+                        if(portRestResponse.statusCode() == ConstantApp.STATUS_CODE_OK) {
+                            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                    .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                    .end(DFAPIMessage.getResponseMessage(1026, subject));
+                            LOG.info(DFAPIMessage.logResponseMessage(1026, "subject = " + subject));
+                        } else {
+                            LOG.error(DFAPIMessage.logResponseMessage(9022, "subject = " + subject));
+                        }
+
+                        portRestResponse.exceptionHandler(exception -> {
+                            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                                    .end(DFAPIMessage.getResponseMessage(9029));
+                            LOG.error(DFAPIMessage.logResponseMessage(9029, "subject = " + subject));
+                        });
+                    });
+
+            postRestClientRequest.exceptionHandler(exception -> {
+                HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                        .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                        .end(DFAPIMessage.getResponseMessage(9029));
+                LOG.info(DFAPIMessage.logResponseMessage(9029, "subject = " + subject + exception.toString()));
+            });
+
+            rc_schema.exceptionHandler(exception -> {
+                HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                        .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                        .end(DFAPIMessage.getResponseMessage(9028));
+                LOG.error(DFAPIMessage.logResponseMessage(9028, exception.getMessage()));
+            });
+
+            postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
+            postRestClientRequest.setAcceptHeader(Arrays.asList(DFMediaType.APPLICATION_SCHEMA_REGISTRY_JSON));
+            postRestClientRequest.end(DFAPIMessage.getResponseMessage(1026));
         }
     }
 

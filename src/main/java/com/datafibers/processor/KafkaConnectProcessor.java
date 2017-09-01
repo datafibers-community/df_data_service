@@ -239,7 +239,7 @@ public class KafkaConnectProcessor {
                                 ar -> HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                         .setStatusCode(ConstantApp.STATUS_CODE_OK)
                                         .end(DFAPIMessage.getResponseMessage(1002, id)));
-                        LOG.info(DFAPIMessage.logResponseMessage(1002, "FOUND_CONNECT_NAME_IN_KAFKA_CONNECT"));
+                        LOG.info(DFAPIMessage.logResponseMessage(9022, "FOUND_CONNECT_NAME_IN_KAFKA_CONNECT"));
                     } else {
                         LOG.error(DFAPIMessage.logResponseMessage(9022, id));
                     }
@@ -258,7 +258,7 @@ public class KafkaConnectProcessor {
                     ar -> HelpFunc.responseCorsHandleAddOn(routingContext.response())
                             .setStatusCode(ConstantApp.STATUS_CODE_OK)
                             .end(DFAPIMessage.getResponseMessage(9007)));
-            LOG.info(DFAPIMessage.logResponseMessage(1002, "CANNOT_FIND_CONNECT_NAME_IN_KAFKA_CONNECT"));
+            LOG.info(DFAPIMessage.logResponseMessage(9007, "CANNOT_FIND_CONNECT_NAME_IN_KAFKA_CONNECT"));
         });
 
         restClient.exceptionHandler(exception -> {
