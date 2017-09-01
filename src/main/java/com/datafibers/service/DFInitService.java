@@ -33,7 +33,7 @@ public class DFInitService {
             if (runningMode.contains("TEST")) runTestCases();
             if (runningMode.contains("Cluster")) Runner.runClusteredExample(DFDataProcessor.class);
             if (runningMode.contains("Standalone")) Runner.runExample(DFDataProcessor.class);
-            if (runningMode.contains("WebUI")) Runner.runExample(DFWebUI.class);
+            //if (runningMode.contains("WebUI")) Runner.runExample(DFWebUI.class);
         }
     }
 

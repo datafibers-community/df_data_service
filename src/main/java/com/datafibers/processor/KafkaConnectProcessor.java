@@ -38,13 +38,22 @@ public class KafkaConnectProcessor {
                         portRestResponse -> {
                             JsonObject jo = new JsonObject(portRestResponse.getBody());
                             JsonArray subTaskArray = jo.getJsonArray("tasks");
-                            for (int i = 0; i < subTaskArray.size(); i++) {
-                                subTaskArray.getJsonObject(i)
-                                        .put("subTaskId", subTaskArray.getJsonObject(i).getInteger("id"))
-                                        .put("id", taskId + "_" + subTaskArray.getJsonObject(i).getInteger("id"))
-                                        .put("jobId", taskId)
-                                        .put("dfTaskState", HelpFunc.getTaskStatusKafka(new JSONObject(jo.toString())))
-                                        .put("taskState", jo.getJsonObject("connector").getString("state"));
+                            if(subTaskArray.size() > 0) {
+                                for (int i = 0; i < subTaskArray.size(); i++) {
+                                    subTaskArray.getJsonObject(i)
+                                            .put("subTaskId", subTaskArray.getJsonObject(i).getInteger("id"))
+                                            .put("id", taskId + "_" + subTaskArray.getJsonObject(i).getInteger("id"))
+                                            .put("jobId", taskId)
+                                            .put("dfTaskState", HelpFunc.getTaskStatusKafka(new JSONObject(jo.toString())))
+                                            .put("taskState", jo.getJsonObject("connector").getString("state"));
+                                }
+                            } else { // when tasks is empty, return an dummy row
+                                subTaskArray.add(new JsonObject().put("subTaskId", "e")
+                                .put("id", taskId + "_e" )
+                                .put("jobId", taskId)
+                                .put("dfTaskState", HelpFunc.getTaskStatusKafka(new JSONObject(jo.toString())))
+                                .put("taskState", jo.getJsonObject("connector").getString("state"))
+                                .put("taskTrace", jo.getJsonObject("connector").getString("trace")));
                             }
 
                             HelpFunc.responseCorsHandleAddOn(routingContext.response())
@@ -230,7 +239,7 @@ public class KafkaConnectProcessor {
                                 ar -> HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                         .setStatusCode(ConstantApp.STATUS_CODE_OK)
                                         .end(DFAPIMessage.getResponseMessage(1002, id)));
-                        LOG.info(DFAPIMessage.logResponseMessage(1002, "FOUND_CONNECT_NAME_IN_KAFKA_CONNECT"));
+                        LOG.info(DFAPIMessage.logResponseMessage(9022, "FOUND_CONNECT_NAME_IN_KAFKA_CONNECT"));
                     } else {
                         LOG.error(DFAPIMessage.logResponseMessage(9022, id));
                     }
@@ -249,7 +258,7 @@ public class KafkaConnectProcessor {
                     ar -> HelpFunc.responseCorsHandleAddOn(routingContext.response())
                             .setStatusCode(ConstantApp.STATUS_CODE_OK)
                             .end(DFAPIMessage.getResponseMessage(9007)));
-            LOG.info(DFAPIMessage.logResponseMessage(1002, "CANNOT_FIND_CONNECT_NAME_IN_KAFKA_CONNECT"));
+            LOG.info(DFAPIMessage.logResponseMessage(9007, "CANNOT_FIND_CONNECT_NAME_IN_KAFKA_CONNECT"));
         });
 
         restClient.exceptionHandler(exception -> {

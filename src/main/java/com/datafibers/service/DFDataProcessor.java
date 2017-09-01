@@ -106,7 +106,7 @@ public class DFDataProcessor extends AbstractVerticle {
     @Override
     public void start(Future<Void> fut) {
         // Turn off
-        // Logger.getLogger("io.vertx.core.impl.BlockedThreadChecker").setLevel(Level.OFF);
+        Logger.getLogger("io.vertx.core.impl.BlockedThreadChecker").setLevel(Level.OFF);
 
         /**
          * Get all application configurations
@@ -277,7 +277,7 @@ public class DFDataProcessor extends AbstractVerticle {
         
         router.post(ConstantApp.DF_SCHEMA_REST_URL).handler(this::addOneSchema); // Schema Registry Forward
         router.put(ConstantApp.DF_SCHEMA_REST_URL_WITH_ID).handler(this::updateOneSchema); // Schema Registry Forward
-        router.delete(ConstantApp.DF_SCHEMA_REST_URL_WITH_ID).handler(this::deleteOneConnects); // Schema Registry Forward
+        router.delete(ConstantApp.DF_SCHEMA_REST_URL_WITH_ID).handler(this::deleteOneSchema); // Schema Registry Forward
 
         // Logging Rest API definition
         router.options(ConstantApp.DF_LOGGING_REST_URL_WITH_ID).handler(this::corsHandle);
@@ -1472,6 +1472,31 @@ public class DFDataProcessor extends AbstractVerticle {
                 }
             });
         }
+    }
+
+    /**
+     * Schema specific deleteOne End Point for Rest API
+     * @param routingContext
+     *
+     * @api {delete} /schema/:id   6.Delete a schema/topic
+     * @apiVersion 0.1.1
+     * @apiName deleteOneConnects
+     * @apiGroup Connect
+     * @apiPermission none
+     * @apiDescription This is how to delete a specific schema/topic.
+     * @apiParam    {String}    id  schema subject(or topic).
+     * @apiSuccess  {String}    message     OK.
+     * @apiError    code        The error code.
+     * @apiError    message     The error message.
+     * @apiErrorExample {json} Error-Response:
+     *     HTTP/1.1 400 Bad Request
+     *     {
+     *       "code" : "400",
+     *       "message" : "Delete Request exception - Bad Request."
+     *     }
+     */
+    private void deleteOneSchema(RoutingContext routingContext) {
+        SchemaRegisterProcessor.forwardDELETEAsDeleteOne(routingContext, rc_schema, schema_registry_host_and_port);
     }
 
     /**
