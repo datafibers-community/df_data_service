@@ -16,5 +16,8 @@ Run following commands int the project root folder.
 ## Running
     npm start
 
+## Build
+    npm run build
+
 ## Web UI
 http://localhost:3000/
