@@ -1515,13 +1515,17 @@ public class DFDataProcessor extends AbstractVerticle {
         String metaDBName = config().getString("db.name", "DEFAULT_DB");
 
         // Create meta-database if it is not exist
-        new MongoAdminClient(metaDBHost, Integer.parseInt(metaDBPort), metaDBName).createCollection(this.COLLECTION_META);
+        new MongoAdminClient(metaDBHost, Integer.parseInt(metaDBPort), metaDBName)
+                .createCollection(this.COLLECTION_META)
+                .close();
 
         String metaSinkConnect = new JSONObject().put("name", "metadata_sink_connect").put("config",
                 new JSONObject().put("connector.class", "org.apache.kafka.connect.mongodb.MongodbSinkConnector")
-                        .put("tasks.max", "2").put("host", metaDBHost)
-                        .put("port", metaDBPort).put("bulk.size", "1")
-                        .put("mongodb.database", config().getString("db.name", metaDBName))
+                        .put("tasks.max", "2")
+                        .put("host", metaDBHost)
+                        .put("port", metaDBPort)
+                        .put("bulk.size", "1")
+                        .put("mongodb.database", metaDBName)
                         .put("mongodb.collections", config().getString("db.metadata.collection.name", this.COLLECTION_META))
                         .put("topics", config().getString("kafka.topic.df.metadata", "df_meta"))).toString();
         try {
@@ -1719,6 +1723,7 @@ public class DFDataProcessor extends AbstractVerticle {
         List<String> list = new ArrayList<>();
         // Add all Kafka connect
         HelpFunc.addSpecifiedConnectTypetoList(list, "(?i:.*connect.*)"); // case insensitive matching
+        list.add(ConstantApp.DF_CONNECT_TYPE.INTERNAL_METADATA_COLLECT.name()); // update metadata sink as well
 
         String restURI = "http://" + this.kafka_connect_rest_host+ ":" + this.kafka_connect_rest_port +
                 ConstantApp.KAFKA_CONNECT_REST_URL;
