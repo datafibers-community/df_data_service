@@ -118,6 +118,7 @@ public final class ConstantApp {
         CONNECT_SINK_MONGODB_AvroDB,
         CONNECT_SOURCE_HDFS_AvroFile,
         CONNECT_SINK_HDFS_AvroFile,
+        CONNECT_SOURCE_STOCK_AvroFile,
         TRANSFORM_EXCHANGE_FLINK_SQLA2A,
         TRANSFORM_EXCHANGE_FLINK_Script,
         TRANSFORM_EXCHANGE_FLINK_UDF,
