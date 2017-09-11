@@ -94,6 +94,7 @@ public class DFInitService {
                 adminTool.equalsIgnoreCase("idi")) {
             LOG.info("Import Connect Metadata to repo at localhost:27017/DEFAULT_DB/df_installed");
             new MongoAdminClient("localhost", "27017", "DEFAULT_DB", "df_installed")
+                    .truncateCollection("df_installed")
                     .importJsonInputStream(DFInitService.class.getResourceAsStream("/import/df_installed.json"))
                     .close();
         }
@@ -103,6 +104,7 @@ public class DFInitService {
             LOG.info("Clean up all tasks (except internal) from repo at "
                     +  para[0] + ":" + para[1] + "/" + para[2] + "/" + para[3]);
             new MongoAdminClient(para[0], para[1], para[2], para[3])
+                    .truncateCollection(para[3])
                     .importJsonInputStream(DFInitService.class.getResourceAsStream("/import/df_installed.json"))
                     .close();
         }
