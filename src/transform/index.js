@@ -58,15 +58,15 @@ export const TransformEdit = (props) => (
     <Edit title={<TransformTitle />} {...props}>
         <TabbedForm>
             <FormTab label="Overview">
-                <DisabledInput source="taskSeq" label="Task Sequence" />
+                <DisabledInput source="taskSeq" label="Task Sequence" style={{ display: 'inline-block' }} />
+                <ChipField source="status" label="Task Status" style={{ display: 'inline-block', marginLeft: 32 }} />
                 <TextInput source="name" label="Name" validate={[ required ]} />
+		        <LongTextInput source="description" label="Task Description" />
 		        <SelectField source="connectorType" label="Task Type" validate={[ required ]} choices={[
     			{ id: 'TRANSFORM_EXCHANGE_FLINK_SQLA2A', name: 'Flink Streaming SQL' },
     			{ id: 'TRANSFORM_EXCHANGE_FLINK_Script', name: 'Flink Table API' },
   		        { id: 'TRANSFORM_EXCHANGE_FLINK_UDF',  name: 'Flink User Defined Function' },
 		        ]} />
-                <ChipField source="status" label="Task Status" />
-		        <LongTextInput source="description" label="Task Description" />
             </FormTab>
             <FormTab label="Setting">
                 <DisabledInput source="connectorConfig.cuid" label="ID or CUID or Name"/>
@@ -110,12 +110,12 @@ export const TransformCreate = (props) => (
             <FormTab label="Overview">
                 <NumberInput source="taskSeq" label="Task Sequence Number, eg. 1, 2, ..." />
                 <TextInput source="name" label="Name" validate={[ required ]} />
+		        <LongTextInput source="description" label="Task Description" />
 		        <SelectInput source="connectorType" label="Task Type" validate={[ required ]} choices={[
     			{ id: 'TRANSFORM_EXCHANGE_FLINK_SQLA2A', name: 'Flink Streaming SQL' },
     			{ id: 'TRANSFORM_EXCHANGE_FLINK_Script', name: 'Flink Table API' },
   		        { id: 'TRANSFORM_EXCHANGE_FLINK_UDF',  name: 'Flink User Defined Function' },
 		        ]} />
-		        <LongTextInput source="description" label="Task Description" />
             </FormTab>
             <FormTab label="Setting">
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_FLINK_SQLA2A">

@@ -59,23 +59,21 @@ export const ConnectEdit = (props) => (
     <Edit title={<ConnectTitle />} {...props}>
         <TabbedForm>
             <FormTab label="Overview">
-                <DisabledInput source="taskSeq" label="Task Sequence" />
+                <DisabledInput source="taskSeq" label="Task Sequence" style={{ display: 'inline-block' }} />
+                <ChipField source="status" label="Task Status" style={{ display: 'inline-block', marginLeft: 32 }} />
                 <TextInput source="name" label="Name" validate={[ required ]} />
+                <LongTextInput source="description" label="Task Description" />
                 <SelectField source="connectorType" label="Task Type" validate={[ required ]} choices={[
                         { id: 'CONNECT_SOURCE_KAFKA_AvroFile', name: 'Source Avro Files' },
                         { id: 'CONNECT_SOURCE_STOCK_AvroFile', name: 'Source Stock API' },
                         { id: 'CONNECT_SINK_HDFS_AvroFile', name: 'Sink Hadoop|Hive' },
                         { id: 'CONNECT_SINK_MONGODB_AvroDB',  name: 'Sink MongoDB' },
                 ]} />
-
-                <ChipField source="status" label="Task Status" />
-                <LongTextInput source="description" label="Task Description" />
                 <NumberInput source="connectorConfig.tasks_max" label="Number of Sub-task to Submit" step={1}/>
             </FormTab>
             <FormTab label="Setting">
                 <DisabledInput source="connectorConfig.cuid" label="ID or CUID or Name"/>
-                <TextField source="connectorConfig.connector_class" label="Connect Class Library" style={{ maxWidth: 544 }} />
-                <LongTextInput source="connectorConfig.schema_registry_uri" label="Schema Registry URI, such as http://localhost:8081" />
+                <TextField source="connectorConfig.connector_class" label="Connect Class Library" style={{ maxWidth: 200 }} />
                 <DependentInput dependsOn="connectorType" value="CONNECT_SOURCE_KAFKA_AvroFile">
                     <ReferenceInput source="connectorConfig.topic" label="Choose a topic to write data" reference="schema" validate={[ required ]} allowEmpty>
                         <AutocompleteInput optionText="subject" />
@@ -86,13 +84,13 @@ export const ConnectEdit = (props) => (
                 </DependentInput>
                 <DependentInput dependsOn="connectorType" value="CONNECT_SOURCE_STOCK_AvroFile">
                     <TextInput source="connectorConfig.topic" label="Edit a topic to write data" validate={[ required ]} />
-                    <LongTextInput source="connectorConfig.symbols" label="List of Stock Symbols separated by ," />
-                    <SelectInput source="connectorConfig.portfolio" label="Portfolio, a predefined list of stock symbols" validate={[ required ]} choices={[
+                    <TextInput source="connectorConfig.symbols" label="List of Stock Symbols separated by ," />
+                    <SelectInput source="connectorConfig.portfolio" label="Portfolio, predefined symbols list" validate={[ required ]} choices={[
                             { id: 'None', name: 'None' },
                             { id: 'Top 10 IT Service', name: 'Top 10 IT Service' },
                             { id: 'Top 10 Technology', name: 'Top 10 Technology' },
                     ]} />
-                    <NumberInput source="connectorConfig.interval" label="Refresh API Interval in Seconds" style={{ display: 'inline-block' }} defaultValue={10} step={10} validate={[ required ]} />
+                    <NumberInput source="connectorConfig.interval" label="Refresh API Interval in Seconds" defaultValue={10} step={10} validate={[ required ]} />
                     <SelectInput source="connectorConfig.spoof" label="Use Spoofing Data?" validate={[ required ]} choices={[
                                                 { id: 'NONE', name: 'No Spoofing' },
                                                 { id: 'PAST', name: 'Spoof from Past Market Data' },
@@ -136,13 +134,13 @@ export const ConnectCreate = (props) => (
             <FormTab label="Overview">
                 <NumberInput source="taskSeq" label="Task Sequence Number, eg. 1, 2, ..." />
                 <LongTextInput source="name" label="Task Name" validate={[ required ]} />
+                <LongTextInput source="description" label="Task Description" defaultValue="This is default description." />
                 <SelectInput source="connectorType" label="Task Type" validate={[ required ]} choices={[
                         { id: 'CONNECT_SOURCE_KAFKA_AvroFile', name: 'Source Avro Files' },
                         { id: 'CONNECT_SOURCE_STOCK_AvroFile', name: 'Source Stock API' },
                         { id: 'CONNECT_SINK_HDFS_AvroFile', name: 'Sink Hadoop|Hive' },
                         { id: 'CONNECT_SINK_MONGODB_AvroDB',  name: 'Sink MongoDB' },
                 ]} />
-                <LongTextInput source="description" label="Task Description" defaultValue="This is default description." />
                 <NumberInput source="connectorConfig.tasks_max" label="Number of Sub-task to Submit" defaultValue={1} step={1}/>
             </FormTab>
             <FormTab label="Setting">
