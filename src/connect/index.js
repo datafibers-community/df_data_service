@@ -89,6 +89,9 @@ export const ConnectEdit = (props) => (
                             { id: 'None', name: 'None' },
                             { id: 'Top 10 IT Service', name: 'Top 10 IT Service' },
                             { id: 'Top 10 Technology', name: 'Top 10 Technology' },
+                            { id: 'Top 10 US Banks', name: 'Top 10 US Banks' },
+                            { id: 'Top 10 US Telecom', name: 'Top 10 US Telecom' },
+                            { id: 'Top 10 Life Insurance', name: 'Top 10 Life Insurance' },
                     ]} />
                     <NumberInput source="connectorConfig.interval" label="Refresh API Interval in Seconds" defaultValue={10} step={10} validate={[ required ]} />
                     <SelectInput source="connectorConfig.spoof" label="Use Spoofing Data?" validate={[ required ]} choices={[
