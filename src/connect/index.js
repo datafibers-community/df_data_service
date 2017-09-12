@@ -60,7 +60,7 @@ export const ConnectEdit = (props) => (
         <TabbedForm>
             <FormTab label="Overview">
                 <DisabledInput source="taskSeq" label="Task Sequence" style={{ display: 'inline-block' }} />
-                <ChipField source="status" label="Task Status" style={{ display: 'inline-block', marginLeft: 32 }} />
+                <ChipField source="status" label="Task Status" style={{ display: 'inline-block', marginLeft: 32, maxWidth: 200 }} />
                 <TextInput source="name" label="Name" validate={[ required ]} />
                 <LongTextInput source="description" label="Task Description" />
                 <SelectField source="connectorType" label="Task Type" validate={[ required ]} choices={[
@@ -164,6 +164,9 @@ export const ConnectCreate = (props) => (
                             { id: 'None', name: 'None' },
                             { id: 'Top 10 IT Service', name: 'Top 10 IT Service' },
                             { id: 'Top 10 Technology', name: 'Top 10 Technology' },
+                            { id: 'Top 10 US Banks', name: 'Top 10 US Banks' },
+                            { id: 'Top 10 US Telecom', name: 'Top 10 US Telecom' },
+                            { id: 'Top 10 Life Insurance', name: 'Top 10 Life Insurance' },
                     ]} />
                     <NumberInput source="connectorConfig.interval" label="Refresh API Interval in Seconds" style={{ display: 'inline-block' }} defaultValue={10} step={10} validate={[ required ]} />
                     <SelectInput source="connectorConfig.spoof" label="Use Spoofing Data?" validate={[ required ]} choices={[
