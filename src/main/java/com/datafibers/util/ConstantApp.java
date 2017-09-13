@@ -63,6 +63,11 @@ public final class ConstantApp {
     public static final String DF_SUBJECT_TO_TASK_REST_URL_WILD = "/api/df/s2t*";
     public static final String DF_SUBJECT_TO_TASK_REST_URL_WITH_ID = DF_SUBJECT_TO_TASK_REST_URL + "/:id";
 
+    // DF subject/topic simple consumer endpoint URLs
+    public static final String DF_AVRO_CONSUMER_REST_URL = "/api/df/avroconsumer";
+    public static final String DF_AVRO_CONSUMER_REST_URL_WILD = "/api/df/avroconsumer*";
+    public static final String DF_AVRO_CONSUMER_REST_URL_WITH_ID = DF_AVRO_CONSUMER_REST_URL + "/:id";
+
     // Kafka Connect endpoint URLs
     public static final String KAFKA_CONNECT_REST_URL = "/connectors";
     public static final String KAFKA_CONNECT_PLUGIN_REST_URL = "/connector-plugins";
@@ -70,6 +75,8 @@ public final class ConstantApp {
 
     // Kafka Other default settings
     public static String DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK = "df_trans_flink_group_id";
+    public static String DF_CONNECT_KAFKA_CONSUMER_GROUP_ID = "df_connect_avro_consumer_group_id";
+    public static int DF_CONNECT_KAFKA_CONSUMER_POLL_TIMEOUT = 100;
 
     // Flink rest api setting
     public static final String FLINK_REST_URL = "/jobs";

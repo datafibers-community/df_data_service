@@ -4,6 +4,7 @@ import com.datafibers.model.DFLogPOPJ;
 import com.datafibers.processor.SchemaRegisterProcessor;
 import com.datafibers.util.DFAPIMessage;
 import com.datafibers.util.MongoAdminClient;
+import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -20,14 +21,13 @@ import io.vertx.ext.web.handler.BodyHandler;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.log4j.Level;
 import org.bson.types.ObjectId;
 import org.json.JSONObject;
@@ -297,6 +297,12 @@ public class DFDataProcessor extends AbstractVerticle {
         router.options(ConstantApp.DF_SUBJECT_TO_TASK_REST_URL).handler(this::corsHandle);
         router.get(ConstantApp.DF_SUBJECT_TO_TASK_REST_URL_WITH_ID).handler(this::getAllTasksOneTopic);
         router.get(ConstantApp.DF_SUBJECT_TO_TASK_REST_URL_WILD).handler(this::getAllTasksOneTopic);
+
+        // Avro Consumer Rest API definition
+        router.options(ConstantApp.DF_AVRO_CONSUMER_REST_URL_WITH_ID).handler(this::corsHandle);
+        router.options(ConstantApp.DF_AVRO_CONSUMER_REST_URL).handler(this::corsHandle);
+        router.get(ConstantApp.DF_AVRO_CONSUMER_REST_URL_WITH_ID).handler(this::pollAllFromTopic);
+        router.get(ConstantApp.DF_AVRO_CONSUMER_REST_URL_WILD).handler(this::pollAllFromTopic);
 
         // Get all installed connect or transform
         router.options(ConstantApp.DF_PROCESSOR_CONFIG_REST_URL_WITH_ID).handler(this::corsHandle);
@@ -761,6 +767,52 @@ public class DFDataProcessor extends AbstractVerticle {
                                 .end(Json.encodePrettily(jobs));
                     });
         }
+    }
+
+    /**
+     * Poll all available information from specific topic
+     * @param routingContext
+     *
+     * @api {get} /avroconsumer 7.List all df tasks using specific topic
+     * @apiVersion 0.1.1
+     * @apiName poolAllFromTopic
+     * @apiGroup All
+     * @apiPermission none
+     * @apiDescription This is where consume data from specific topic in one pool.
+     * @apiSuccess	{JsonObject[]}	topic    Consumer from the topic.
+     * @apiSampleRequest http://localhost:8080/api/df/avroconsumer
+     */
+    private void poolAllFromTopic(RoutingContext routingContext) {
+        final String topic = routingContext.request().getParam("id");
+        if (topic == null) {
+            routingContext.response()
+                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                    .end(DFAPIMessage.getResponseMessage(9000));
+            LOG.error(DFAPIMessage.getResponseMessage(9000, "TOPIC_IS_NULL"));
+        } else {
+
+        Properties props = new Properties();
+        props.put("bootstrap.servers", kafka_server_host_and_port);
+        props.put("group.id", ConstantApp.DF_CONNECT_KAFKA_CONSUMER_GROUP_ID);
+        props.put("schema.registry.url", schema_registry_host_and_port);
+        props.put("enable.auto.commit", "true");
+        props.put("auto.commit.interval.ms", "1000");
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
+        KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props);
+        consumer.subscribe(Arrays.asList(topic));
+
+        ConsumerRecords<String, String> records = consumer.poll(ConstantApp.DF_CONNECT_KAFKA_CONSUMER_POLL_TIMEOUT);
+        for (ConsumerRecord<String, String> record : records)
+                System.out.printf("offset = %d, key = %s, value = %s%n", record.offset(), record.key(), record.value());
+
+
+        //TODO resample to json array
+        List<DFJobPOPJ> jobs = record.stream().map(DFJobPOPJ::new).collect(Collectors.toList());
+        HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                    .putHeader("X-Total-Count", jobs.size() + "")
+                    .end(Json.encodePrettily(jobs));
+
     }
 
     /**
