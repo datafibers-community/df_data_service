@@ -21,7 +21,7 @@ import java.net.URLDecoder;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import io.vertx.rxjava.kafka.client.consumer.KafkaConsumer;
+import io.vertx.kafka.client.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.log4j.Level;
 import org.bson.types.ObjectId;
@@ -33,8 +33,6 @@ import com.datafibers.processor.FlinkTransformProcessor;
 import com.datafibers.processor.KafkaConnectProcessor;
 import com.datafibers.util.ConstantApp;
 import com.datafibers.util.HelpFunc;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.RestClient;
@@ -801,42 +799,34 @@ public class DFDataProcessor extends AbstractVerticle {
                 props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
 
                 KafkaConsumer<String, String> consumer = KafkaConsumer.create(vertx, props);
-                consumer.subscribe(Arrays.asList(topic));
-                ArrayList<JsonObject> responseList = new ArrayList<JsonObject>();
-                while (true) {
-                    ConsumerRecords<String, String> records = consumer.poll(ConstantApp.DF_CONNECT_KAFKA_CONSUMER_POLL_TIMEOUT);
-                    if (!records.isEmpty()) {
-                        for (ConsumerRecord<String, String> record : records) {
-                            System.out.printf("offset = %d, key = %s, value = %s%n", record.offset(), record.key(), record.value());
-                            responseList.add(new JsonObject()
-                                    .put("offset", record.offset())
-                                    .put("key", record.key())
-                                    .put("value", record.value()));
-                        }
-                        break;
-                    }
-                }
+            ArrayList<JsonObject> responseList = new ArrayList<JsonObject>();
 
-                // Sort it based on offset
-                Collections.sort(responseList, new Comparator<JsonObject>() {
-                    public int compare(JsonObject a, JsonObject b) {
-                        String valA = new String();
-                        String valB = new String();
-                        valA = a.getString("offset");
-                        valB = b.getString("offset");
-                        return -valA.compareTo(valB);
+                consumer.handler(record -> {// TODO handler does not work
+                    LOG.debug("Processing key=" + record.key() + ",value=" + record.value() +
+                            ",partition=" + record.partition() + ",offset=" + record.offset());
+                    /*responseList.add(new JsonObject()
+                            .put("offset", record.offset())
+                            .put("key", record.key())
+                            .put("value", record.value()));
+                    LOG.debug("responseList.size = " + responseList.size());
+
+                    if(responseList.size() >= 10 ) {
+                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                .putHeader("X-Total-Count", responseList.size() + "")
+                                .end(Json.encodePrettily(responseList.toString()));
+                        consumer.pause();
+                        consumer.commit();
+                        consumer.close();
+                    }*/
+                });
+                // Subscribe to a single topic
+                consumer.subscribe(topic, ar -> {
+                    if (ar.succeeded()) {
+                        LOG.debug("topic " + topic + " is subscribed");
+                    } else {
+                        LOG.error("Could not subscribe " + ar.cause().getMessage());
                     }
                 });
-                LOG.debug("responseList.size = " + responseList.size());
-
-
-
-                ArrayList<Object> response = (ArrayList) res.result();
-                LOG.debug("response.size = " + response.size());
-                HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                        .putHeader("X-Total-Count", response.size() + "")
-                        .end(Json.encodePrettily(response.toString()));
-
         }
     }
 
@@ -868,10 +858,10 @@ public class DFDataProcessor extends AbstractVerticle {
                 props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
                 props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
 
-                KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props);
-                consumer.subscribe(Arrays.asList(topic));
+//                KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props);
+//                consumer.subscribe(Arrays.asList(topic));
                 ArrayList<JsonObject> responseList = new ArrayList<JsonObject>();
-                while (true) {
+               /* while (true) {
                     ConsumerRecords<String, String> records = consumer.poll(ConstantApp.DF_CONNECT_KAFKA_CONSUMER_POLL_TIMEOUT);
                     if (!records.isEmpty()) {
                         for (ConsumerRecord<String, String> record : records) {
@@ -883,7 +873,7 @@ public class DFDataProcessor extends AbstractVerticle {
                         }
                         break;
                     }
-                }
+                }*/
 
                 // Sort it based on offset
                 Collections.sort(responseList, new Comparator<JsonObject>() {
