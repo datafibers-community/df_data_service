@@ -1,6 +1,5 @@
 package com.datafibers.service;
 
-import com.datafibers.test_tool.AvroProducerTest;
 import com.datafibers.util.CLIParser;
 import com.datafibers.util.MongoAdminClient;
 import com.datafibers.util.Runner;
@@ -47,12 +46,9 @@ public class DFInitService {
     }
 
     public static void runTestCases() {
-        try {
             String testcaseNumber = runningMode.replaceAll("[^0-9]", "");
             switch (testcaseNumber) {
                 case "1":
-                    AvroProducerTest.main(new String[10]);
-                    break;
                 case "2":
                     UnitTestSuiteFlink.testFlinkAvroSQL();
                     break;
@@ -65,10 +61,6 @@ public class DFInitService {
                 default:
                     break;
             }
-
-        } catch (IOException | DecoderException ioe) {
-            ioe.printStackTrace();
-        }
     }
 
     public static void runAdminTools() {

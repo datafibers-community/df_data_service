@@ -782,7 +782,7 @@ public class DFDataProcessor extends AbstractVerticle {
      * @apiSuccess	{JsonObject[]}	topic    Consumer from the topic.
      * @apiSampleRequest http://localhost:8080/api/df/avroconsumer
      */
-    private void poolAllFromTopic(RoutingContext routingContext) {
+    private void pollAllFromTopic(RoutingContext routingContext) {
         final String topic = routingContext.request().getParam("id");
         if (topic == null) {
             routingContext.response()
@@ -791,28 +791,43 @@ public class DFDataProcessor extends AbstractVerticle {
             LOG.error(DFAPIMessage.getResponseMessage(9000, "TOPIC_IS_NULL"));
         } else {
 
-        Properties props = new Properties();
-        props.put("bootstrap.servers", kafka_server_host_and_port);
-        props.put("group.id", ConstantApp.DF_CONNECT_KAFKA_CONSUMER_GROUP_ID);
-        props.put("schema.registry.url", schema_registry_host_and_port);
-        props.put("enable.auto.commit", "true");
-        props.put("auto.commit.interval.ms", "1000");
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
-        KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props);
-        consumer.subscribe(Arrays.asList(topic));
+            Properties props = new Properties();
+            props.put("bootstrap.servers", kafka_server_host_and_port);
+            props.put("group.id", ConstantApp.DF_CONNECT_KAFKA_CONSUMER_GROUP_ID);
+            props.put("schema.registry.url", schema_registry_host_and_port);
+            props.put("enable.auto.commit", "true");
+            props.put("auto.commit.interval.ms", "1000");
+            props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
+            props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
+            KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props);
+            consumer.subscribe(Arrays.asList(topic));
 
-        ConsumerRecords<String, String> records = consumer.poll(ConstantApp.DF_CONNECT_KAFKA_CONSUMER_POLL_TIMEOUT);
-        for (ConsumerRecord<String, String> record : records)
-                System.out.printf("offset = %d, key = %s, value = %s%n", record.offset(), record.key(), record.value());
+            ArrayList<JsonObject> responseList = new ArrayList<JsonObject>();
 
+            ConsumerRecords<String, String> records = consumer.poll(ConstantApp.DF_CONNECT_KAFKA_CONSUMER_POLL_TIMEOUT);
+            for (ConsumerRecord<String, String> record : records) {
+                responseList.add(new JsonObject()
+                        .put("offset", record.offset())
+                        .put("key", record.key())
+                        .put("value", record.value()));
+            }
 
-        //TODO resample to json array
-        List<DFJobPOPJ> jobs = record.stream().map(DFJobPOPJ::new).collect(Collectors.toList());
-        HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                    .putHeader("X-Total-Count", jobs.size() + "")
-                    .end(Json.encodePrettily(jobs));
+            // Sort it based on offset
+            Collections.sort(responseList, new Comparator<JsonObject>() {
+                public int compare(JsonObject a, JsonObject b) {
+                    String valA = new String();
+                    String valB = new String();
+                    valA = a.getString("offset");
+                    valB = b.getString("offset");
+                    return valA.compareTo(valB);
+                }
+            });
 
+            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                    .putHeader("X-Total-Count", responseList.size() + "")
+                    .end(Json.encodePrettily(responseList));
+
+        }
     }
 
     /**
