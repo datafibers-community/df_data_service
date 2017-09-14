@@ -59,7 +59,7 @@ export const TransformEdit = (props) => (
         <TabbedForm>
             <FormTab label="Overview">
                 <DisabledInput source="taskSeq" label="Task Sequence" style={{ display: 'inline-block' }} />
-                <ChipField source="status" label="Task Status" style={{ display: 'inline-block', marginLeft: 32 }} />
+                <ChipField source="status" label="Task Status" style={{ display: 'inline-block', marginLeft: 32, width: 100}} />
                 <TextInput source="name" label="Name" validate={[ required ]} />
 		        <LongTextInput source="description" label="Task Description" />
 		        <SelectField source="connectorType" label="Task Type" validate={[ required ]} choices={[
