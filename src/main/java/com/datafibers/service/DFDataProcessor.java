@@ -797,7 +797,7 @@ public class DFDataProcessor extends AbstractVerticle {
                 ArrayList<JsonObject> responseList = new ArrayList<JsonObject>();
 
                 consumer.handler(record -> {// TODO handler does not work
-                    LOG.debug("Processing value=" + record.record().value() + ",offset=" + record.record().offset());
+                    //LOG.debug("Processing value=" + record.record().value() + ",offset=" + record.record().offset());
                     responseList.add(new JsonObject()
                             .put("offset", record.record().offset())
                             .put("value", new JsonObject(record.record().value().toString())));
