@@ -60,7 +60,7 @@ export const ConnectEdit = (props) => (
         <TabbedForm>
             <FormTab label="Overview">
                 <DisabledInput source="taskSeq" label="Task Sequence" style={{ display: 'inline-block' }} />
-                <ChipField source="status" label="Task Status" style={{ display: 'inline-block', marginLeft: 32, width: 100 }} />
+                <ChipField source="status" label="Task Status" style={{ display: 'inline-block', marginLeft: 32, width: 150 }} />
                 <TextInput source="name" label="Name" validate={[ required ]} />
                 <LongTextInput source="description" label="Task Description" />
                 <SelectField source="connectorType" label="Task Type" validate={[ required ]} choices={[
@@ -86,7 +86,7 @@ export const ConnectEdit = (props) => (
                     <TextInput source="connectorConfig.topic" label="Edit a topic to write data" validate={[ required ]} />
                     <TextInput source="connectorConfig.symbols" label="List of Stock Symbols separated by ," />
                     <SelectInput source="connectorConfig.portfolio" label="Portfolio, predefined symbols list" validate={[ required ]} choices={[
-                            { id: 'None', name: 'None' },
+                            { id: 'None', name: 'Input Symbols' },
                             { id: 'Top 10 IT Service', name: 'Top 10 IT Service' },
                             { id: 'Top 10 Technology', name: 'Top 10 Technology' },
                             { id: 'Top 10 US Banks', name: 'Top 10 US Banks' },
@@ -101,15 +101,15 @@ export const ConnectEdit = (props) => (
                     ]} />
                 </DependentInput>
                 <DependentInput dependsOn="connectorType" value="CONNECT_SINK_MONGODB_AvroDB">
-                    <LongTextInput source="connectorConfig.topics" label="Topics to Sink Data From (use , seperate multiple values" />
+                    <LongTextInput source="connectorConfig.topics" label="Topics to Sink Data From (use , separate multiple values" />
                     <TextInput source="connectorConfig.host" label="MongoDB Hostname" style={{ display: 'inline-block' }} validate={[ required ]} />
                     <TextInput source="connectorConfig.port" label="MongoDB Port" style={{ display: 'inline-block', marginLeft: 32 }} validate={[ required ]} />
                     <TextInput source="connectorConfig.mongodb_database" label="The Database Name" />
-                    <LongTextInput source="connectorConfig.mongodb_collections" label="Collections Where to Sink the Files (use , seperate multiple values)" />
+                    <LongTextInput source="connectorConfig.mongodb_collections" label="Collections Where to Sink the Files (use , separate multiple values)" />
                     <NumberInput source="connectorConfig.bulk_size" label="The Bulk Size of Rows to Sink" step={1} />
                 </DependentInput>
                 <DependentInput dependsOn="connectorType" value="CONNECT_SINK_HDFS_AvroFile">
-                    <LongTextInput source="connectorConfig.topics" label="Topics to Sink Data From (use , seperate multiple values" />
+                    <LongTextInput source="connectorConfig.topics" label="Topics to Sink Data From (use , separate multiple values" style={{ width: 500 }}/>
                     <BooleanInput source="connectorConfig.hive_integration" label="Enable Hive Metadata" style={{ display: 'inline-block' }} />
                     <DisabledInput source="connectorConfig.hive_metastore_uris" label="Hive Metastore URL" style={{ display: 'inline-block' , marginLeft: 32 }} />
                     <DisabledInput source="connectorConfig.hdfs_url" label="HDFS URL" style={{ display: 'inline-block', marginLeft: 32 }} />
@@ -123,7 +123,7 @@ export const ConnectEdit = (props) => (
                         <ChipField source="taskState" label="Engine Job State" />
                         <TextField source="subTaskId" label="Subtask ID." />
                         <ChipField source="state" label="Subtask State" />
-                        <TextField source="taskTrace" label="Trace" />
+                        <TextField source="trace" label="Trace" />
                     </Datagrid>
                 </ReferenceManyField>
             </FormTab>
@@ -151,23 +151,25 @@ export const ConnectCreate = (props) => (
                     <ReferenceInput source="connectorConfig.topic" label="Choose a topic to write data" reference="schema" validate={[ required ]} allowEmpty>
                         <AutocompleteInput optionText="subject" />
                     </ReferenceInput>
-                    <LongTextInput source="connectorConfig.schema_registry_uri" label="Schema Registry URI, such as http://localhost:8081" validate={[ required ]} />
+                    <LongTextInput source="connectorConfig.schema_registry_uri" label="Schema Registry URI, such as http://localhost:8081" validate={[ required ]} style={{ width: 500 }} />
                     <BooleanInput source="connectorConfig.file_overwrite" label="Allow File Overwrite" defaultValue={true} />
                     <TextInput source="connectorConfig.file_location" label="Path Where to Load the Files" style={{ display: 'inline-block' }} defaultValue={"/home/vagrant/df_data"} validate={[ required ]} />
                     <TextInput source="connectorConfig.file_glob" label="Pattern/Glob to Match the Files" style={{ display: 'inline-block', marginLeft: 32 }} validate={[ required ]} />
                 </DependentInput>
                 <DependentInput dependsOn="connectorType" value="CONNECT_SOURCE_STOCK_AvroFile">
-                    <LongTextInput source="connectorConfig.topic" label="Automatically Create a topic to write data" validate={[ required ]} />
-                    <LongTextInput source="connectorConfig.schema_registry_uri" label="Schema Registry URI, such as http://localhost:8081" validate={[ required ]} />
-                    <LongTextInput source="connectorConfig.symbols" label="List of Stock Symbols separated by ," />
-                    <SelectInput source="connectorConfig.portfolio" label="Portfolio, a predefined list of stock symbols" validate={[ required ]} choices={[
-                            { id: 'None', name: 'None' },
+                    <LongTextInput source="connectorConfig.topic" label="Automatically create a topic to write data" validate={[ required ]} style={{ width: 500 }} />
+                    <LongTextInput source="connectorConfig.schema_registry_uri" label="Schema Registry URI, such as http://localhost:8081" validate={[ required ]} style={{ width: 500 }} />
+                    <SelectInput source="connectorConfig.portfolio" label="Portfolio, predefined symbols list" validate={[ required ]} choices={[
+                            { id: 'None', name: 'Input Symbols' },
                             { id: 'Top 10 IT Service', name: 'Top 10 IT Service' },
                             { id: 'Top 10 Technology', name: 'Top 10 Technology' },
                             { id: 'Top 10 US Banks', name: 'Top 10 US Banks' },
                             { id: 'Top 10 US Telecom', name: 'Top 10 US Telecom' },
                             { id: 'Top 10 Life Insurance', name: 'Top 10 Life Insurance' },
                     ]} />
+                    <DependentInput dependsOn="connectorConfig.portfolio" value="None">
+                        <LongTextInput source="connectorConfig.symbols" label="List of Stock Symbols separated by ," style={{ width: 500 }}/>
+                    </DependentInput>
                     <NumberInput source="connectorConfig.interval" label="Refresh API Interval in Seconds" style={{ display: 'inline-block' }} defaultValue={10} step={10} validate={[ required ]} />
                     <SelectInput source="connectorConfig.spoof" label="Use Spoofing Data?" validate={[ required ]} choices={[
                                                 { id: 'NONE', name: 'No Spoofing' },

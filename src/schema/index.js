@@ -105,6 +105,14 @@ export const SchemaEdit = (props) => (
                     </Datagrid>
                 </ReferenceManyField>
             </FormTab>
+            <FormTab label="Data Preview">
+                <ReferenceManyField addLabel={false} reference="avroconsumer" target="id">
+                    <Datagrid>
+                            <TextField source="id" label="Offset" />
+                            <TextField source="valueString" label="Value & Refresh" />
+                    </Datagrid>
+                </ReferenceManyField>
+            </FormTab>
         </TabbedForm>
     </Edit>
 );
