@@ -77,6 +77,7 @@ public final class ConstantApp {
     public static String DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK = "df_trans_flink_group_id";
     public static String DF_CONNECT_KAFKA_CONSUMER_GROUP_ID = "df_connect_avro_consumer_group_id";
     public static int DF_CONNECT_KAFKA_CONSUMER_POLL_TIMEOUT = 100;
+    public static int AVRO_CONSUMER_BATCH_SIE = 10;
 
     // Flink rest api setting
     public static final String FLINK_REST_URL = "/jobs";
@@ -139,6 +140,8 @@ public final class ConstantApp {
         NONE
     }
 
+    // Kafka properties
+
     // Schema registry properties
     public static final String SCHEMA = "schema";
     public static final String COMPATIBILITY = "compatibility";
@@ -146,6 +149,7 @@ public final class ConstantApp {
     public static final String COMPATIBILITY_LEVEL = "compatibilityLevel";
     public static final int WORKER_POOL_SIZE = 20; // VERT.X Worker pool size
     public static final int MAX_RUNTIME = 6000;  // VERT.X Worker timeout in 6 sec
+    public static final String SCHEMA_URI_KEY = "schema.registry.url";
 
     // Properties keys for admin
     public static final String PK_DF_TOPICS_ALIAS = "topics,topic_in";

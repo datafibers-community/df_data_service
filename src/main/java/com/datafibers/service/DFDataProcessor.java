@@ -787,7 +787,7 @@ public class DFDataProcessor extends AbstractVerticle {
                 Properties props = new Properties();
                 props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka_server_host_and_port);
                 props.put(ConsumerConfig.GROUP_ID_CONFIG, ConstantApp.DF_CONNECT_KAFKA_CONSUMER_GROUP_ID);
-                props.put("schema.registry.url", "http://" + schema_registry_host_and_port);
+                props.put(ConstantApp.SCHEMA_URI_KEY, "http://" + schema_registry_host_and_port);
                 props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
                 props.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "1000");
                 props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
@@ -796,12 +796,12 @@ public class DFDataProcessor extends AbstractVerticle {
                 KafkaConsumer<String, String> consumer = KafkaConsumer.create(vertx, props);
                 ArrayList<JsonObject> responseList = new ArrayList<JsonObject>();
 
-                consumer.handler(record -> {// TODO handler does not work
+                consumer.handler(record -> {
                     //LOG.debug("Processing value=" + record.record().value() + ",offset=" + record.record().offset());
                     responseList.add(new JsonObject()
                             .put("offset", record.record().offset())
                             .put("value", new JsonObject(record.record().value().toString())));
-                    if(responseList.size() >= 10 ) {
+                    if(responseList.size() >= ConstantApp.AVRO_CONSUMER_BATCH_SIE ) {
                         HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                 .putHeader("X-Total-Count", responseList.size() + "")
                                 .end(Json.encodePrettily(responseList));
@@ -811,15 +811,15 @@ public class DFDataProcessor extends AbstractVerticle {
                     }
                 });
                 consumer.exceptionHandler(e -> {
-                    LOG.error("Error = " + e.getMessage());
+                    LOG.error(DFAPIMessage.logResponseMessage(9031, topic + "-" + e.getMessage()));
                 });
 
                 // Subscribe to a single topic
                 consumer.subscribe(topic, ar -> {
                     if (ar.succeeded()) {
-                        LOG.debug("topic " + topic + " is subscribed");
+                        LOG.info(DFAPIMessage.logResponseMessage(1026, "topic = " + topic));
                     } else {
-                        LOG.error("Could not subscribe " + ar.cause().getMessage());
+                        LOG.error(DFAPIMessage.logResponseMessage(9030, topic + "-" + ar.cause().getMessage()));
                     }
                 });
         }
