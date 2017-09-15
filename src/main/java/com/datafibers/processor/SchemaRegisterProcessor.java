@@ -205,6 +205,7 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
                     String rs = portRestResponse.getBody();
                     if (rs != null) {
                         LOG.info("Add schema status code " + portRestResponse.statusCode());
+
                         HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                 .setStatusCode(ConstantApp.STATUS_CODE_OK)
                                 .end(DFAPIMessage.logResponseMessage(1025, "schema is created"));

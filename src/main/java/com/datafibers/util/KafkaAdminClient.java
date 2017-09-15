@@ -19,7 +19,7 @@ public class KafkaAdminClient
 {
     private static final String DEFAULT_BOOTSTRAP_SERVERS_HOST_PORT = "localhost:9092";
 
-    static AdminClient createAdminClient (String BOOTSTRAP_SERVERS_HOST_PORT) {
+    public static AdminClient createAdminClient (String BOOTSTRAP_SERVERS_HOST_PORT) {
         Properties props = new Properties();
         props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS_HOST_PORT);
         return AdminClient.create(props);

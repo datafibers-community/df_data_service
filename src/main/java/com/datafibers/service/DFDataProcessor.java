@@ -2,8 +2,7 @@ package com.datafibers.service;
 
 import com.datafibers.model.DFLogPOPJ;
 import com.datafibers.processor.SchemaRegisterProcessor;
-import com.datafibers.util.DFAPIMessage;
-import com.datafibers.util.MongoAdminClient;
+import com.datafibers.util.*;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.vertx.core.*;
 import io.vertx.core.http.HttpServer;
@@ -31,8 +30,6 @@ import com.datafibers.flinknext.DFRemoteStreamEnvironment;
 import com.datafibers.model.DFJobPOPJ;
 import com.datafibers.processor.FlinkTransformProcessor;
 import com.datafibers.processor.KafkaConnectProcessor;
-import com.datafibers.util.ConstantApp;
-import com.datafibers.util.HelpFunc;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
@@ -799,8 +796,10 @@ public class DFDataProcessor extends AbstractVerticle {
                 consumer.handler(record -> {
                     //LOG.debug("Processing value=" + record.record().value() + ",offset=" + record.record().offset());
                     responseList.add(new JsonObject()
-                            .put("offset", record.record().offset())
-                            .put("value", new JsonObject(record.record().value().toString())));
+                            .put("id", record.record().offset())
+                            .put("value", new JsonObject(record.record().value().toString()))
+                            .put("valueString", Json.encodePrettily(new JsonObject(record.record().value().toString())))
+                    );
                     if(responseList.size() >= ConstantApp.AVRO_CONSUMER_BATCH_SIE ) {
                         HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                 .putHeader("X-Total-Count", responseList.size() + "")
@@ -1233,6 +1232,7 @@ public class DFDataProcessor extends AbstractVerticle {
      */
     private void addOneSchema(RoutingContext routingContext) {
         SchemaRegisterProcessor.forwardAddOneSchema(routingContext, rc_schema, schema_registry_host_and_port);
+        KafkaAdminClient.createTopic(kafka_server_host_and_port, routingContext.request().getParam("id"), 1, 1);
     }
 
     /**
@@ -1559,6 +1559,7 @@ public class DFDataProcessor extends AbstractVerticle {
      */
     private void deleteOneSchema(RoutingContext routingContext) {
         SchemaRegisterProcessor.forwardDELETEAsDeleteOne(routingContext, rc_schema, schema_registry_host_and_port);
+        KafkaAdminClient.deleteTopics(kafka_server_host_and_port, routingContext.request().getParam("id"));
     }
 
     /**
