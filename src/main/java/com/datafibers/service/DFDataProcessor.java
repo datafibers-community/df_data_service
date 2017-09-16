@@ -20,6 +20,7 @@ import java.net.URLDecoder;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import io.vertx.ext.web.handler.TimeoutHandler;
 import io.vertx.kafka.client.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.log4j.Level;
@@ -288,7 +289,8 @@ public class DFDataProcessor extends AbstractVerticle {
         router.get(ConstantApp.DF_SUBJECT_TO_TASK_REST_URL_WITH_ID).handler(this::getAllTasksOneTopic);
         router.get(ConstantApp.DF_SUBJECT_TO_TASK_REST_URL_WILD).handler(this::getAllTasksOneTopic);
 
-        // Avro Consumer Rest API definition
+        // Avro Consumer Rest API definition and set timeout to 10s
+        router.route(ConstantApp.DF_AVRO_CONSUMER_REST_URL).handler(TimeoutHandler.create(10000));
         router.options(ConstantApp.DF_AVRO_CONSUMER_REST_URL_WITH_ID).handler(this::corsHandle);
         router.options(ConstantApp.DF_AVRO_CONSUMER_REST_URL).handler(this::corsHandle);
         router.get(ConstantApp.DF_AVRO_CONSUMER_REST_URL_WITH_ID).handler(this::pollAllFromTopic);
