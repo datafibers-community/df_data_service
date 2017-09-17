@@ -126,7 +126,7 @@ export const TransformCreate = (props) => (
                         <AutocompleteInput optionText="subject" />
                     </ReferenceInput>
                     <LongTextInput source="connectorConfig.group_id" label="Consumer ID to Read Data. (Optional)" />
-		            <LongTextInput source="connectorConfig.sink_key_fields" label="List of Commas Separated Columns for Keys in Sink" />
+		            <LongTextInput source="connectorConfig.sink_key_fields" label="Key Columns in Sink (separated by ,)" />
 		            <LongTextInput source="connectorConfig.trans_sql" label="Stream SQL Statement" validate={[ required ]} />
 		        </DependentInput>
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_FLINK_Script">
