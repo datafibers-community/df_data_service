@@ -126,8 +126,8 @@ export default {
                     },
 
         },
-        customers: {
-            name: 'Customer |||| Customers',
+        hist: {
+            name: '历史 |||| 历史',
             fields: {
                 commands: 'Orders',
                 groups: 'Segments',
