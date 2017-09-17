@@ -191,13 +191,15 @@ export const ConnectCreate = (props) => (
                     <ReferenceArrayInput source="connectorConfig.topics" label="Choose topics to write data" reference="schema" validate={[ required ]} allowEmpty>
                         <SelectArrayInput optionText="subject" />
                     </ReferenceArrayInput>
-                    <BooleanInput source="connectorConfig.hive.integration" label="Enable Hive Metadata" style={{ display: 'inline-block' }} validate={[ required ]} />
-                    <DisabledInput source="connectorConfig.hive.metastore.uris" label="Hive Metastore URL" style={{ display: 'inline-block' , marginLeft: 32 }} validate={[ required ]} />
-                    <DisabledInput source="connectorConfig.hdfs.url" label="HDFS URL" style={{ display: 'inline-block', marginLeft: 32 }} validate={[ required ]} />
+                    <BooleanInput source="connectorConfig.hive.integration" label="Enable Hive Metadata" validate={[ required ]} />
+                    <DependentInput dependsOn="connectorConfig.hive.integration" value={true}>
+                    <LongTextInput source="connectorConfig.hive.metastore.uris" label="Hive Metastore URL, such as thrift://localhost:9083" style={{ width: 500 }} validate={[ required ]} />
+                    </DependentInput>
+                    <LongTextInput source="connectorConfig.hdfs.url" label="HDFS URL, such as hdfs://localhost:8020" style={{ width: 500 }} validate={[ required ]} />
                     <NumberInput source="connectorConfig.flush.size" label="The Bulk Size of Rows to Sink" step={1} validate={[ required ]} />
                 </DependentInput>
             </FormTab>
         </TabbedForm>
     </Create>
 );
-                                                                                                                                                                                          1,1         
+
