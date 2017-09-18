@@ -93,6 +93,17 @@ export const SchemaEdit = (props) => (
                         { id: 'null',  name: 'Null' }]} />
                 </EmbeddedArrayInput>
             </FormTab>
+            <FormTab label="Partitions">
+                <ReferenceManyField addLabel={false} reference="s2p" target="id">
+                    <Datagrid>
+                            <TextField source="partitionNumber" label="Partition Number" />
+                            <TextField source="leader" label="Leader" />
+                            <TextField source="replicas" label="Replicas" />
+                            <ChipField source="insyncReplicas" label="In Sync Rep." />
+                        <ShowProcessorButton />
+                    </Datagrid>
+                </ReferenceManyField>
+            </FormTab>
             <FormTab label="Tasks Related">
                 <ReferenceManyField addLabel={false} reference="s2t" target="id">
                     <Datagrid>
@@ -122,6 +133,8 @@ export const SchemaCreate = (props) => (
         <TabbedForm>
             <FormTab label="Overview">
                 <TextInput source="id" label="Topic Name" validate={[ required ]} />
+                <NumberInput source="partitions" label="Number of Partitions" validate={[ required ]} style={{ display: 'inline-block' }} defaultValue={1} step={1}/>
+                <NumberInput source="replicationFactor" label="Replication Factor" validate={[ required ]} style={{ display: 'inline-block', marginLeft: 32 }} defaultValue={1} step={1}/>
                 <SelectInput source="schema.type" label="Schema Type" validate={[ required ]} defaultValue="record" choices={[
                              { id: 'record', name: 'Record' },
                              { id: 'enum', name: 'Enum' },
