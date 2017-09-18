@@ -806,7 +806,7 @@ public class DFDataProcessor extends AbstractVerticle {
                 if (ar.succeeded()) {
                     for (PartitionInfo partitionInfo : ar.result()) {
                         responseList.add(new JsonObject()
-                                .put("topic", partitionInfo.getTopic())
+                                .put("id", partitionInfo.getTopic())
                                 .put("partitionNumber", partitionInfo.getPartition())
                                 .put("leader", partitionInfo.getLeader().getIdString())
                                 .put("replicas", StringUtils.join(partitionInfo.getReplicas(), ','))
