@@ -68,6 +68,11 @@ public final class ConstantApp {
     public static final String DF_AVRO_CONSUMER_REST_URL_WILD = "/api/df/avroconsumer*";
     public static final String DF_AVRO_CONSUMER_REST_URL_WITH_ID = DF_AVRO_CONSUMER_REST_URL + "/:id";
 
+    // DF subject/topic partition information endpoint URLs
+    public static final String DF_SUBJECT_TO_PAR_REST_URL = "/api/df/s2p";
+    public static final String DF_SUBJECT_TO_PAR_REST_URL_WILD = "/api/df/s2p*";
+    public static final String DF_SUBJECT_TO_PAR_REST_URL_WITH_ID = DF_SUBJECT_TO_PAR_REST_URL + "/:id";
+
     // Kafka Connect endpoint URLs
     public static final String KAFKA_CONNECT_REST_URL = "/connectors";
     public static final String KAFKA_CONNECT_PLUGIN_REST_URL = "/connector-plugins";

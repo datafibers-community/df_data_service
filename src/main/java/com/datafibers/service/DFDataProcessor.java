@@ -298,6 +298,12 @@ public class DFDataProcessor extends AbstractVerticle {
         router.get(ConstantApp.DF_AVRO_CONSUMER_REST_URL_WITH_ID).handler(this::pollAllFromTopic);
         router.get(ConstantApp.DF_AVRO_CONSUMER_REST_URL_WILD).handler(this::pollAllFromTopic);
 
+        // Subject to partition info. Rest API definition
+        router.options(ConstantApp.DF_SUBJECT_TO_PAR_REST_URL).handler(this::corsHandle);
+        router.options(ConstantApp.DF_SUBJECT_TO_PAR_REST_URL).handler(this::corsHandle);
+        router.get(ConstantApp.DF_SUBJECT_TO_PAR_REST_URL_WITH_ID).handler(this::getAllTopicPartitions);
+        router.get(ConstantApp.DF_SUBJECT_TO_PAR_REST_URL_WILD).handler(this::getAllTopicPartitions);
+
         // Get all installed connect or transform
         router.options(ConstantApp.DF_PROCESSOR_CONFIG_REST_URL_WITH_ID).handler(this::corsHandle);
         router.options(ConstantApp.DF_PROCESSOR_CONFIG_REST_URL).handler(this::corsHandle);
@@ -745,7 +751,6 @@ public class DFDataProcessor extends AbstractVerticle {
         final String topic = routingContext.request().getParam("id");
         JsonObject searchCondition =
                 HelpFunc.getContainsTopics("connectorConfig", ConstantApp.PK_DF_ALL_TOPIC_ALIAS, topic);
-        LOG.debug("SEARCH = " + searchCondition);
         if (topic == null) {
             routingContext.response()
                     .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
@@ -760,6 +765,68 @@ public class DFDataProcessor extends AbstractVerticle {
                                 .putHeader("X-Total-Count", jobs.size() + "" )
                                 .end(Json.encodePrettily(jobs));
                     });
+        }
+    }
+
+    /**
+     * Describe topic with topic specified
+     *
+     * @api {get} /s2p/:taskId   6. Get partition information for the specific subject/topic
+     * @apiVersion 0.1.1
+     * @apiName getAllTopicPartitions
+     * @apiGroup All
+     * @apiPermission none
+     * @apiDescription This is where we get partition information for the subject/topic.
+     * @apiParam {String}   topic      topic name.
+     * @apiSuccess	{JsonObject[]}	info.    partition info.
+     * @apiSampleRequest http://localhost:8080/api/df/s2p/:taskId
+     */
+    private void getAllTopicPartitions(RoutingContext routingContext) {
+        final String topic = routingContext.request().getParam("id");
+        if (topic == null) {
+            routingContext.response()
+                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                    .end(DFAPIMessage.getResponseMessage(9000));
+            LOG.error(DFAPIMessage.getResponseMessage(9000, topic));
+        } else {
+            Properties props = new Properties();
+            props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka_server_host_and_port);
+            props.put(ConsumerConfig.GROUP_ID_CONFIG, ConstantApp.DF_CONNECT_KAFKA_CONSUMER_GROUP_ID);
+            props.put(ConstantApp.SCHEMA_URI_KEY, "http://" + schema_registry_host_and_port);
+            props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
+            props.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "1000");
+            props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
+            props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
+
+            KafkaConsumer<String, String> consumer = KafkaConsumer.create(vertx, props);
+            ArrayList<JsonObject> responseList = new ArrayList<JsonObject>();
+
+            // Subscribe to a single topic
+            consumer.partitionsFor(topic, ar -> {
+                if (ar.succeeded()) {
+                    for (PartitionInfo partitionInfo : ar.result()) {
+                        responseList.add(new JsonObject()
+                                .put("topic", partitionInfo.getTopic())
+                                .put("partitionNumber", partitionInfo.getPartition())
+                                .put("leader", partitionInfo.getLeader().getIdString())
+                                .put("replicas", StringUtils.join(partitionInfo.getReplicas(), ','))
+                                .put("insyncReplicas", StringUtils.join(partitionInfo.getInSyncReplicas(), ','))
+                        );
+
+                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                .putHeader("X-Total-Count", responseList.size() + "")
+                                .end(Json.encodePrettily(responseList));
+                        consumer.close();
+                    }
+                } else {
+                    LOG.error(DFAPIMessage.logResponseMessage(9030, topic + "-" +
+                            ar.cause().getMessage()));
+                }
+            });
+
+            consumer.exceptionHandler(e -> {
+                LOG.error(DFAPIMessage.logResponseMessage(9031, topic + "-" + e.getMessage()));
+            });
         }
     }
 
@@ -1073,68 +1140,6 @@ public class DFDataProcessor extends AbstractVerticle {
                             .end(DFAPIMessage.getResponseMessage(9002));
                     LOG.error(DFAPIMessage.logResponseMessage(9002, id));
                 }
-            });
-        }
-    }
-
-    /**
-     * Describe topic with topic specified
-     *
-     * @api {get} /getOnePartition/:taskId   6. Get partition information for the specific topic
-     * @apiVersion 0.1.1
-     * @apiName getOneTopicPartitions
-     * @apiGroup All
-     * @apiPermission none
-     * @apiDescription This is where we get partition information for the topic.
-     * @apiParam {String}   topic      topic name.
-     * @apiSuccess	{JsonObject[]}	info.    partition info.
-     * @apiSampleRequest http://localhost:8080/api/df/getOneTopicPartitions/:taskId
-     */
-    private void getOneTopicPartitions(RoutingContext routingContext) {
-        final String topic = routingContext.request().getParam("id");
-        if (topic == null) {
-            routingContext.response()
-                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
-                    .end(DFAPIMessage.getResponseMessage(9000));
-            LOG.error(DFAPIMessage.getResponseMessage(9000, topic));
-        } else {
-            Properties props = new Properties();
-            props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka_server_host_and_port);
-            props.put(ConsumerConfig.GROUP_ID_CONFIG, ConstantApp.DF_CONNECT_KAFKA_CONSUMER_GROUP_ID);
-            props.put(ConstantApp.SCHEMA_URI_KEY, "http://" + schema_registry_host_and_port);
-            props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
-            props.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "1000");
-            props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
-            props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
-
-            KafkaConsumer<String, String> consumer = KafkaConsumer.create(vertx, props);
-            ArrayList<JsonObject> responseList = new ArrayList<JsonObject>();
-
-            // Subscribe to a single topic
-            consumer.partitionsFor(topic, ar -> {
-                if (ar.succeeded()) {
-                    for (PartitionInfo partitionInfo : ar.result()) {
-                        responseList.add(new JsonObject()
-                                .put("topic", partitionInfo.getTopic())
-                                .put("partitionNumber", partitionInfo.getPartition())
-                                .put("leader", partitionInfo.getLeader().getIdString())
-                                .put("replicas", StringUtils.join(partitionInfo.getReplicas(), ','))
-                                .put("insyncReplicas", StringUtils.join(partitionInfo.getInSyncReplicas(), ','))
-                        );
-
-                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                                .putHeader("X-Total-Count", responseList.size() + "")
-                                .end(Json.encodePrettily(responseList));
-                        consumer.close();
-                    }
-                } else {
-                    LOG.error(DFAPIMessage.logResponseMessage(9030, topic + "-" +
-                            ar.cause().getMessage()));
-                }
-            });
-
-            consumer.exceptionHandler(e -> {
-                LOG.error(DFAPIMessage.logResponseMessage(9031, topic + "-" + e.getMessage()));
             });
         }
     }
