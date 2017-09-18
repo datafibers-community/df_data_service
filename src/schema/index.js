@@ -99,7 +99,7 @@ export const SchemaEdit = (props) => (
                             <TextField source="partitionNumber" label="Partition Number" />
                             <TextField source="leader" label="Leader" />
                             <TextField source="replicas" label="Replicas" />
-                            <ChipField source="insyncReplicas" label="In Sync Rep." />
+                            <TextField source="insyncReplicas" label="In Sync Rep." />
                         <ShowProcessorButton />
                     </Datagrid>
                 </ReferenceManyField>
