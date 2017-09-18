@@ -13,7 +13,7 @@ import java.util.concurrent.ExecutionException;
  * This class contains static methods to operate on queues, allowing queue
  * creation and deletion, checking whether queues exist on the broker, and
  * listing all queues on the broker. This new admin API is available after kafka 0.10.1.0.
- *
+ * In new version of API, zookeeper are no longer required.
  */
 public class KafkaAdminClient
 {

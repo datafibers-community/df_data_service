@@ -21,7 +21,9 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import io.vertx.ext.web.handler.TimeoutHandler;
+import io.vertx.kafka.client.common.PartitionInfo;
 import io.vertx.kafka.client.consumer.KafkaConsumer;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.log4j.Level;
 import org.bson.types.ObjectId;
@@ -1076,6 +1078,68 @@ public class DFDataProcessor extends AbstractVerticle {
     }
 
     /**
+     * Describe topic with topic specified
+     *
+     * @api {get} /getOnePartition/:taskId   6. Get partition information for the specific topic
+     * @apiVersion 0.1.1
+     * @apiName getOneTopicPartitions
+     * @apiGroup All
+     * @apiPermission none
+     * @apiDescription This is where we get partition information for the topic.
+     * @apiParam {String}   topic      topic name.
+     * @apiSuccess	{JsonObject[]}	info.    partition info.
+     * @apiSampleRequest http://localhost:8080/api/df/getOneTopicPartitions/:taskId
+     */
+    private void getOneTopicPartitions(RoutingContext routingContext) {
+        final String topic = routingContext.request().getParam("id");
+        if (topic == null) {
+            routingContext.response()
+                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                    .end(DFAPIMessage.getResponseMessage(9000));
+            LOG.error(DFAPIMessage.getResponseMessage(9000, topic));
+        } else {
+            Properties props = new Properties();
+            props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka_server_host_and_port);
+            props.put(ConsumerConfig.GROUP_ID_CONFIG, ConstantApp.DF_CONNECT_KAFKA_CONSUMER_GROUP_ID);
+            props.put(ConstantApp.SCHEMA_URI_KEY, "http://" + schema_registry_host_and_port);
+            props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
+            props.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "1000");
+            props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
+            props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
+
+            KafkaConsumer<String, String> consumer = KafkaConsumer.create(vertx, props);
+            ArrayList<JsonObject> responseList = new ArrayList<JsonObject>();
+
+            // Subscribe to a single topic
+            consumer.partitionsFor(topic, ar -> {
+                if (ar.succeeded()) {
+                    for (PartitionInfo partitionInfo : ar.result()) {
+                        responseList.add(new JsonObject()
+                                .put("topic", partitionInfo.getTopic())
+                                .put("partitionNumber", partitionInfo.getPartition())
+                                .put("leader", partitionInfo.getLeader().getIdString())
+                                .put("replicas", StringUtils.join(partitionInfo.getReplicas(), ','))
+                                .put("insyncReplicas", StringUtils.join(partitionInfo.getInSyncReplicas(), ','))
+                        );
+
+                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                .putHeader("X-Total-Count", responseList.size() + "")
+                                .end(Json.encodePrettily(responseList));
+                        consumer.close();
+                    }
+                } else {
+                    LOG.error(DFAPIMessage.logResponseMessage(9030, topic + "-" +
+                            ar.cause().getMessage()));
+                }
+            });
+
+            consumer.exceptionHandler(e -> {
+                LOG.error(DFAPIMessage.logResponseMessage(9031, topic + "-" + e.getMessage()));
+            });
+        }
+    }
+
+    /**
      * Connects specific addOne End Point for Rest API
      * @param routingContext
      *
@@ -1234,7 +1298,14 @@ public class DFDataProcessor extends AbstractVerticle {
      */
     private void addOneSchema(RoutingContext routingContext) {
         SchemaRegisterProcessor.forwardAddOneSchema(routingContext, rc_schema, schema_registry_host_and_port);
-        KafkaAdminClient.createTopic(kafka_server_host_and_port, routingContext.request().getParam("id"), 1, 1);
+        JSONObject jsonObj = new JSONObject(routingContext.getBodyAsString());
+        int partitions = 1;
+        int replicaFactor = 1;
+        if(jsonObj.has(ConstantApp.PARTITIONS)) partitions = jsonObj.getInt(ConstantApp.PARTITIONS);
+        if(jsonObj.has(ConstantApp.REPLICATION_FACTOR)) replicaFactor = jsonObj.getInt(ConstantApp.REPLICATION_FACTOR);
+        // Since vertx kafka admin still need zookeeper, we now use kafka native admin api until vertx version get updated
+        KafkaAdminClient.createTopic(kafka_server_host_and_port, routingContext.request().getParam("id"),
+                partitions, replicaFactor);
     }
 
     /**
