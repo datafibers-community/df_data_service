@@ -96,10 +96,10 @@ export const SchemaEdit = (props) => (
             <FormTab label="Partitions">
                 <ReferenceManyField addLabel={false} reference="s2p" target="id">
                     <Datagrid>
-                            <TextField source="partitionNumber" label="Partition Number" />
+                            <NumberField source="partitionNumber" label="NO." style={{ textAlign: 'center' }} />
                             <TextField source="leader" label="Leader" />
                             <TextField source="replicas" label="Replicas" />
-                            <TextField source="insyncReplicas" label="In Sync Rep." />
+                            <TextField source="insyncReplicas" label="In Sync Replicas" />
                     </Datagrid>
                 </ReferenceManyField>
             </FormTab>
