@@ -100,7 +100,6 @@ export const SchemaEdit = (props) => (
                             <TextField source="leader" label="Leader" />
                             <TextField source="replicas" label="Replicas" />
                             <TextField source="insyncReplicas" label="In Sync Rep." />
-                        <ShowProcessorButton />
                     </Datagrid>
                 </ReferenceManyField>
             </FormTab>
