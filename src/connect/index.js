@@ -68,6 +68,7 @@ export const ConnectEdit = (props) => (
                         { id: 'CONNECT_SOURCE_STOCK_AvroFile', name: 'Source Stock API' },
                         { id: 'CONNECT_SINK_HDFS_AvroFile', name: 'Sink Hadoop|Hive' },
                         { id: 'CONNECT_SINK_MONGODB_AvroDB',  name: 'Sink MongoDB' },
+                        { id: 'CONNECT_SINK_KAFKA_JDBC',  name: 'Sink JDBC' },
                 ]} />
                 <NumberInput source="connectorConfig.tasks_max" label="Number of Sub-task to Submit" step={1}/>
             </FormTab>
@@ -115,6 +116,14 @@ export const ConnectEdit = (props) => (
                     <DisabledInput source="connectorConfig.hdfs_url" label="HDFS URL" style={{ display: 'inline-block', marginLeft: 32 }} />
                     <NumberInput source="connectorConfig.flush_size" label="Bulk size of rows to sink" step={1} />
                 </DependentInput>
+                <DependentInput dependsOn="connectorType" value="CONNECT_SINK_KAFKA_JDBC">
+                    <ReferenceArrayInput source="connectorConfig.topics" label="Choose topics to write data" reference="schema" validate={[ required ]} allowEmpty>
+                        <SelectArrayInput optionText="subject" />
+                    </ReferenceArrayInput>
+                    <TextInput source="connectorConfig.connection_url" label="JDBC_URL, such as jdbc:mysql://localhost:3306/db_name" validate={[ required ]} />
+                    <BooleanInput source="connectorConfig.auto_create" label="Auto Create Table ?" defaultValue={true} />
+                    <NumberInput source="connectorConfig.bulk_size" label="Bulk size of rows to sink" defaultValue="10" step={1} validate={[ required ]} />
+                </DependentInput>
             </FormTab>
             <FormTab label="State">
                 <ReferenceManyField addLabel={false} reference="status" target="id">
@@ -143,6 +152,7 @@ export const ConnectCreate = (props) => (
                         { id: 'CONNECT_SOURCE_STOCK_AvroFile', name: 'Source Stock API' },
                         { id: 'CONNECT_SINK_HDFS_AvroFile', name: 'Sink Hadoop|Hive' },
                         { id: 'CONNECT_SINK_MONGODB_AvroDB',  name: 'Sink MongoDB' },
+                        { id: 'CONNECT_SINK_KAFKA_JDBC',  name: 'Sink JDBC' },
                 ]} />
                 <NumberInput source="connectorConfig.tasks_max" label="Number of sub-task to submit" defaultValue={1} step={1}/>
             </FormTab>
@@ -197,6 +207,16 @@ export const ConnectCreate = (props) => (
                     </DependentInput>
                     <LongTextInput source="connectorConfig.hdfs.url" label="HDFS URL, such as hdfs://localhost:8020" style={{ width: 500 }} validate={[ required ]} />
                     <NumberInput source="connectorConfig.flush.size" label="Bulk size of rows to sink" step={1} validate={[ required ]} />
+                </DependentInput>
+                <DependentInput dependsOn="connectorType" value="CONNECT_SINK_KAFKA_JDBC">
+                    <ReferenceArrayInput source="connectorConfig.topics" label="Choose topics to write data" reference="schema" validate={[ required ]} allowEmpty>
+                        <SelectArrayInput optionText="subject" />
+                    </ReferenceArrayInput>
+                    <TextInput source="connectorConfig.connection_url" label="JDBC_URL, such as jdbc:mysql://localhost:3306/db_name" validate={[ required ]} />
+                    <TextInput source="connectorConfig.connection_user" label="User Name" style={{ display: 'inline-block' }} validate={[ required ]} />
+                    <TextInput source="connectorConfig.connection_password" label="Password" type="password" style={{ display: 'inline-block', marginLeft: 32 }} validate={[ required ]} />
+                    <BooleanInput source="connectorConfig.auto_create" label="Auto Create Table ?" defaultValue={true} />
+                    <NumberInput source="connectorConfig.bulk_size" label="Bulk size of rows to sink" defaultValue="10" step={1} validate={[ required ]} />
                 </DependentInput>
             </FormTab>
         </TabbedForm>

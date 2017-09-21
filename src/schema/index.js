@@ -87,8 +87,10 @@ export const SchemaEdit = (props) => (
                     <TextInput source="name" label="Column Name"/>
                     <SelectInput source="type" label="Column Date Type" choices={[
                         { id: 'string', name: 'String/Text' },
-                        { id: 'long', name: 'Long 64bit' },
                         { id: 'int',  name: 'Integer 32bit' },
+                        { id: 'long', name: 'Long 64bit' },
+                        { id: 'float',  name: 'Float 32bit' },
+                        { id: 'double',  name: 'Double 64bit' },
                         { id: 'boolean',  name: 'Boolean 0 (false) or 1 (true)' },
                         { id: 'null',  name: 'Null' }]} />
                 </EmbeddedArrayInput>
@@ -154,8 +156,10 @@ export const SchemaCreate = (props) => (
                     <TextInput source="name" label="Column Name"/>
                     <SelectInput source="type" label="Column Date Type" defaultValue="string" choices={[
                         { id: 'string', name: 'String/Text' },
-                        { id: 'long', name: 'Long 64bit' },
                         { id: 'int',  name: 'Integer 32bit' },
+                        { id: 'long', name: 'Long 64bit' },
+                        { id: 'float',  name: 'Float 32bit' },
+                        { id: 'double',  name: 'Double 64bit' },
                         { id: 'boolean',  name: 'Boolean 0 (false) or 1 (true)' },
                         { id: 'null',  name: 'Null' }]} />
                 </EmbeddedArrayInput>
