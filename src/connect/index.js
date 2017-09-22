@@ -86,7 +86,7 @@ export const ConnectEdit = (props) => (
                 <DependentInput dependsOn="connectorType" value="CONNECT_SOURCE_STOCK_AvroFile">
                     <TextInput source="connectorConfig.topic" label="Edit a topic to write data" validate={[ required ]} />
                     <TextInput source="connectorConfig.symbols" label="List of Stock Symbols (separated by ,)" />
-                    <SelectInput source="connectorConfig.portfolio" label="Portfolio, predefined symbols list" validate={[ required ]} choices={[
+                    <SelectInput source="connectorConfig.portfolio" label="Portfolio, selected symbols list" validate={[ required ]} choices={[
                             { id: 'None', name: 'Input Symbols' },
                             { id: 'Top 10 IT Service', name: 'Top 10 IT Service' },
                             { id: 'Top 10 Technology', name: 'Top 10 Technology' },
@@ -144,7 +144,7 @@ export const ConnectCreate = (props) => (
     <Create title="Create New Connect Task Guide" {...props}>
         <TabbedForm>
             <FormTab label="Overview">
-                <NumberInput source="taskSeq" label="Task Sequence Number, eg. 1, 2, ..." />
+                <NumberInput source="taskSeq" label="Task Sequence Number, eg. 1, 2, ..." defaultValue={1} step={1}/>
                 <LongTextInput source="name" label="Task Name" validate={[ required ]} style={{ width: 500 }} />
                 <LongTextInput source="description" label="Task Description" defaultValue="This is default description." style={{ width: 500 }} />
                 <SelectInput source="connectorType" label="Task Type" validate={[ required ]} choices={[
@@ -161,15 +161,15 @@ export const ConnectCreate = (props) => (
                     <ReferenceInput source="connectorConfig.topic" label="Choose a topic to write data" reference="schema" validate={[ required ]} allowEmpty>
                         <AutocompleteInput optionText="subject" />
                     </ReferenceInput>
-                    <LongTextInput source="connectorConfig.schema_registry_uri" label="Schema Registry URI, eg. http://localhost:8081" validate={[ required ]} style={{ width: 500 }} />
+                    <LongTextInput source="connectorConfig.schema_registry_uri" label="Schema Registry URI" defaultValue="http://localhost:8081" validate={[ required ]} style={{ width: 500 }} />
                     <BooleanInput source="connectorConfig.file_overwrite" label="Allow File Overwrite ?" defaultValue={true} />
                     <TextInput source="connectorConfig.file_location" label="Path where to load the files" style={{ display: 'inline-block' }} defaultValue={"/home/vagrant/df_data"} validate={[ required ]} />
-                    <TextInput source="connectorConfig.file_glob" label="Pattern/Glob to match the files" style={{ display: 'inline-block', marginLeft: 32 }} validate={[ required ]} />
+                    <TextInput source="connectorConfig.file_glob" label="Pattern/Glob to match the files" style={{ display: 'inline-block', marginLeft: 32 }} defaultValue="*.{json,csv}" validate={[ required ]} />
                 </DependentInput>
                 <DependentInput dependsOn="connectorType" value="CONNECT_SOURCE_STOCK_AvroFile">
                     <LongTextInput source="connectorConfig.topic" label="Automatically create a topic to write data" validate={[ required ]} style={{ width: 500 }} />
-                    <LongTextInput source="connectorConfig.schema_registry_uri" label="Schema Registry URI, such as http://localhost:8081" validate={[ required ]} style={{ width: 500 }} />
-                    <SelectInput source="connectorConfig.portfolio" label="Portfolio, predefined symbols list" validate={[ required ]} choices={[
+                    <LongTextInput source="connectorConfig.schema_registry_uri" label="Schema Registry URI" defaultValue="http://localhost:8081" validate={[ required ]} style={{ width: 500 }} />
+                    <SelectInput source="connectorConfig.portfolio" label="Portfolio, selected symbols list" validate={[ required ]} choices={[
                             { id: 'None', name: 'Input Symbols' },
                             { id: 'Top 10 IT Service', name: 'Top 10 IT Service' },
                             { id: 'Top 10 Technology', name: 'Top 10 Technology' },
@@ -191,9 +191,9 @@ export const ConnectCreate = (props) => (
                     <ReferenceArrayInput source="connectorConfig.topics" label="Choose topics to write data" reference="schema" validate={[ required ]} allowEmpty>
                         <SelectArrayInput optionText="subject" />
                     </ReferenceArrayInput>
-                    <TextInput source="connectorConfig.host" label="Server Hostname, eg. localhost" style={{ display: 'inline-block' }} validate={[ required ]} />
-                    <TextInput source="connectorConfig.port" label="Server Port, eg. 27017" style={{ display: 'inline-block', marginLeft: 32 }} validate={[ required ]} />
-                    <TextInput source="connectorConfig.mongodb_database" label="Database Name" validate={[ required ]} />
+                    <TextInput source="connectorConfig.host" label="Server Hostname" defaultValue="localhost" style={{ display: 'inline-block' }} validate={[ required ]} />
+                    <TextInput source="connectorConfig.port" label="Server Port" defaultValue="27017" style={{ display: 'inline-block', marginLeft: 32 }} validate={[ required ]} />
+                    <TextInput source="connectorConfig.mongodb_database" label="Database Name" defaultValue="DEFAULT_DB" validate={[ required ]} />
                     <LongTextInput source="connectorConfig.mongodb_collections" label="Collections where to sink the files (use , separate multiple values)" style={{ width: 500 }} validate={[ required ]} />
                     <NumberInput source="connectorConfig.bulk_size" label="Bulk size of rows to sink" defaultValue="1" step={1} validate={[ required ]} />
                 </DependentInput>
@@ -201,19 +201,19 @@ export const ConnectCreate = (props) => (
                     <ReferenceArrayInput source="connectorConfig.topics" label="Choose topics to write data" reference="schema" validate={[ required ]} allowEmpty>
                         <SelectArrayInput optionText="subject" />
                     </ReferenceArrayInput>
-                    <BooleanInput source="connectorConfig.hive.integration" label="Enable Hive Metadata" validate={[ required ]} />
+                    <BooleanInput source="connectorConfig.hive.integration" label="Enable Hive Metadata" defaultValue={true} validate={[ required ]} />
                     <DependentInput dependsOn="connectorConfig.hive.integration" value={true}>
-                    <LongTextInput source="connectorConfig.hive.metastore.uris" label="Hive Metastore URL, such as thrift://localhost:9083" style={{ width: 500 }} validate={[ required ]} />
+                    <LongTextInput source="connectorConfig.hive.metastore.uris" label="Hive Metastore URL" defaultValue="thrift://localhost:9083" style={{ width: 500 }} validate={[ required ]} />
                     </DependentInput>
-                    <LongTextInput source="connectorConfig.hdfs.url" label="HDFS URL, such as hdfs://localhost:8020" style={{ width: 500 }} validate={[ required ]} />
-                    <NumberInput source="connectorConfig.flush.size" label="Bulk size of rows to sink" step={1} validate={[ required ]} />
+                    <LongTextInput source="connectorConfig.hdfs.url" label="HDFS URL" defaultValue="hdfs://localhost:8020" style={{ width: 500 }} validate={[ required ]} />
+                    <NumberInput source="connectorConfig.flush.size" label="Bulk size of rows to sink" defaultValue="10" step={1} validate={[ required ]} />
                 </DependentInput>
                 <DependentInput dependsOn="connectorType" value="CONNECT_SINK_KAFKA_JDBC">
                     <ReferenceArrayInput source="connectorConfig.topics" label="Choose topics to write data" reference="schema" style={{ width: 500 }} validate={[ required ]} allowEmpty>
                         <SelectArrayInput optionText="subject" />
                     </ReferenceArrayInput>
-                    <LongTextInput source="connectorConfig.connection_url" label="JDBC_URL, such as jdbc:mysql://localhost:3306/db_name" style={{ width: 500 }} validate={[ required ]} />
-                    <TextInput source="connectorConfig.connection_user" label="User Name" style={{ display: 'inline-block' }} validate={[ required ]} />
+                    <LongTextInput source="connectorConfig.connection_url" label="JDBC_URL" defaultValue="jdbc:mysql://localhost:3306/db_name" style={{ width: 500 }} validate={[ required ]} />
+                    <TextInput source="connectorConfig.connection_user" label="User Name" defaultValue="root" style={{ display: 'inline-block' }} validate={[ required ]} />
                     <TextInput source="connectorConfig.connection_password" label="Password" type="password" style={{ display: 'inline-block', marginLeft: 32 }} validate={[ required ]} />
                     <BooleanInput source="connectorConfig.auto_create" label="Auto Create Table ?" defaultValue={true} />
                     <NumberInput source="connectorConfig.bulk_size" label="Bulk size of rows to sink" defaultValue="10" step={1} validate={[ required ]} />

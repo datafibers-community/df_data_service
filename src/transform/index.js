@@ -108,7 +108,7 @@ export const TransformCreate = (props) => (
     <Create title="Create New Transform Task Guide" {...props}>
         <TabbedForm>
             <FormTab label="Overview">
-                <NumberInput source="taskSeq" label="Task Sequence Number, eg. 1, 2, ..." />
+                <NumberInput source="taskSeq" label="Task Sequence Number, eg. 1, 2, ..." defaultValue={1}/>
                 <TextInput source="name" label="Name" validate={[ required ]} style={{ width: 500 }} />
 		        <LongTextInput source="description" label="Task Description" style={{ width: 500 }} />
 		        <SelectInput source="connectorType" label="Task Type" validate={[ required ]} choices={[
