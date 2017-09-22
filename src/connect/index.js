@@ -61,8 +61,8 @@ export const ConnectEdit = (props) => (
             <FormTab label="Overview">
                 <DisabledInput source="taskSeq" label="Task Sequence" style={{ display: 'inline-block' }} />
                 <ChipField source="status" label="Task Status" style={{ display: 'inline-block', marginLeft: 32, width: 150 }} />
-                <TextInput source="name" label="Name" validate={[ required ]} />
-                <LongTextInput source="description" label="Task Description" />
+                <TextInput source="name" label="Name" validate={[ required ]} style={{ width: 500 }} />
+                <LongTextInput source="description" label="Task Description" style={{ width: 500 }} />
                 <SelectField source="connectorType" label="Task Type" validate={[ required ]} choices={[
                         { id: 'CONNECT_SOURCE_KAFKA_AvroFile', name: 'Source Avro Files' },
                         { id: 'CONNECT_SOURCE_STOCK_AvroFile', name: 'Source Stock API' },
@@ -120,7 +120,7 @@ export const ConnectEdit = (props) => (
                     <ReferenceArrayInput source="connectorConfig.topics" label="Choose topics to write data" reference="schema" validate={[ required ]} allowEmpty>
                         <SelectArrayInput optionText="subject" />
                     </ReferenceArrayInput>
-                    <TextInput source="connectorConfig.connection_url" label="JDBC_URL, such as jdbc:mysql://localhost:3306/db_name" validate={[ required ]} />
+                    <TextInput source="connectorConfig.connection_url" label="JDBC_URL, such as jdbc:mysql://localhost:3306/db_name" style={{ width: 500 }} validate={[ required ]} />
                     <BooleanInput source="connectorConfig.auto_create" label="Auto Create Table ?" defaultValue={true} />
                     <NumberInput source="connectorConfig.bulk_size" label="Bulk size of rows to sink" defaultValue="10" step={1} validate={[ required ]} />
                 </DependentInput>
@@ -145,8 +145,8 @@ export const ConnectCreate = (props) => (
         <TabbedForm>
             <FormTab label="Overview">
                 <NumberInput source="taskSeq" label="Task Sequence Number, eg. 1, 2, ..." />
-                <LongTextInput source="name" label="Task Name" validate={[ required ]} />
-                <LongTextInput source="description" label="Task Description" defaultValue="This is default description." />
+                <LongTextInput source="name" label="Task Name" validate={[ required ]} style={{ width: 500 }} />
+                <LongTextInput source="description" label="Task Description" defaultValue="This is default description." style={{ width: 500 }} />
                 <SelectInput source="connectorType" label="Task Type" validate={[ required ]} choices={[
                         { id: 'CONNECT_SOURCE_KAFKA_AvroFile', name: 'Source Avro Files' },
                         { id: 'CONNECT_SOURCE_STOCK_AvroFile', name: 'Source Stock API' },
@@ -209,10 +209,10 @@ export const ConnectCreate = (props) => (
                     <NumberInput source="connectorConfig.flush.size" label="Bulk size of rows to sink" step={1} validate={[ required ]} />
                 </DependentInput>
                 <DependentInput dependsOn="connectorType" value="CONNECT_SINK_KAFKA_JDBC">
-                    <ReferenceArrayInput source="connectorConfig.topics" label="Choose topics to write data" reference="schema" validate={[ required ]} allowEmpty>
+                    <ReferenceArrayInput source="connectorConfig.topics" label="Choose topics to write data" reference="schema" style={{ width: 500 }} validate={[ required ]} allowEmpty>
                         <SelectArrayInput optionText="subject" />
                     </ReferenceArrayInput>
-                    <TextInput source="connectorConfig.connection_url" label="JDBC_URL, such as jdbc:mysql://localhost:3306/db_name" validate={[ required ]} />
+                    <LongTextInput source="connectorConfig.connection_url" label="JDBC_URL, such as jdbc:mysql://localhost:3306/db_name" style={{ width: 500 }} validate={[ required ]} />
                     <TextInput source="connectorConfig.connection_user" label="User Name" style={{ display: 'inline-block' }} validate={[ required ]} />
                     <TextInput source="connectorConfig.connection_password" label="Password" type="password" style={{ display: 'inline-block', marginLeft: 32 }} validate={[ required ]} />
                     <BooleanInput source="connectorConfig.auto_create" label="Auto Create Table ?" defaultValue={true} />
