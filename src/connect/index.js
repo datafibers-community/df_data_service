@@ -2,7 +2,7 @@
 import React from 'react';
 import { Filter, List, Edit, Create } from 'admin-on-rest';
 import { Datagrid, SelectField, UrlField, FunctionField, ChipField, TextField, DateField, RichTextField, ImageField, ReferenceField, ReferenceArrayField, ReferenceManyField, SingleFieldList, SelectArrayInput } from 'admin-on-rest';
-import { AutocompleteInput, NumberInput, DisabledInput, BooleanInput, LongTextInput, SelectInput, TextInput, ReferenceInput, ReferenceArrayInput } from 'admin-on-rest';
+import { AutocompleteInput, RadioButtonGroupInput, NumberInput, DisabledInput, BooleanInput, LongTextInput, SelectInput, TextInput, ReferenceInput, ReferenceArrayInput } from 'admin-on-rest';
 import { EditButton, ShowButton } from 'admin-on-rest';
 import { Show, SimpleShowLayout, SimpleForm, TabbedForm, FormTab } from 'admin-on-rest';
 import RichTextInput from 'aor-rich-text-input';
@@ -147,13 +147,23 @@ export const ConnectCreate = (props) => (
                 <NumberInput source="taskSeq" label="Task Sequence Number, eg. 1, 2, ..." defaultValue={1} step={1}/>
                 <LongTextInput source="name" label="Task Name" validate={[ required ]} style={{ width: 500 }} />
                 <LongTextInput source="description" label="Task Description" defaultValue="This is default description." style={{ width: 500 }} />
-                <SelectInput source="connectorType" label="Task Type" validate={[ required ]} choices={[
-                        { id: 'CONNECT_SOURCE_KAFKA_AvroFile', name: 'Source Avro Files' },
-                        { id: 'CONNECT_SOURCE_STOCK_AvroFile', name: 'Source Stock API' },
-                        { id: 'CONNECT_SINK_HDFS_AvroFile', name: 'Sink Hadoop|Hive' },
-                        { id: 'CONNECT_SINK_MONGODB_AvroDB',  name: 'Sink MongoDB' },
-                        { id: 'CONNECT_SINK_KAFKA_JDBC',  name: 'Sink JDBC' },
-                ]} />
+                <RadioButtonGroupInput source="connectorCategory" label="Task Category"  choices={[
+                    { id: 'source', name: 'Source' },
+                    { id: 'sink', name: 'Sink' },
+                ]} defaultValue="source" />
+                <DependentInput dependsOn="connectorCategory" value="source">
+                    <SelectInput source="connectorType" label="Task Type" validate={[ required ]} choices={[
+                            { id: 'CONNECT_SOURCE_KAFKA_AvroFile', name: 'Avro Files' },
+                            { id: 'CONNECT_SOURCE_STOCK_AvroFile', name: 'Stock API' },
+                    ]} />
+                </DependentInput>
+                <DependentInput dependsOn="connectorCategory" value="sink">
+                    <SelectInput source="connectorType" label="Task Type" validate={[ required ]} choices={[
+                            { id: 'CONNECT_SINK_HDFS_AvroFile', name: 'Hadoop|Hive' },
+                            { id: 'CONNECT_SINK_MONGODB_AvroDB',  name: 'MongoDB' },
+                            { id: 'CONNECT_SINK_KAFKA_JDBC',  name: 'JDBC' },
+                    ]} />
+                </DependentInput>
                 <NumberInput source="connectorConfig.tasks_max" label="Number of sub-task to submit" defaultValue={1} step={1}/>
             </FormTab>
             <FormTab label="Setting">
