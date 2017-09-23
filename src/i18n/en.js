@@ -233,6 +233,7 @@ export default {
             action: {
                 accept: 'Pause',
                 reject: 'Resume',
+                restart: 'Restart',
             },
             notification: {
                 approved_success: 'Task Paused',

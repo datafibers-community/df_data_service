@@ -7,7 +7,7 @@ export const REVIEW_APPROVE_SUCCESS = 'REVIEW_APPROVE_SUCCESS';
 
 export const reviewApprove = (id, data, basePath) => ({
     type: REVIEW_APPROVE,
-    payload: { id, data: { ...data, status: 'pause' }, basePath },
+    payload: { id, data: { ...data, status: 'PAUSE' }, basePath },
     meta: { resource: 'ps', fetch: UPDATE, cancelPrevious: false },
 });
 
@@ -18,6 +18,17 @@ export const REVIEW_REJECT_SUCCESS = 'REVIEW_REJECT_SUCCESS';
 
 export const reviewReject = (id, data, basePath) => ({
     type: REVIEW_REJECT,
-    payload: { id, data: { ...data, status: 'resume' }, basePath },
+    payload: { id, data: { ...data, status: 'RESUME' }, basePath },
+    meta: { resource: 'ps', fetch: UPDATE, cancelPrevious: false },
+});
+
+export const REVIEW_RESTART = 'REVIEW_RESTART';
+export const REVIEW_RESTART_LOADING = 'REVIEW_RESTART_LOADING';
+export const REVIEW_RESTART_FAILURE = 'REVIEW_RESTART_FAILURE';
+export const REVIEW_RESTART_SUCCESS = 'REVIEW_RESTART_SUCCESS';
+
+export const reviewRestart = (id, data, basePath) => ({
+    type: REVIEW_RESTART,
+    payload: { id, data: { ...data, status: 'RESTART' }, basePath },
     meta: { resource: 'ps', fetch: UPDATE, cancelPrevious: false },
 });
