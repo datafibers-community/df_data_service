@@ -23,10 +23,10 @@ class ApproveButton extends Component {
     render() {
         const { record } = this.props;
         return (
-            <span>
-                <IconButton onClick={this.handleApprove} disabled={record.status !== 'RUNNING'}><ThumbUp color="#00bcd4" /></IconButton>
-                <IconButton onClick={this.handleReject} disabled={record.status !== 'PAUSED'}><ThumbDown color="#00bcd4" /></IconButton>
-            </span>
+        <span>
+            {record && record.status === 'RUNNING' ? <IconButton onClick={this.handleApprove} ><ThumbUp color="#daa520" /> </IconButton>:
+            record && record.status === 'PAUSED' ? <IconButton onClick={this.handleReject} ><ThumbDown color="#4CAF50" /> </IconButton>:""}
+        </span>
         );
     }
 }

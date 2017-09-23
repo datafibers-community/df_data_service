@@ -19,7 +19,7 @@ class AcceptButton extends Component {
             primary
             label={translate('resources.reviews.action.reject')}
             onClick={this.handleApprove}
-            icon={<ThumbDown color="#FF5722" />}
+            icon={<ThumbDown color="#4CAF50" />}
         /> : <span/>;
     }
 }
