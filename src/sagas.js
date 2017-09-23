@@ -1,5 +1,5 @@
-import reviewSaga from './reviews/reviewSaga';
+import connectSaga from './connect/connectSaga';
 
 export default [
-    reviewSaga,
+    connectSaga,
 ];

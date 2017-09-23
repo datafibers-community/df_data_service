@@ -231,14 +231,14 @@ export default {
                 rating: 'Rating',
             },
             action: {
-                accept: 'Accept',
-                reject: 'Reject',
+                accept: 'Pause',
+                reject: 'Resume',
             },
             notification: {
-                approved_success: 'Review approved',
-                approved_error: 'Error: Review not approved',
-                rejected_success: 'Review rejected',
-                rejected_error: 'Error: Review not rejected',
+                approved_success: 'Task Paused',
+                approved_error: 'Error: Task not Paused',
+                rejected_success: 'Task Resumed',
+                rejected_error: 'Error: Task not Resumed',
             },
         },
         segments: {

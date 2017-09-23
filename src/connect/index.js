@@ -12,6 +12,9 @@ import { required, minLength, maxLength, minValue, maxValue, number, regex, emai
 import RawJsonRecordField from '../component/RawJsonRecordField';
 import RawJsonRecordSpecificField from '../component/RawJsonRecordSpecificField';
 import EmbeddedArrayInputFormField from '../component/EmbeddedArrayInputFormField';
+import ApproveButton from './ApproveButton';
+import ReviewEditActions from './ReviewEditActions';
+import rowStyle from './rowStyle';
 
 export const ConnectIcon = Icon;
 
@@ -39,24 +42,25 @@ export const ConnectShow = (props) => (
 );
 
 export const ConnectList = (props) => (
-    <List {...props} title="Connect List" filters={<ConnectFilter />}>
-        <Datagrid
+    <List {...props} title="Connect List" filters={<ConnectFilter />} >
+        <Datagrid rowStyle={rowStyle}
             headerOptions={{ adjustForCheckbox: true, displaySelectAll: true }}
-            bodyOptions={{ displayRowCheckbox: true, stripedRows: true, showRowHover: true}}
+            bodyOptions={{ displayRowCheckbox: true, stripedRows: false, showRowHover: true}}
             rowOptions={{ selectable: true }}
-            options={{ multiSelectable: true }}>
+            options={{ multiSelectable: true }} >
             <TextField source="id" label="id" />
             <TextField source="taskSeq" label="task seq." />
             <TextField source="name" label="name" />
             <TextField source="connectorType" label="task type" />
             <ChipField source="status" label="status" />
+            <ApproveButton style={{ padding: 0 }} />
             <EditButton />
         </Datagrid>
     </List>
 );
 
 export const ConnectEdit = (props) => (
-    <Edit title={<ConnectTitle />} {...props}>
+    <Edit title={<ConnectTitle />} {...props} actions={<ReviewEditActions />}>
         <TabbedForm>
             <FormTab label="Overview">
                 <DisabledInput source="taskSeq" label="Task Sequence" style={{ display: 'inline-block' }} />
