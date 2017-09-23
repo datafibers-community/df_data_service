@@ -214,6 +214,111 @@ public class KafkaConnectProcessor {
     }
 
     /**
+     * This method first decode the REST PUT request to DFJobPOPJ object. Then, it updates its job status and repack
+     * for Kafka REST PUT. After that, it forward the new PUT to Kafka Connect to pause or resume the job.
+     * Once REST API forward is successful, update data to the local repository.
+     *
+     * @param routingContext This is the contect from REST API
+     * @param restClient This is vertx non-blocking rest client used for forwarding
+     * @param mongoClient This is the client used to insert final data to repository - mongodb
+     * @param mongoCOLLECTION This is mongodb collection name
+     * @param dfJobResponsed This is the response object return to rest client or ui or mongo insert
+     * @param action pause or resume connect
+     */
+    public static void forwardPUTAsPauseOrResumeOne (RoutingContext routingContext, RestClient restClient, MongoClient mongoClient,
+                                              String mongoCOLLECTION, DFJobPOPJ dfJobResponsed, String action) {
+        final String id = routingContext.request().getParam("id");
+        final String connectURL = ConstantApp.KAFKA_CONNECT_REST_URL + "/" +
+                dfJobResponsed.getConnectUid() + "/" + action.toLowerCase();
+        String status = dfJobResponsed.getStatus();
+        String preStatus = status;
+        if(status.equalsIgnoreCase(ConstantApp.KAFKA_CONNECT_ACTION_PAUSE) ||
+                status.equalsIgnoreCase(ConstantApp.KAFKA_CONNECT_ACTION_RESUME)) {
+            if(action.equalsIgnoreCase(ConstantApp.KAFKA_CONNECT_ACTION_PAUSE)) {
+                status = ConstantApp.DF_STATUS.PAUSED.name();
+            } else {
+                status = ConstantApp.DF_STATUS.RUNNING.name();
+            }
+
+            dfJobResponsed.setStatus(status);
+
+            LOG.info(DFAPIMessage.logResponseMessage(1016, id));
+            LOG.debug("WILL_PUT_TO_KAFKA_CONNECT - " + dfJobResponsed.toKafkaConnectJsonConfig().toString());
+
+            final RestClientRequest postRestClientRequest =
+                    restClient.put(connectURL, String.class, portRestResponse -> {
+                                if(portRestResponse.statusCode() != ConstantApp.STATUS_CODE_OK_ACCEPTED) {
+                                    // When pause or resume failed, revert back to original status
+                                    mongoClient.updateCollection(mongoCOLLECTION, new JsonObject().put("_id", id),
+                                            new JsonObject().put("$set", dfJobResponsed.setStatus(preStatus).toJson()),
+                                            v -> {
+                                                if (v.failed()) {
+                                                    routingContext.response()
+                                                            .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
+                                                            .end(DFAPIMessage.getResponseMessage(9034));
+                                                    LOG.error(DFAPIMessage.logResponseMessage(9034, id));
+                                                } else {
+                                                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                                            .end(DFAPIMessage.getResponseMessage(9033));
+                                                    LOG.info(DFAPIMessage.logResponseMessage(9033, id));
+                                                }
+                                            }
+                                    );
+                                }
+
+                                portRestResponse.exceptionHandler(exception -> {
+                                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                            .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                            .end(DFAPIMessage.getResponseMessage(9029));
+                                    LOG.error(DFAPIMessage.logResponseMessage(9029, dfJobResponsed.getId()));
+                                });
+                            }
+                    );
+
+            postRestClientRequest.exceptionHandler(exception -> {
+                HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                        .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                        .end(DFAPIMessage.getResponseMessage(9021));
+                LOG.error(DFAPIMessage.logResponseMessage(9021,
+                        "UPDATE_IN_KAFKA_CONNECT_SERVER_FAILED"));
+            });
+
+            restClient.exceptionHandler(exception -> {
+                HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                        .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                        .end(DFAPIMessage.getResponseMessage(9028));
+                LOG.error(DFAPIMessage.logResponseMessage(9028, exception.getMessage()));
+            });
+
+            postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
+            postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
+            postRestClientRequest.end(dfJobResponsed.toKafkaConnectJsonConfig().toString());
+
+            mongoClient.updateCollection(mongoCOLLECTION, new JsonObject().put("_id", id), // Select a unique document
+                    // The update syntax: {$set, the json object containing the fields to update}
+                    new JsonObject().put("$set", dfJobResponsed.toJson()), v -> {
+                        if (v.failed()) {
+                            routingContext.response()
+                                    .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
+                                    .end(DFAPIMessage.getResponseMessage(9003));
+                            LOG.error(DFAPIMessage.logResponseMessage(9003, id));
+                        } else {
+                            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                    .end(DFAPIMessage.getResponseMessage(1001));
+                            LOG.info(DFAPIMessage.logResponseMessage(1001, id));
+                        }
+                    }
+            );
+
+        } else {
+            // Response cannot pause or resume
+            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                    .end(DFAPIMessage.getResponseMessage(9032));
+        }
+    }
+
+    /**
      * This method first decode the REST DELETE request to DFJobPOPJ object. Then, it updates its job status and repack
      * for Kafka REST DELETE. After that, it forward the new DELETE to Kafka Connect.
      * Once REST API forward is successful, update data to the local repository.

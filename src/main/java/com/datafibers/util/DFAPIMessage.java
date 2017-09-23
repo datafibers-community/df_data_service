@@ -77,6 +77,9 @@ public final class DFAPIMessage {
         messageMap.put(9029, "REST_CLIENT_RESPONSE_EXCEPTION");
         messageMap.put(9030, "AVRO_CONSUMER_TOPIC_SUBSCRIBE_ERROR");
         messageMap.put(9031, "AVRO_CONSUMER_EXCEPTION");
+        messageMap.put(9032, "NOT_VALID_STATUS_TO_PAUSE_OR_RESUME");
+        messageMap.put(9033, "TASK_PAUSE_OR_RESUME_FAILED_REVERTED_PRE-STATUS");
+        messageMap.put(9034, "FAILED_TO_REVERT_PRE-STATUS");
     }
 
     public static String getResponseMessage(int responseCode, String comments) {

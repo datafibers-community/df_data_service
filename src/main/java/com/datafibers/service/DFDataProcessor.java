@@ -244,7 +244,7 @@ public class DFDataProcessor extends AbstractVerticle {
         router.route(ConstantApp.DF_CONNECTS_REST_URL_WILD).handler(BodyHandler.create());
 
         router.post(ConstantApp.DF_CONNECTS_REST_URL).handler(this::addOneConnects); // Kafka Connect Forward
-        router.put(ConstantApp.DF_CONNECTS_REST_URL_WITH_ID).handler(this::updateOneConnects); // Kafka Connect Forward
+        router.put(ConstantApp.DF_CONNECTS_REST_URL_WITH_ID).handler(this::putOneConnect); // Kafka Connect Forward
         router.delete(ConstantApp.DF_CONNECTS_REST_URL_WITH_ID).handler(this::deleteOneConnects); // Kafka Connect Forward
 
         // Transforms Rest API definition
@@ -1334,6 +1334,17 @@ public class DFDataProcessor extends AbstractVerticle {
      *       "message" : "PUT Request exception - Not Found."
      *     }
      */
+    private void putOneConnect(RoutingContext routingContext) {
+        final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(),DFJobPOPJ.class);
+        String status = dfJob.getStatus();
+        if(status.equalsIgnoreCase(ConstantApp.KAFKA_CONNECT_ACTION_PAUSE) ||
+                status.equalsIgnoreCase(ConstantApp.KAFKA_CONNECT_ACTION_RESUME)) {
+            KafkaConnectProcessor.forwardPUTAsPauseOrResumeOne(routingContext, rc, mongo, COLLECTION, dfJob, status);
+        } else {
+            updateOneConnects(routingContext);
+        }
+    }
+
     private void updateOneConnects(RoutingContext routingContext) {
         final String id = routingContext.request().getParam("id");
         final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(),DFJobPOPJ.class);

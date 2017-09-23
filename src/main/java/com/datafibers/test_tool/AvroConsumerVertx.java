@@ -5,6 +5,7 @@ package com.datafibers.test_tool;
         import io.vertx.core.DeploymentOptions;
         import io.vertx.core.Vertx;
         import io.vertx.core.json.JsonObject;
+        import io.vertx.kafka.client.common.PartitionInfo;
         import io.vertx.kafka.client.consumer.KafkaConsumer;
         import org.apache.kafka.clients.consumer.ConsumerConfig;
 
@@ -29,37 +30,45 @@ public class AvroConsumerVertx extends AbstractVerticle {
         Properties props = new Properties();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         props.put(ConsumerConfig.GROUP_ID_CONFIG, "group1");
-        props.put("schema.registry.url", "http://localhost:8002"); //TODO may not needed
-//            props.put("bootstrap.servers", kafka_server_host_and_port);
-//            props.put("group.id", ConstantApp.DF_CONNECT_KAFKA_CONSUMER_GROUP_ID);
-//            props.put("schema.registry.url", schema_registry_host_and_port);
+        props.put("schema.registry.url", "http://localhost:8002");
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
         props.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "1000");
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
+        String topic = "test_stock";
 
         KafkaConsumer<String, String> consumer = KafkaConsumer.create(vertx, props);
         ArrayList<JsonObject> responseList = new ArrayList<JsonObject>();
 
-        consumer.handler(record -> {// TODO handler does not work
-            System.out.println("Processing value=" + record.record().value() +
-                    ",partition=" + record.record().partition() + ",offset=" + record.record().offset());
-            responseList.add(new JsonObject()
-                    .put("offset", record.record().offset())
-                    .put("value", record.record().value().toString()));
-            if(responseList.size() >= 10 ) {
-                consumer.pause();
-                consumer.commit();
-                consumer.close();
-            }
-        });
-        String topic = "test_stock";
-        // Subscribe to a single topic
-        consumer.subscribe(topic, ar -> {
+//        consumer.handler(record -> {// TODO handler does not work
+//            System.out.println("Processing value=" + record.record().value() +
+//                    ",partition=" + record.record().partition() + ",offset=" + record.record().offset());
+//            responseList.add(new JsonObject()
+//                    .put("offset", record.record().offset())
+//                    .put("value", record.record().value().toString()));
+//            if(responseList.size() >= 10 ) {
+//                consumer.pause();
+//                consumer.commit();
+//                consumer.close();
+//            }
+//        });
+//
+//        // Subscribe to a single topic
+//        consumer.subscribe(topic, ar -> {
+//            if (ar.succeeded()) {
+//                System.out.println("topic " + topic + " is subscribed");
+//            } else {
+//                System.out.println("Could not subscribe " + ar.cause().getMessage());
+//            }
+//        });
+
+        consumer.partitionsFor(topic, ar -> {
+
             if (ar.succeeded()) {
-                System.out.println("topic " + topic + " is subscribed");
-            } else {
-                System.out.println("Could not subscribe " + ar.cause().getMessage());
+
+                for (PartitionInfo partitionInfo : ar.result()) {
+                    System.out.println(partitionInfo);
+                }
             }
         });
 

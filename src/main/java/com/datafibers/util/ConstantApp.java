@@ -77,6 +77,8 @@ public final class ConstantApp {
     public static final String KAFKA_CONNECT_REST_URL = "/connectors";
     public static final String KAFKA_CONNECT_PLUGIN_REST_URL = "/connector-plugins";
     public static String KAFKA_CONNECT_PLUGIN_CONFIG = "/connectors/CONNECTOR_NAME_PLACEHOLDER/config";
+    public static final String KAFKA_CONNECT_ACTION_PAUSE = "pause";
+    public static final String KAFKA_CONNECT_ACTION_RESUME = "resume";
 
     // Kafka Other default settings
     public static String DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK = "df_trans_flink_group_id";
@@ -96,6 +98,7 @@ public final class ConstantApp {
     // HTTP status codes
     public static final int STATUS_CODE_OK = 200;
     public static final int STATUS_CODE_OK_CREATED = 201;
+    public static final int STATUS_CODE_OK_ACCEPTED = 202;
     public static final int STATUS_CODE_OK_NO_CONTENT = 204;
     public static final int STATUS_CODE_BAD_REQUEST = 400;
     public static final int STATUS_CODE_NOT_FOUND = 404;
