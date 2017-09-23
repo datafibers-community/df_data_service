@@ -1341,11 +1341,11 @@ public class DFDataProcessor extends AbstractVerticle {
                 status.equalsIgnoreCase(ConstantApp.KAFKA_CONNECT_ACTION_RESUME)) {
             KafkaConnectProcessor.forwardPUTAsPauseOrResumeOne(routingContext, rc, mongo, COLLECTION, dfJob, status);
         } else {
-            updateOneConnects(routingContext);
+            updateOneConnects(routingContext, status.equalsIgnoreCase("restart") ? true : false);
         }
     }
 
-    private void updateOneConnects(RoutingContext routingContext) {
+    private void updateOneConnects(RoutingContext routingContext, Boolean enforceSubmit) {
         final String id = routingContext.request().getParam("id");
         final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(),DFJobPOPJ.class);
 
@@ -1364,8 +1364,8 @@ public class DFDataProcessor extends AbstractVerticle {
                 if (res.succeeded()) {
                     String before_update_connectorConfigString = res.result().getJsonObject("connectorConfig").toString();
                     // Detect changes in connectConfig
-                    if (this.kafka_connect_enabled && dfJob.getConnectorType().contains("CONNECT") &&
-                            connectorConfigString.compareTo(before_update_connectorConfigString) != 0) {
+                    if (enforceSubmit || (this.kafka_connect_enabled && dfJob.getConnectorType().contains("CONNECT") &&
+                            connectorConfigString.compareTo(before_update_connectorConfigString) != 0)) {
                        KafkaConnectProcessor.forwardPUTAsUpdateOne(routingContext, rc, mongo, COLLECTION, dfJob);
                     } else { // Where there is no change detected
                         LOG.info(DFAPIMessage.logResponseMessage(1007, id));
