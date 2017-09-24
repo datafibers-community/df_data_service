@@ -15,7 +15,7 @@ class AcceptButton extends Component {
 
     render() {
         const { record, translate } = this.props;
-        return record && record.status !== 'PAUSED' ? <FlatButton
+        return record && record.status === 'RUNNING' ? <FlatButton
             primary
             label={translate('resources.reviews.action.accept')}
             onClick={this.handleApprove}

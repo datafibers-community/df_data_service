@@ -15,7 +15,7 @@ class RestartButton extends Component {
 
     render() {
         const { record, translate } = this.props;
-        return record && record.status === 'RUNNING' ? <FlatButton
+        return record && record.status !== 'PAUSED' ? <FlatButton
             primary
             label={translate('resources.reviews.action.restart')}
             onClick={this.handleRestart}
