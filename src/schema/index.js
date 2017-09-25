@@ -21,6 +21,8 @@ import ShowProcessorButton from '../buttons/ShowProcessorButton';
 
 export const SchemaIcon = Icon;
 
+const notInternalSub = value => value.match(/-value/) || value.match(/-key/) || value.match(/df_/) ? `Must NOT contains -value, -key, df_` : undefined;
+
 const RawRecordField = ({ record, source }) => <pre dangerouslySetInnerHTML={{ __html: JSON.stringify(record, null, '\t')}}></pre>;
 RawRecordField.defaultProps = { label: 'Raw Json' };
 
@@ -133,9 +135,9 @@ export const SchemaCreate = (props) => (
     <Create title="Create New Topic Guide" {...props}>
         <TabbedForm>
             <FormTab label="Overview">
-                <TextInput source="id" label="Topic Name" validate={[ required ]} />
-                <NumberInput source="partitions" label="Number of Partitions" validate={[ required ]} style={{ display: 'inline-block' }} defaultValue={1} step={1}/>
-                <NumberInput source="replicationFactor" label="Replication Factor" validate={[ required ]} style={{ display: 'inline-block', marginLeft: 32 }} defaultValue={1} step={1}/>
+                <TextInput source="id" label="Topic Name" validate={[ required, notInternalSub ]} />
+                <NumberInput source="partitions" label="Number of Partitions" validate={[ required ]} style={{ display: 'inline-block' }} defaultValue={1} step={1} validate={[ number, minValue(1) ]}/>
+                <NumberInput source="replicationFactor" label="Replication Factor" validate={[ required ]} style={{ display: 'inline-block', marginLeft: 32 }} defaultValue={1} step={1} validate={[ number, minValue(1) ]}/>
                 <SelectInput source="schema.type" label="Schema Type" validate={[ required ]} defaultValue="record" choices={[
                              { id: 'record', name: 'Record' },
                              { id: 'enum', name: 'Enum' },

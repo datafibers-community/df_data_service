@@ -74,7 +74,7 @@ export const ConnectEdit = (props) => (
                         { id: 'CONNECT_SINK_MONGODB_AvroDB',  name: 'Sink MongoDB' },
                         { id: 'CONNECT_SINK_KAFKA_JDBC',  name: 'Sink JDBC' },
                 ]} />
-                <NumberInput source="connectorConfig.tasks_max" label="Number of Sub-task to Submit" step={1}/>
+                <NumberInput source="connectorConfig.tasks_max" label="Number of Sub-task to Submit" step={1} validate={[ number, minValue(1) ]}/>
             </FormTab>
             <FormTab label="Setting">
                 <DisabledInput source="connectorConfig.cuid" label="ID or CUID or Name"/>
@@ -100,7 +100,7 @@ export const ConnectEdit = (props) => (
                     <DependentInput dependsOn="connectorConfig.portfolio" value="None">
                         <LongTextInput source="connectorConfig.symbols" label="List of Stock Symbols (separated by ,)" style={{ width: 500 }}/>
                     </DependentInput>
-                    <NumberInput source="connectorConfig.interval" label="API Refresh Interval (sec.)" defaultValue={10} step={10} validate={[ required ]} />
+                    <NumberInput source="connectorConfig.interval" label="API Refresh Interval (sec.)" defaultValue={10} step={10} validate={[ required, minValue(10) ]} />
                     <SelectInput source="connectorConfig.spoof" label="Use Spoofing Data?" validate={[ required ]} choices={[
                                                 { id: 'NONE', name: 'No Spoofing' },
                                                 { id: 'PAST', name: 'Spoof from Past Market Data' },
@@ -113,14 +113,14 @@ export const ConnectEdit = (props) => (
                     <TextInput source="connectorConfig.port" label="Server Port" style={{ display: 'inline-block', marginLeft: 32 }} validate={[ required ]} />
                     <TextInput source="connectorConfig.mongodb_database" label="Database Name" />
                     <LongTextInput source="connectorConfig.mongodb_collections" label="Collections where to sink the files (use , separate multiple values)" style={{ width: 500 }} />
-                    <NumberInput source="connectorConfig.bulk_size" label="Bulk size of rows to sink" step={1} />
+                    <NumberInput source="connectorConfig.bulk_size" label="Bulk size of rows to sink" step={1} validate={[ required, number, minValue(1) ]} />
                 </DependentInput>
                 <DependentInput dependsOn="connectorType" value="CONNECT_SINK_HDFS_AvroFile">
                     <LongTextInput source="connectorConfig.topics" label="Topics to Sink Data From (use , separate multiple values" style={{ width: 500 }}/>
                     <BooleanInput source="connectorConfig.hive_integration" label="Enable Hive Metadata" style={{ display: 'inline-block' }} />
                     <DisabledInput source="connectorConfig.hive_metastore_uris" label="Hive Metastore URL" style={{ display: 'inline-block' , marginLeft: 32 }} />
                     <DisabledInput source="connectorConfig.hdfs_url" label="HDFS URL" style={{ display: 'inline-block', marginLeft: 32 }} />
-                    <NumberInput source="connectorConfig.flush_size" label="Bulk size of rows to sink" step={1} />
+                    <NumberInput source="connectorConfig.flush_size" label="Bulk size of rows to sink" step={1} validate={[ required, minValue(1) ]} />
                 </DependentInput>
                 <DependentInput dependsOn="connectorType" value="CONNECT_SINK_KAFKA_JDBC">
                     <ReferenceArrayInput source="connectorConfig.topics" label="Choose topics to write data" reference="schema" validate={[ required ]} allowEmpty>
@@ -128,7 +128,7 @@ export const ConnectEdit = (props) => (
                     </ReferenceArrayInput>
                     <TextInput source="connectorConfig.connection_url" label="JDBC_URL, such as jdbc:mysql://localhost:3306/db_name" style={{ width: 500 }} validate={[ required ]} />
                     <BooleanInput source="connectorConfig.auto_create" label="Auto Create Table ?" defaultValue={true} />
-                    <NumberInput source="connectorConfig.bulk_size" label="Bulk size of rows to sink" defaultValue="10" step={1} validate={[ required ]} />
+                    <NumberInput source="connectorConfig.bulk_size" label="Bulk size of rows to sink" defaultValue="10" step={1} validate={[ required, minValue(1) ]} />
                 </DependentInput>
             </FormTab>
             <FormTab label="State">
@@ -170,7 +170,7 @@ export const ConnectCreate = (props) => (
                             { id: 'CONNECT_SINK_KAFKA_JDBC',  name: 'JDBC' },
                     ]} />
                 </DependentInput>
-                <NumberInput source="connectorConfig.tasks_max" label="Number of sub-task to submit" defaultValue={1} step={1}/>
+                <NumberInput source="connectorConfig.tasks_max" label="Number of sub-task to submit" defaultValue={1} step={1} validate={[ number, minValue(1) ]} />
             </FormTab>
             <FormTab label="Setting">
                 <DependentInput dependsOn="connectorType" value="CONNECT_SOURCE_KAFKA_AvroFile">
@@ -196,7 +196,7 @@ export const ConnectCreate = (props) => (
                     <DependentInput dependsOn="connectorConfig.portfolio" value="None">
                         <LongTextInput source="connectorConfig.symbols" label="List of Stock Symbols (separated by ,)" style={{ width: 500 }}/>
                     </DependentInput>
-                    <NumberInput source="connectorConfig.interval" label="API Refresh Interval (sec.)" style={{ display: 'inline-block' }} defaultValue={10} step={10} validate={[ required ]} />
+                    <NumberInput source="connectorConfig.interval" label="API Refresh Interval (sec.)" style={{ display: 'inline-block' }} defaultValue={10} step={10} validate={[ required, minValue(10) ]} />
                     <SelectInput source="connectorConfig.spoof" label="Use Spoofing Data?" validate={[ required ]} choices={[
                                                 { id: 'NONE', name: 'No Spoofing' },
                                                 { id: 'PAST', name: 'Spoof from Past Market Data' },
@@ -211,7 +211,7 @@ export const ConnectCreate = (props) => (
                     <TextInput source="connectorConfig.port" label="Server Port" defaultValue="27017" style={{ display: 'inline-block', marginLeft: 32 }} validate={[ required ]} />
                     <TextInput source="connectorConfig.mongodb_database" label="Database Name" defaultValue="DEFAULT_DB" validate={[ required ]} />
                     <LongTextInput source="connectorConfig.mongodb_collections" label="Collections where to sink the files (use , separate multiple values)" style={{ width: 500 }} validate={[ required ]} />
-                    <NumberInput source="connectorConfig.bulk_size" label="Bulk size of rows to sink" defaultValue="1" step={1} validate={[ required ]} />
+                    <NumberInput source="connectorConfig.bulk_size" label="Bulk size of rows to sink" defaultValue="1" step={1} validate={[ required, minValue(1) ]} />
                 </DependentInput>
                 <DependentInput dependsOn="connectorType" value="CONNECT_SINK_HDFS_AvroFile">
                     <ReferenceArrayInput source="connectorConfig.topics" label="Choose topics to write data" reference="schema" validate={[ required ]} allowEmpty>
@@ -222,7 +222,7 @@ export const ConnectCreate = (props) => (
                     <LongTextInput source="connectorConfig.hive.metastore.uris" label="Hive Metastore URL" defaultValue="thrift://localhost:9083" style={{ width: 500 }} validate={[ required ]} />
                     </DependentInput>
                     <LongTextInput source="connectorConfig.hdfs.url" label="HDFS URL" defaultValue="hdfs://localhost:8020" style={{ width: 500 }} validate={[ required ]} />
-                    <NumberInput source="connectorConfig.flush.size" label="Bulk size of rows to sink" defaultValue="10" step={1} validate={[ required ]} />
+                    <NumberInput source="connectorConfig.flush.size" label="Bulk size of rows to sink" defaultValue="10" step={1} validate={[ required, minValue(1) ]} />
                 </DependentInput>
                 <DependentInput dependsOn="connectorType" value="CONNECT_SINK_KAFKA_JDBC">
                     <ReferenceArrayInput source="connectorConfig.topics" label="Choose topics to write data" reference="schema" style={{ width: 500 }} validate={[ required ]} allowEmpty>
@@ -232,7 +232,7 @@ export const ConnectCreate = (props) => (
                     <TextInput source="connectorConfig.connection_user" label="User Name" defaultValue="root" style={{ display: 'inline-block' }} validate={[ required ]} />
                     <TextInput source="connectorConfig.connection_password" label="Password" type="password" style={{ display: 'inline-block', marginLeft: 32 }} validate={[ required ]} />
                     <BooleanInput source="connectorConfig.auto_create" label="Auto Create Table ?" defaultValue={true} />
-                    <NumberInput source="connectorConfig.bulk_size" label="Bulk size of rows to sink" defaultValue="10" step={1} validate={[ required ]} />
+                    <NumberInput source="connectorConfig.bulk_size" label="Bulk size of rows to sink" defaultValue="10" step={1} validate={[ required, minValue(1) ]} />
                 </DependentInput>
             </FormTab>
         </TabbedForm>
