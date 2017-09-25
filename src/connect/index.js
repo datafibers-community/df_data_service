@@ -89,7 +89,6 @@ export const ConnectEdit = (props) => (
                 </DependentInput>
                 <DependentInput dependsOn="connectorType" value="CONNECT_SOURCE_STOCK_AvroFile">
                     <TextInput source="connectorConfig.topic" label="Edit a topic to write data" validate={[ required ]} />
-                    <TextInput source="connectorConfig.symbols" label="List of Stock Symbols (separated by ,)" />
                     <SelectInput source="connectorConfig.portfolio" label="Portfolio, selected symbols list" validate={[ required ]} choices={[
                             { id: 'None', name: 'Input Symbols' },
                             { id: 'Top 10 IT Service', name: 'Top 10 IT Service' },
@@ -98,6 +97,9 @@ export const ConnectEdit = (props) => (
                             { id: 'Top 10 US Telecom', name: 'Top 10 US Telecom' },
                             { id: 'Top 10 Life Insurance', name: 'Top 10 Life Insurance' },
                     ]} />
+                    <DependentInput dependsOn="connectorConfig.portfolio" value="None">
+                        <LongTextInput source="connectorConfig.symbols" label="List of Stock Symbols (separated by ,)" style={{ width: 500 }}/>
+                    </DependentInput>
                     <NumberInput source="connectorConfig.interval" label="API Refresh Interval (sec.)" defaultValue={10} step={10} validate={[ required ]} />
                     <SelectInput source="connectorConfig.spoof" label="Use Spoofing Data?" validate={[ required ]} choices={[
                                                 { id: 'NONE', name: 'No Spoofing' },
