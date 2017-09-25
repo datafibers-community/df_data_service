@@ -136,8 +136,8 @@ export const SchemaCreate = (props) => (
         <TabbedForm>
             <FormTab label="Overview">
                 <TextInput source="id" label="Topic Name" validate={[ required, notInternalSub ]} />
-                <NumberInput source="partitions" label="Number of Partitions" validate={[ required ]} style={{ display: 'inline-block' }} defaultValue={1} step={1} validate={[ number, minValue(1) ]}/>
-                <NumberInput source="replicationFactor" label="Replication Factor" validate={[ required ]} style={{ display: 'inline-block', marginLeft: 32 }} defaultValue={1} step={1} validate={[ number, minValue(1) ]}/>
+                <NumberInput source="partitions" label="Number of Partitions" validate={[ required, number, minValue(1) ]} style={{ display: 'inline-block' }} defaultValue={1} step={1}/>
+                <NumberInput source="replicationFactor" label="Replication Factor" validate={[ required, number, minValue(1) ]} style={{ display: 'inline-block', marginLeft: 32 }} defaultValue={1} step={1}/>
                 <SelectInput source="schema.type" label="Schema Type" validate={[ required ]} defaultValue="record" choices={[
                              { id: 'record', name: 'Record' },
                              { id: 'enum', name: 'Enum' },
