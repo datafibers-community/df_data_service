@@ -4,9 +4,11 @@ import { Link } from 'react-router-dom';
 import IconButton from 'material-ui/IconButton';
 import {cyan500} from 'material-ui/styles/colors';
 import ContentCreate from 'material-ui/svg-icons/image/remove-red-eye';
+import ImageEye from 'material-ui/svg-icons/image/remove-red-eye';
 
 const ShowProcessorButton = ({ basePath = '', record = {} }) => (
     <IconButton
+        icon={<ImageEye />}
         containerElement={<Link to={`/processor/${record.id}/show`} />}
         style={{ overflow: 'inherit' }}
     >

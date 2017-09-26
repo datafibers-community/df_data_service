@@ -18,6 +18,7 @@ import RawJsonRecordSpecificField from '../component/RawJsonRecordSpecificField'
 import EmbeddedArrayInput from '../component/EmbeddedArrayInput';
 import EmbeddedArrayField from '../component/EmbeddedArrayField';
 import ShowProcessorButton from '../buttons/ShowProcessorButton';
+import SchemaEditActions from './SchemaEditActions';
 
 export const SchemaIcon = Icon;
 
@@ -44,7 +45,12 @@ const SchemaFilter = (props) => (
 export const SchemaShow = (props) => (
     <Show title={<SchemaShowTitle />} {...props}>
         <SimpleShowLayout>
-            <RawRecordField />
+            <ReferenceManyField addLabel={false} reference="avroconsumer" target="id">
+              <Datagrid>
+                <TextField source="id" label="Offset" />
+                <TextField source="valueString" label="Value & Refresh" />
+              </Datagrid>
+            </ReferenceManyField>
         </SimpleShowLayout>
     </Show>
 );
@@ -63,7 +69,7 @@ export const SchemaList = (props) => (
 );
 
 export const SchemaEdit = (props) => (
-    <Edit title={<SchemaTitle />} {...props}>
+    <Edit title={<SchemaTitle />} {...props} actions={<SchemaEditActions />}>
         <TabbedForm>
             <FormTab label="Overview">
                 <DisabledInput source="id" label="Topic Name" />
@@ -116,14 +122,6 @@ export const SchemaEdit = (props) => (
                             <TextField source="connectorType" label="task type" />
                             <ChipField source="status" label="status" />
                         <ShowProcessorButton />
-                    </Datagrid>
-                </ReferenceManyField>
-            </FormTab>
-            <FormTab label="Data Preview">
-                <ReferenceManyField addLabel={false} reference="avroconsumer" target="id">
-                    <Datagrid>
-                            <TextField source="id" label="Offset" />
-                            <TextField source="valueString" label="Value & Refresh" />
                     </Datagrid>
                 </ReferenceManyField>
             </FormTab>
