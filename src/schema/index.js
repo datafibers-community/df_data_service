@@ -19,6 +19,7 @@ import EmbeddedArrayInput from '../component/EmbeddedArrayInput';
 import EmbeddedArrayField from '../component/EmbeddedArrayField';
 import ShowProcessorButton from '../buttons/ShowProcessorButton';
 import SchemaEditActions from './SchemaEditActions';
+import SchemaShowActions from './SchemaShowActions';
 
 export const SchemaIcon = Icon;
 
@@ -28,7 +29,7 @@ const RawRecordField = ({ record, source }) => <pre dangerouslySetInnerHTML={{ _
 RawRecordField.defaultProps = { label: 'Raw Json' };
 
 const SchemaShowTitle = ({ record }) => {
-    return <span>Raw Json with ID. {record ? `"${record.id}"` : ''}</span>;
+    return <span>Preview Data with Topic. {record ? `"${record.id}"` : ''}</span>;
 };
 
 const SchemaTitle = ({ record }) => {
@@ -43,7 +44,7 @@ const SchemaFilter = (props) => (
 );
 
 export const SchemaShow = (props) => (
-    <Show title={<SchemaShowTitle />} {...props}>
+    <Show title={<SchemaShowTitle />} {...props} sort={{ field: 'valueString', order: 'DESC' }} actions={<SchemaShowActions />}>
         <SimpleShowLayout>
             <ReferenceManyField addLabel={false} reference="avroconsumer" target="id">
               <Datagrid>
