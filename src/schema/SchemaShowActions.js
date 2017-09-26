@@ -1,7 +1,7 @@
 import React from 'react';
 import { CardActions } from 'material-ui/Card';
 import { EditButton, ListButton, DeleteButton, RefreshButton } from 'admin-on-rest';
-import PreviewDataButton from '../buttons/PreviewDataButton';
+import BackToTopicButton from './BackToTopicButton';
 
 const cardActionStyle = {
     zIndex: 2,
@@ -11,9 +11,8 @@ const cardActionStyle = {
 
 const SchemaShowActions = ({ basePath, data, hasDelete, hasShow, refresh }) => (
     <CardActions style={cardActionStyle}>
-        <EditButton basePath={basePath} record={data} />
+        <BackToTopicButton basePath={basePath} record={data} />
         <ListButton basePath={basePath} />
-        <DeleteButton basePath={basePath} record={data} />
     </CardActions>
 );
 

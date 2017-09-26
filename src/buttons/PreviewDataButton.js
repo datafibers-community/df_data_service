@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import shouldUpdate from 'recompose/shouldUpdate';
 import compose from 'recompose/compose';
 import FlatButton from 'material-ui/FlatButton';
-import IconImage from 'material-ui/svg-icons/av/library-books';
+import IconImage from 'material-ui/svg-icons/notification/event-note';
 import linkToRecord from 'admin-on-rest';
 import translate from 'admin-on-rest';
 
@@ -14,7 +14,7 @@ const PreviewDataButton = ({
 }) => (
     <FlatButton
         primary
-        label="Preview Data"
+        label="Data"
         icon={<IconImage />}
         containerElement={
         <Link to={`${basePath}/${record.id}/show`} />
