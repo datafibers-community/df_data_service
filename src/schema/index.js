@@ -93,8 +93,8 @@ export const SchemaEdit = (props) => (
                      />
                 </Card>
                 <EmbeddedArrayInput source="schema.fields" label="">
-                    <TextInput source="name" label="Column Name"/>
-                    <SelectInput source="type" label="Column Date Type" choices={[
+                    <TextInput source="name" label="Column Name" style={{ display: 'inline-block' }} />
+                    <SelectInput source="type" label="Column Date Type" style={{ display: 'inline-block', marginLeft: 32 }} elStyle={{height: 87}} choices={[
                         { id: 'string', name: 'String/Text' },
                         { id: 'int',  name: 'Integer 32bit' },
                         { id: 'long', name: 'Long 64bit' },
@@ -154,8 +154,8 @@ export const SchemaCreate = (props) => (
             </FormTab>
             <FormTab label="Fields">
                 <EmbeddedArrayInput source="schema.fields" label="">
-                    <TextInput source="name" label="Column Name"/>
-                    <SelectInput source="type" label="Column Date Type" defaultValue="string" choices={[
+                    <TextInput source="name" label="Column Name" style={{ display: 'inline-block' }} />
+                    <SelectInput source="type" label="Column Date Type" defaultValue="string" style={{ display: 'inline-block', marginLeft: 32 }} elStyle={{height: 87}} choices={[
                         { id: 'string', name: 'String/Text' },
                         { id: 'int',  name: 'Integer 32bit' },
                         { id: 'long', name: 'Long 64bit' },
