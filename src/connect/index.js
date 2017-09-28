@@ -156,8 +156,8 @@ export const ConnectCreate = (props) => (
                 <RadioButtonGroupInput source="connectorCategory" label="Category" choices={[
                     { id: 'source', name: 'Source' },
                     { id: 'sink', name: 'Sink' },
-                ]} defaultValue="source" style={{ display: 'inline-block' }}  />
-                <DependentInput dependsOn="connectorCategory" value="source" style={{ display: 'inline-block', marginLeft: 152 }} >
+                ]} defaultValue="source"   />
+                <DependentInput dependsOn="connectorCategory" value="source" >
                     <SelectInput source="connectorType" label="Task Type" validate={[ required ]} choices={[
                             { id: 'CONNECT_SOURCE_KAFKA_AvroFile', name: 'Avro Files' },
                             { id: 'CONNECT_SOURCE_STOCK_AvroFile', name: 'Stock API' },
