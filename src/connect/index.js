@@ -117,9 +117,16 @@ export const ConnectEdit = (props) => (
                 </DependentInput>
                 <DependentInput dependsOn="connectorType" value="CONNECT_SINK_HDFS_AvroFile">
                     <LongTextInput source="connectorConfig.topics" label="Topics to Sink Data From (use , separate multiple values" style={{ width: 500 }}/>
-                    <BooleanInput source="connectorConfig.hive_integration" label="Enable Hive Metadata" style={{ display: 'inline-block' }} />
-                    <DisabledInput source="connectorConfig.hive_metastore_uris" label="Hive Metastore URL" style={{ display: 'inline-block' , marginLeft: 32 }} />
-                    <DisabledInput source="connectorConfig.hdfs_url" label="HDFS URL" style={{ display: 'inline-block', marginLeft: 32 }} />
+                    <BooleanInput source="connectorConfig.hive_integration" label="Enable Hive Metadata" />
+                    <DependentInput dependsOn="connectorConfig.hive_integration" value={true}>
+                        <SelectInput source="connectorConfig.schema_compatibility" label="Schema Compatibility" validate={[ required ]} choices={[
+                                                                        { id: 'BACKWARD', name: 'BACKWARD' },
+                                                                        { id: 'FORWARD', name: 'FORWARD' },
+                                                                        { id: 'FULL', name: 'FULL' },
+                                            ]} />
+                        <DisabledInput source="connectorConfig.hive_metastore_uris" label="Hive Metastore URL" />
+                    </DependentInput>
+                    <DisabledInput source="connectorConfig.hdfs_url" label="HDFS URL" />
                     <NumberInput source="connectorConfig.flush_size" label="Bulk size of rows to sink" step={1} validate={[ required, minValue(1) ]} />
                 </DependentInput>
                 <DependentInput dependsOn="connectorType" value="CONNECT_SINK_KAFKA_JDBC">
@@ -215,12 +222,17 @@ export const ConnectCreate = (props) => (
                     <ReferenceArrayInput source="connectorConfig.topics" label="Choose topics to write data" reference="schema" validate={[ required ]} allowEmpty>
                         <SelectArrayInput optionText="subject" />
                     </ReferenceArrayInput>
-                    <BooleanInput source="connectorConfig.hive.integration" label="Enable Hive Metadata" defaultValue={true} validate={[ required ]} />
-                    <DependentInput dependsOn="connectorConfig.hive.integration" value={true}>
-                    <LongTextInput source="connectorConfig.hive.metastore.uris" label="Hive Metastore URL" defaultValue="thrift://localhost:9083" style={{ width: 500 }} validate={[ required ]} />
+                    <BooleanInput source="connectorConfig.hive_integration" label="Enable Hive Metadata" defaultValue={true} validate={[ required ]} />
+                    <DependentInput dependsOn="connectorConfig.hive_integration" value={true}>
+                    <LongTextInput source="connectorConfig.hive_metastore_uris" label="Hive Metastore URL" defaultValue="thrift://localhost:9083" style={{ width: 500 }} validate={[ required ]} />
+                    <SelectInput source="connectorConfig.schema_compatibility" label="Schema Compatibility" validate={[ required ]} choices={[
+                                                                    { id: 'BACKWARD', name: 'BACKWARD' },
+                                                                    { id: 'FORWARD', name: 'FORWARD' },
+                                                                    { id: 'FULL', name: 'FULL' },
+                                        ]} />
                     </DependentInput>
-                    <LongTextInput source="connectorConfig.hdfs.url" label="HDFS URL" defaultValue="hdfs://localhost:8020" style={{ width: 500 }} validate={[ required ]} />
-                    <NumberInput source="connectorConfig.flush.size" label="Bulk size of rows to sink" defaultValue="10" step={1} validate={[ required, minValue(1) ]} />
+                    <LongTextInput source="connectorConfig.hdfs_url" label="HDFS URL" defaultValue="hdfs://localhost:8020" style={{ width: 500 }} validate={[ required ]} />
+                    <NumberInput source="connectorConfig.flush_size" label="Bulk size of rows to sink" defaultValue="10" step={1} validate={[ required, minValue(1) ]} />
                 </DependentInput>
                 <DependentInput dependsOn="connectorType" value="CONNECT_SINK_KAFKA_JDBC">
                     <ReferenceArrayInput source="connectorConfig.topics" label="Choose topics to write data" reference="schema" style={{ width: 500 }} validate={[ required ]} allowEmpty>
