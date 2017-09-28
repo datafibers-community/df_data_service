@@ -130,6 +130,7 @@ public final class ConstantApp {
         CONNECT_SINK_KAFKA_FlatFile,
         CONNECT_SOURCE_KAFKA_FlatFile,
         CONNECT_SOURCE_KAFKA_JDBC,
+        CONNECT_SINK_KAFKA_JDBC,
         CONNECT_SOURCE_MONGODB_AvroDB,
         CONNECT_SINK_MONGODB_AvroDB,
         CONNECT_SOURCE_HDFS_AvroFile,

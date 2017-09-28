@@ -142,6 +142,7 @@ public class KafkaConnectProcessor {
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
         postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
         postRestClientRequest.end(dfJobResponsed.toKafkaConnectJson().toString());
+        LOG.debug("Message sent = " + dfJobResponsed.toKafkaConnectJson().toString());
 
     }
 

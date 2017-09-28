@@ -1166,7 +1166,6 @@ public class DFDataProcessor extends AbstractVerticle {
      *     }
      */
     private void addOneConnects(RoutingContext routingContext) {
-
         final DFJobPOPJ dfJob = Json.decodeValue(
                 HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()), DFJobPOPJ.class);
         // Set initial status for the job
@@ -1175,7 +1174,6 @@ public class DFDataProcessor extends AbstractVerticle {
         // Set MongoId to _id, connect, cid in connectConfig
         String mongoId = new ObjectId().toString();
         dfJob.setConnectUid(mongoId).setId(mongoId).getConnectorConfig().put("cuid", mongoId);
-
         // Find and set default connector.class
         if(!dfJob.getConnectorConfig().containsKey(ConstantApp.PK_KAFKA_CONNECTOR_CLASS) ||
                 dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_CONNECTOR_CLASS) == null) {
@@ -1187,8 +1185,9 @@ public class DFDataProcessor extends AbstractVerticle {
                 dfJob.getConnectorConfig().put(ConstantApp.PK_KAFKA_CONNECTOR_CLASS, connectorClass);
                 LOG.info(DFAPIMessage.logResponseMessage(1018, mongoId + " - " + connectorClass));
             }
+        } else {
+            LOG.debug("Use connector.class in the config received");
         }
-
         // Start Kafka Connect REST API Forward only if Kafka is enabled and Connector type is Kafka Connect
         if (this.kafka_connect_enabled && dfJob.getConnectorType().contains("CONNECT")) {
             // Auto fix "name" in Connect Config when mismatch with Connector Name
@@ -1770,12 +1769,8 @@ public class DFDataProcessor extends AbstractVerticle {
 
                     if (resConnectName.equalsIgnoreCase("metadata_sink_connect")) {
                         resConnectType = ConstantApp.DF_CONNECT_TYPE.INTERNAL_METADATA_COLLECT.name();
-                    } else if (resConnectTypeTmp.toUpperCase().contains("SOURCE")) {
-                        resConnectType = ConstantApp.DF_CONNECT_TYPE.CONNECT_SOURCE_KAFKA_AvroFile.name();
-                    } else if (resConnectTypeTmp.toUpperCase().contains("SINK")) {
-                        resConnectType = ConstantApp.DF_CONNECT_TYPE.CONNECT_SINK_KAFKA_AvroFile.name();
                     } else {
-                        resConnectType = resConnectTypeTmp;
+                        resConnectType = mongoDFInstalled.lkpCollection("class", resConnectTypeTmp, "connectorType");
                     }
 
                     // Get task status
