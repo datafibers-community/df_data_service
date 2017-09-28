@@ -123,10 +123,8 @@ export const ConnectEdit = (props) => (
                     <NumberInput source="connectorConfig.flush_size" label="Bulk size of rows to sink" step={1} validate={[ required, minValue(1) ]} />
                 </DependentInput>
                 <DependentInput dependsOn="connectorType" value="CONNECT_SINK_KAFKA_JDBC">
-                    <ReferenceArrayInput source="connectorConfig.topics" label="Choose topics to write data" reference="schema" validate={[ required ]} allowEmpty>
-                        <SelectArrayInput optionText="subject" />
-                    </ReferenceArrayInput>
-                    <TextInput source="connectorConfig.connection_url" label="JDBC_URL, such as jdbc:mysql://localhost:3306/db_name" style={{ width: 500 }} validate={[ required ]} />
+                    <LongTextInput source="connectorConfig.topics" label="Topics to sink data from (use , separate multiple values" />
+                    <LongTextInput source="connectorConfig.connection_url" label="JDBC_URL, such as jdbc:mysql://localhost:3306/db_name" style={{ width: 500 }} validate={[ required ]} />
                     <BooleanInput source="connectorConfig.auto_create" label="Auto Create Table ?" defaultValue={true} />
                     <NumberInput source="connectorConfig.bulk_size" label="Bulk size of rows to sink" defaultValue="10" step={1} validate={[ required, minValue(1) ]} />
                 </DependentInput>
@@ -228,7 +226,7 @@ export const ConnectCreate = (props) => (
                     <ReferenceArrayInput source="connectorConfig.topics" label="Choose topics to write data" reference="schema" style={{ width: 500 }} validate={[ required ]} allowEmpty>
                         <SelectArrayInput optionText="subject" />
                     </ReferenceArrayInput>
-                    <LongTextInput source="connectorConfig.connection_url" label="JDBC_URL" defaultValue="jdbc:mysql://localhost:3306/db_name" style={{ width: 500 }} validate={[ required ]} />
+                    <LongTextInput source="connectorConfig.connection_url" label="JDBC_URL" defaultValue="jdbc:mysql://localhost:3306/DB_NAME" style={{ width: 500 }} validate={[ required ]} />
                     <TextInput source="connectorConfig.connection_user" label="User Name" defaultValue="root" style={{ display: 'inline-block' }} validate={[ required ]} />
                     <TextInput source="connectorConfig.connection_password" label="Password" type="password" style={{ display: 'inline-block', marginLeft: 32 }} validate={[ required ]} />
                     <BooleanInput source="connectorConfig.auto_create" label="Auto Create Table ?" defaultValue={true} />
