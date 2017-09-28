@@ -123,10 +123,8 @@ export const ConnectEdit = (props) => (
                     <NumberInput source="connectorConfig.flush_size" label="Bulk size of rows to sink" step={1} validate={[ required, minValue(1) ]} />
                 </DependentInput>
                 <DependentInput dependsOn="connectorType" value="CONNECT_SINK_KAFKA_JDBC">
-                    <ReferenceArrayInput source="connectorConfig.topics" label="Choose topics to write data" reference="schema" validate={[ required ]} allowEmpty>
-                        <SelectArrayInput optionText="subject" />
-                    </ReferenceArrayInput>
-                    <TextInput source="connectorConfig.connection_url" label="JDBC_URL, such as jdbc:mysql://localhost:3306/db_name" style={{ width: 500 }} validate={[ required ]} />
+                    <LongTextInput source="connectorConfig.topics" label="Topics to sink data from (use , separate multiple values" />
+                    <LongTextInput source="connectorConfig.connection_url" label="JDBC_URL, such as jdbc:mysql://localhost:3306/db_name" style={{ width: 500 }} validate={[ required ]} />
                     <BooleanInput source="connectorConfig.auto_create" label="Auto Create Table ?" defaultValue={true} />
                     <NumberInput source="connectorConfig.bulk_size" label="Bulk size of rows to sink" defaultValue="10" step={1} validate={[ required, minValue(1) ]} />
                 </DependentInput>
@@ -153,10 +151,11 @@ export const ConnectCreate = (props) => (
                 <NumberInput source="taskSeq" label="Task Sequence Number, eg. 1, 2, ..." defaultValue={1} step={1}/>
                 <LongTextInput source="name" label="Task Name" validate={[ required ]} style={{ width: 500 }} />
                 <LongTextInput source="description" label="Task Description" defaultValue="This is default description." style={{ width: 500 }} />
-                <RadioButtonGroupInput source="connectorCategory" label="Task Category"  style={{display: 'flex', flexDirection: 'row'}} choices={[
-                    { id: 'source', name: 'Source' }, { id: 'sink', name: 'Sink' },
-                ]} defaultValue="source" />
-                <DependentInput dependsOn="connectorCategory" value="source">
+                <RadioButtonGroupInput source="connectorCategory" label="Category" choices={[
+                    { id: 'source', name: 'Source' },
+                    { id: 'sink', name: 'Sink' },
+                ]} defaultValue="source"   />
+                <DependentInput dependsOn="connectorCategory" value="source" >
                     <SelectInput source="connectorType" label="Task Type" validate={[ required ]} choices={[
                             { id: 'CONNECT_SOURCE_KAFKA_AvroFile', name: 'Avro Files' },
                             { id: 'CONNECT_SOURCE_STOCK_AvroFile', name: 'Stock API' },
@@ -216,18 +215,18 @@ export const ConnectCreate = (props) => (
                     <ReferenceArrayInput source="connectorConfig.topics" label="Choose topics to write data" reference="schema" validate={[ required ]} allowEmpty>
                         <SelectArrayInput optionText="subject" />
                     </ReferenceArrayInput>
-                    <BooleanInput source="connectorConfig.hive_integration" label="Enable Hive Metadata" defaultValue={true} validate={[ required ]} />
-                    <DependentInput dependsOn="connectorConfig.hive_integration" value={true}>
-                    <LongTextInput source="connectorConfig.hive_metastore_uris" label="Hive Metastore URL" defaultValue="thrift://localhost:9083" style={{ width: 500 }} validate={[ required ]} />
+                    <BooleanInput source="connectorConfig.hive.integration" label="Enable Hive Metadata" defaultValue={true} validate={[ required ]} />
+                    <DependentInput dependsOn="connectorConfig.hive.integration" value={true}>
+                    <LongTextInput source="connectorConfig.hive.metastore.uris" label="Hive Metastore URL" defaultValue="thrift://localhost:9083" style={{ width: 500 }} validate={[ required ]} />
                     </DependentInput>
-                    <LongTextInput source="connectorConfig.hdfs_url" label="HDFS URL" defaultValue="hdfs://localhost:8020" style={{ width: 500 }} validate={[ required ]} />
-                    <NumberInput source="connectorConfig.flush_size" label="Bulk size of rows to sink" defaultValue="10" step={1} validate={[ required, minValue(1) ]} />
+                    <LongTextInput source="connectorConfig.hdfs.url" label="HDFS URL" defaultValue="hdfs://localhost:8020" style={{ width: 500 }} validate={[ required ]} />
+                    <NumberInput source="connectorConfig.flush.size" label="Bulk size of rows to sink" defaultValue="10" step={1} validate={[ required, minValue(1) ]} />
                 </DependentInput>
                 <DependentInput dependsOn="connectorType" value="CONNECT_SINK_KAFKA_JDBC">
                     <ReferenceArrayInput source="connectorConfig.topics" label="Choose topics to write data" reference="schema" style={{ width: 500 }} validate={[ required ]} allowEmpty>
                         <SelectArrayInput optionText="subject" />
                     </ReferenceArrayInput>
-                    <LongTextInput source="connectorConfig.connection_url" label="JDBC_URL" defaultValue="jdbc:mysql://localhost:3306/db_name" style={{ width: 500 }} validate={[ required ]} />
+                    <LongTextInput source="connectorConfig.connection_url" label="JDBC_URL" defaultValue="jdbc:mysql://localhost:3306/DB_NAME" style={{ width: 500 }} validate={[ required ]} />
                     <TextInput source="connectorConfig.connection_user" label="User Name" defaultValue="root" style={{ display: 'inline-block' }} validate={[ required ]} />
                     <TextInput source="connectorConfig.connection_password" label="Password" type="password" style={{ display: 'inline-block', marginLeft: 32 }} validate={[ required ]} />
                     <BooleanInput source="connectorConfig.auto_create" label="Auto Create Table ?" defaultValue={true} />
