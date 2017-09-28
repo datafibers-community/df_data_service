@@ -153,11 +153,11 @@ export const ConnectCreate = (props) => (
                 <NumberInput source="taskSeq" label="Task Sequence Number, eg. 1, 2, ..." defaultValue={1} step={1}/>
                 <LongTextInput source="name" label="Task Name" validate={[ required ]} style={{ width: 500 }} />
                 <LongTextInput source="description" label="Task Description" defaultValue="This is default description." style={{ width: 500 }} />
-                <RadioButtonGroupInput source="connectorCategory" label="Task Category"  choices={[
+                <RadioButtonGroupInput source="connectorCategory" label="Category" choices={[
                     { id: 'source', name: 'Source' },
                     { id: 'sink', name: 'Sink' },
-                ]} defaultValue="source" />
-                <DependentInput dependsOn="connectorCategory" value="source">
+                ]} defaultValue="source" style={{ display: 'inline-block' }}  />
+                <DependentInput dependsOn="connectorCategory" value="source" style={{ display: 'inline-block', marginLeft: 152 }} >
                     <SelectInput source="connectorType" label="Task Type" validate={[ required ]} choices={[
                             { id: 'CONNECT_SOURCE_KAFKA_AvroFile', name: 'Avro Files' },
                             { id: 'CONNECT_SOURCE_STOCK_AvroFile', name: 'Stock API' },
