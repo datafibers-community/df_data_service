@@ -44,7 +44,7 @@ public final class DFAPIMessage {
         messageMap.put(1024, "RETURNED_TRANSFORM_STATUS_IN_DETAIL");
         messageMap.put(1025, "SCHEMA_IS_CREATED");
         messageMap.put(1026, "SCHEMA_IS_DELETED");
-        messageMap.put(1026, "TOPIC_IS_SUBSCRIBED");
+        messageMap.put(1027, "TOPIC_IS_SUBSCRIBED");
         messageMap.put(9000, "ID_IS_NULL_IN_REQUEST");
         messageMap.put(9001, "ID_NOT_FOUND_IN_REPO");
         messageMap.put(9002, "ID_SEARCH_EXCEPTION_IN_REPO");

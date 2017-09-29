@@ -887,7 +887,7 @@ public class DFDataProcessor extends AbstractVerticle {
                 // Subscribe to a single topic
                 consumer.subscribe(topic, ar -> {
                     if (ar.succeeded()) {
-                        LOG.info(DFAPIMessage.logResponseMessage(1026, "topic = " + topic));
+                        LOG.info(DFAPIMessage.logResponseMessage(1027, "topic = " + topic));
                     } else {
                         LOG.error(DFAPIMessage.logResponseMessage(9030, topic + "-" + ar.cause().getMessage()));
                     }
