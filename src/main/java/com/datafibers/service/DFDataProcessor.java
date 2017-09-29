@@ -2,12 +2,9 @@ package com.datafibers.service;
 
 import com.datafibers.model.DFLogPOPJ;
 import com.datafibers.processor.SchemaRegisterProcessor;
-import com.datafibers.util.DFAPIMessage;
-import com.datafibers.util.MongoAdminClient;
-import io.vertx.core.AbstractVerticle;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
+import com.datafibers.util.*;
+import io.confluent.kafka.serializers.KafkaAvroDeserializer;
+import io.vertx.core.*;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
@@ -20,14 +17,14 @@ import io.vertx.ext.web.handler.BodyHandler;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
+import io.vertx.ext.web.handler.TimeoutHandler;
+import io.vertx.kafka.client.common.PartitionInfo;
+import io.vertx.kafka.client.consumer.KafkaConsumer;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.log4j.Level;
 import org.bson.types.ObjectId;
 import org.json.JSONObject;
@@ -36,8 +33,6 @@ import com.datafibers.flinknext.DFRemoteStreamEnvironment;
 import com.datafibers.model.DFJobPOPJ;
 import com.datafibers.processor.FlinkTransformProcessor;
 import com.datafibers.processor.KafkaConnectProcessor;
-import com.datafibers.util.ConstantApp;
-import com.datafibers.util.HelpFunc;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
@@ -54,8 +49,6 @@ import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
 import org.log4mongo.MongoDbAppender;
-import org.log4mongo.MongoDbPatternLayout;
-import scala.collection.immutable.Stream;
 
 /**
  * DF Producer is used to route producer service to kafka connect rest or lunch locally.
@@ -251,7 +244,7 @@ public class DFDataProcessor extends AbstractVerticle {
         router.route(ConstantApp.DF_CONNECTS_REST_URL_WILD).handler(BodyHandler.create());
 
         router.post(ConstantApp.DF_CONNECTS_REST_URL).handler(this::addOneConnects); // Kafka Connect Forward
-        router.put(ConstantApp.DF_CONNECTS_REST_URL_WITH_ID).handler(this::updateOneConnects); // Kafka Connect Forward
+        router.put(ConstantApp.DF_CONNECTS_REST_URL_WITH_ID).handler(this::putOneConnect); // Kafka Connect Forward
         router.delete(ConstantApp.DF_CONNECTS_REST_URL_WITH_ID).handler(this::deleteOneConnects); // Kafka Connect Forward
 
         // Transforms Rest API definition
@@ -297,6 +290,19 @@ public class DFDataProcessor extends AbstractVerticle {
         router.options(ConstantApp.DF_SUBJECT_TO_TASK_REST_URL).handler(this::corsHandle);
         router.get(ConstantApp.DF_SUBJECT_TO_TASK_REST_URL_WITH_ID).handler(this::getAllTasksOneTopic);
         router.get(ConstantApp.DF_SUBJECT_TO_TASK_REST_URL_WILD).handler(this::getAllTasksOneTopic);
+
+        // Avro Consumer Rest API definition and set timeout to 10s
+        router.route(ConstantApp.DF_AVRO_CONSUMER_REST_URL).handler(TimeoutHandler.create(10000));
+        router.options(ConstantApp.DF_AVRO_CONSUMER_REST_URL_WITH_ID).handler(this::corsHandle);
+        router.options(ConstantApp.DF_AVRO_CONSUMER_REST_URL).handler(this::corsHandle);
+        router.get(ConstantApp.DF_AVRO_CONSUMER_REST_URL_WITH_ID).handler(this::pollAllFromTopic);
+        router.get(ConstantApp.DF_AVRO_CONSUMER_REST_URL_WILD).handler(this::pollAllFromTopic);
+
+        // Subject to partition info. Rest API definition
+        router.options(ConstantApp.DF_SUBJECT_TO_PAR_REST_URL).handler(this::corsHandle);
+        router.options(ConstantApp.DF_SUBJECT_TO_PAR_REST_URL).handler(this::corsHandle);
+        router.get(ConstantApp.DF_SUBJECT_TO_PAR_REST_URL_WITH_ID).handler(this::getAllTopicPartitions);
+        router.get(ConstantApp.DF_SUBJECT_TO_PAR_REST_URL_WILD).handler(this::getAllTopicPartitions);
 
         // Get all installed connect or transform
         router.options(ConstantApp.DF_PROCESSOR_CONFIG_REST_URL_WITH_ID).handler(this::corsHandle);
@@ -745,7 +751,6 @@ public class DFDataProcessor extends AbstractVerticle {
         final String topic = routingContext.request().getParam("id");
         JsonObject searchCondition =
                 HelpFunc.getContainsTopics("connectorConfig", ConstantApp.PK_DF_ALL_TOPIC_ALIAS, topic);
-        LOG.debug("SEARCH = " + searchCondition);
         if (topic == null) {
             routingContext.response()
                     .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
@@ -760,6 +765,133 @@ public class DFDataProcessor extends AbstractVerticle {
                                 .putHeader("X-Total-Count", jobs.size() + "" )
                                 .end(Json.encodePrettily(jobs));
                     });
+        }
+    }
+
+    /**
+     * Describe topic with topic specified
+     *
+     * @api {get} /s2p/:taskId   6. Get partition information for the specific subject/topic
+     * @apiVersion 0.1.1
+     * @apiName getAllTopicPartitions
+     * @apiGroup All
+     * @apiPermission none
+     * @apiDescription This is where we get partition information for the subject/topic.
+     * @apiParam {String}   topic      topic name.
+     * @apiSuccess	{JsonObject[]}	info.    partition info.
+     * @apiSampleRequest http://localhost:8080/api/df/s2p/:taskId
+     */
+    private void getAllTopicPartitions(RoutingContext routingContext) {
+        final String topic = routingContext.request().getParam("id");
+        if (topic == null) {
+            routingContext.response()
+                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                    .end(DFAPIMessage.getResponseMessage(9000));
+            LOG.error(DFAPIMessage.getResponseMessage(9000, topic));
+        } else {
+            Properties props = new Properties();
+            props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka_server_host_and_port);
+            props.put(ConsumerConfig.GROUP_ID_CONFIG, ConstantApp.DF_CONNECT_KAFKA_CONSUMER_GROUP_ID);
+            props.put(ConstantApp.SCHEMA_URI_KEY, "http://" + schema_registry_host_and_port);
+            props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
+            props.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "1000");
+            props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
+            props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
+
+            KafkaConsumer<String, String> consumer = KafkaConsumer.create(vertx, props);
+            ArrayList<JsonObject> responseList = new ArrayList<JsonObject>();
+
+            // Subscribe to a single topic
+            consumer.partitionsFor(topic, ar -> {
+                if (ar.succeeded()) {
+                    for (PartitionInfo partitionInfo : ar.result()) {
+                        responseList.add(new JsonObject()
+                                .put("id", partitionInfo.getTopic())
+                                .put("partitionNumber", partitionInfo.getPartition())
+                                .put("leader", partitionInfo.getLeader().getIdString())
+                                .put("replicas", StringUtils.join(partitionInfo.getReplicas(), ','))
+                                .put("insyncReplicas", StringUtils.join(partitionInfo.getInSyncReplicas(), ','))
+                        );
+
+                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                .putHeader("X-Total-Count", responseList.size() + "")
+                                .end(Json.encodePrettily(responseList));
+                        consumer.close();
+                    }
+                } else {
+                    LOG.error(DFAPIMessage.logResponseMessage(9030, topic + "-" +
+                            ar.cause().getMessage()));
+                }
+            });
+
+            consumer.exceptionHandler(e -> {
+                LOG.error(DFAPIMessage.logResponseMessage(9031, topic + "-" + e.getMessage()));
+            });
+        }
+    }
+
+    /**
+     * Poll all available information from specific topic
+     * @param routingContext
+     *
+     * @api {get} /avroconsumer 7.List all df tasks using specific topic
+     * @apiVersion 0.1.1
+     * @apiName poolAllFromTopic
+     * @apiGroup All
+     * @apiPermission none
+     * @apiDescription This is where consume data from specific topic in one pool.
+     * @apiSuccess	{JsonObject[]}	topic    Consumer from the topic.
+     * @apiSampleRequest http://localhost:8080/api/df/avroconsumer
+     */
+    private void pollAllFromTopic(RoutingContext routingContext) {
+
+        final String topic = routingContext.request().getParam("id");
+        if (topic == null) {
+            routingContext.response()
+                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                    .end(DFAPIMessage.getResponseMessage(9000));
+            LOG.error(DFAPIMessage.getResponseMessage(9000, "TOPIC_IS_NULL"));
+        } else {
+                Properties props = new Properties();
+                props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka_server_host_and_port);
+                props.put(ConsumerConfig.GROUP_ID_CONFIG, ConstantApp.DF_CONNECT_KAFKA_CONSUMER_GROUP_ID);
+                props.put(ConstantApp.SCHEMA_URI_KEY, "http://" + schema_registry_host_and_port);
+                props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
+                props.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "1000");
+                props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
+                props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
+
+                KafkaConsumer<String, String> consumer = KafkaConsumer.create(vertx, props);
+                ArrayList<JsonObject> responseList = new ArrayList<JsonObject>();
+
+                consumer.handler(record -> {
+                    //LOG.debug("Processing value=" + record.record().value() + ",offset=" + record.record().offset());
+                    responseList.add(new JsonObject()
+                            .put("id", record.record().offset())
+                            .put("value", new JsonObject(record.record().value().toString()))
+                            .put("valueString", Json.encodePrettily(new JsonObject(record.record().value().toString())))
+                    );
+                    if(responseList.size() >= ConstantApp.AVRO_CONSUMER_BATCH_SIE ) {
+                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                .putHeader("X-Total-Count", responseList.size() + "")
+                                .end(Json.encodePrettily(responseList));
+                        consumer.pause();
+                        consumer.commit();
+                        consumer.close();
+                    }
+                });
+                consumer.exceptionHandler(e -> {
+                    LOG.error(DFAPIMessage.logResponseMessage(9031, topic + "-" + e.getMessage()));
+                });
+
+                // Subscribe to a single topic
+                consumer.subscribe(topic, ar -> {
+                    if (ar.succeeded()) {
+                        LOG.info(DFAPIMessage.logResponseMessage(1027, "topic = " + topic));
+                    } else {
+                        LOG.error(DFAPIMessage.logResponseMessage(9030, topic + "-" + ar.cause().getMessage()));
+                    }
+                });
         }
     }
 
@@ -1034,7 +1166,6 @@ public class DFDataProcessor extends AbstractVerticle {
      *     }
      */
     private void addOneConnects(RoutingContext routingContext) {
-
         final DFJobPOPJ dfJob = Json.decodeValue(
                 HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()), DFJobPOPJ.class);
         // Set initial status for the job
@@ -1043,7 +1174,6 @@ public class DFDataProcessor extends AbstractVerticle {
         // Set MongoId to _id, connect, cid in connectConfig
         String mongoId = new ObjectId().toString();
         dfJob.setConnectUid(mongoId).setId(mongoId).getConnectorConfig().put("cuid", mongoId);
-
         // Find and set default connector.class
         if(!dfJob.getConnectorConfig().containsKey(ConstantApp.PK_KAFKA_CONNECTOR_CLASS) ||
                 dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_CONNECTOR_CLASS) == null) {
@@ -1055,8 +1185,9 @@ public class DFDataProcessor extends AbstractVerticle {
                 dfJob.getConnectorConfig().put(ConstantApp.PK_KAFKA_CONNECTOR_CLASS, connectorClass);
                 LOG.info(DFAPIMessage.logResponseMessage(1018, mongoId + " - " + connectorClass));
             }
+        } else {
+            LOG.debug("Use connector.class in the config received");
         }
-
         // Start Kafka Connect REST API Forward only if Kafka is enabled and Connector type is Kafka Connect
         if (this.kafka_connect_enabled && dfJob.getConnectorType().contains("CONNECT")) {
             // Auto fix "name" in Connect Config when mismatch with Connector Name
@@ -1171,6 +1302,14 @@ public class DFDataProcessor extends AbstractVerticle {
      */
     private void addOneSchema(RoutingContext routingContext) {
         SchemaRegisterProcessor.forwardAddOneSchema(routingContext, rc_schema, schema_registry_host_and_port);
+        JSONObject jsonObj = new JSONObject(routingContext.getBodyAsString());
+        int partitions = 1;
+        int replicaFactor = 1;
+        if(jsonObj.has(ConstantApp.PARTITIONS)) partitions = jsonObj.getInt(ConstantApp.PARTITIONS);
+        if(jsonObj.has(ConstantApp.REPLICATION_FACTOR)) replicaFactor = jsonObj.getInt(ConstantApp.REPLICATION_FACTOR);
+        // Since vertx kafka admin still need zookeeper, we now use kafka native admin api until vertx version get updated
+        KafkaAdminClient.createTopic(kafka_server_host_and_port, routingContext.request().getParam("id"),
+                partitions, replicaFactor);
     }
 
     /**
@@ -1194,7 +1333,18 @@ public class DFDataProcessor extends AbstractVerticle {
      *       "message" : "PUT Request exception - Not Found."
      *     }
      */
-    private void updateOneConnects(RoutingContext routingContext) {
+    private void putOneConnect(RoutingContext routingContext) {
+        final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(),DFJobPOPJ.class);
+        String status = dfJob.getStatus();
+        if(status.equalsIgnoreCase(ConstantApp.KAFKA_CONNECT_ACTION_PAUSE) ||
+                status.equalsIgnoreCase(ConstantApp.KAFKA_CONNECT_ACTION_RESUME)) {
+            KafkaConnectProcessor.forwardPUTAsPauseOrResumeOne(routingContext, rc, mongo, COLLECTION, dfJob, status);
+        } else {
+            updateOneConnects(routingContext, status.equalsIgnoreCase("restart") ? true : false);
+        }
+    }
+
+    private void updateOneConnects(RoutingContext routingContext, Boolean enforceSubmit) {
         final String id = routingContext.request().getParam("id");
         final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(),DFJobPOPJ.class);
 
@@ -1213,8 +1363,8 @@ public class DFDataProcessor extends AbstractVerticle {
                 if (res.succeeded()) {
                     String before_update_connectorConfigString = res.result().getJsonObject("connectorConfig").toString();
                     // Detect changes in connectConfig
-                    if (this.kafka_connect_enabled && dfJob.getConnectorType().contains("CONNECT") &&
-                            connectorConfigString.compareTo(before_update_connectorConfigString) != 0) {
+                    if (enforceSubmit || (this.kafka_connect_enabled && dfJob.getConnectorType().contains("CONNECT") &&
+                            connectorConfigString.compareTo(before_update_connectorConfigString) != 0)) {
                        KafkaConnectProcessor.forwardPUTAsUpdateOne(routingContext, rc, mongo, COLLECTION, dfJob);
                     } else { // Where there is no change detected
                         LOG.info(DFAPIMessage.logResponseMessage(1007, id));
@@ -1497,6 +1647,7 @@ public class DFDataProcessor extends AbstractVerticle {
      */
     private void deleteOneSchema(RoutingContext routingContext) {
         SchemaRegisterProcessor.forwardDELETEAsDeleteOne(routingContext, rc_schema, schema_registry_host_and_port);
+        KafkaAdminClient.deleteTopics(kafka_server_host_and_port, routingContext.request().getParam("id"));
     }
 
     /**
@@ -1515,13 +1666,17 @@ public class DFDataProcessor extends AbstractVerticle {
         String metaDBName = config().getString("db.name", "DEFAULT_DB");
 
         // Create meta-database if it is not exist
-        new MongoAdminClient(metaDBHost, Integer.parseInt(metaDBPort), metaDBName).createCollection(this.COLLECTION_META);
+        new MongoAdminClient(metaDBHost, Integer.parseInt(metaDBPort), metaDBName)
+                .createCollection(this.COLLECTION_META)
+                .close();
 
         String metaSinkConnect = new JSONObject().put("name", "metadata_sink_connect").put("config",
                 new JSONObject().put("connector.class", "org.apache.kafka.connect.mongodb.MongodbSinkConnector")
-                        .put("tasks.max", "2").put("host", metaDBHost)
-                        .put("port", metaDBPort).put("bulk.size", "1")
-                        .put("mongodb.database", config().getString("db.name", metaDBName))
+                        .put("tasks.max", "2")
+                        .put("host", metaDBHost)
+                        .put("port", metaDBPort)
+                        .put("bulk.size", "1")
+                        .put("mongodb.database", metaDBName)
                         .put("mongodb.collections", config().getString("db.metadata.collection.name", this.COLLECTION_META))
                         .put("topics", config().getString("kafka.topic.df.metadata", "df_meta"))).toString();
         try {
@@ -1614,12 +1769,8 @@ public class DFDataProcessor extends AbstractVerticle {
 
                     if (resConnectName.equalsIgnoreCase("metadata_sink_connect")) {
                         resConnectType = ConstantApp.DF_CONNECT_TYPE.INTERNAL_METADATA_COLLECT.name();
-                    } else if (resConnectTypeTmp.toUpperCase().contains("SOURCE")) {
-                        resConnectType = ConstantApp.DF_CONNECT_TYPE.CONNECT_SOURCE_KAFKA_AvroFile.name();
-                    } else if (resConnectTypeTmp.toUpperCase().contains("SINK")) {
-                        resConnectType = ConstantApp.DF_CONNECT_TYPE.CONNECT_SINK_KAFKA_AvroFile.name();
                     } else {
-                        resConnectType = resConnectTypeTmp;
+                        resConnectType = mongoDFInstalled.lkpCollection("class", resConnectTypeTmp, "connectorType");
                     }
 
                     // Get task status
@@ -1719,6 +1870,7 @@ public class DFDataProcessor extends AbstractVerticle {
         List<String> list = new ArrayList<>();
         // Add all Kafka connect
         HelpFunc.addSpecifiedConnectTypetoList(list, "(?i:.*connect.*)"); // case insensitive matching
+        list.add(ConstantApp.DF_CONNECT_TYPE.INTERNAL_METADATA_COLLECT.name()); // update metadata sink as well
 
         String restURI = "http://" + this.kafka_connect_rest_host+ ":" + this.kafka_connect_rest_port +
                 ConstantApp.KAFKA_CONNECT_REST_URL;

@@ -44,6 +44,7 @@ public final class DFAPIMessage {
         messageMap.put(1024, "RETURNED_TRANSFORM_STATUS_IN_DETAIL");
         messageMap.put(1025, "SCHEMA_IS_CREATED");
         messageMap.put(1026, "SCHEMA_IS_DELETED");
+        messageMap.put(1027, "TOPIC_IS_SUBSCRIBED");
         messageMap.put(9000, "ID_IS_NULL_IN_REQUEST");
         messageMap.put(9001, "ID_NOT_FOUND_IN_REPO");
         messageMap.put(9002, "ID_SEARCH_EXCEPTION_IN_REPO");
@@ -74,6 +75,11 @@ public final class DFAPIMessage {
         messageMap.put(9027, "FORWARD_GET_ALL_SCHEMA");
         messageMap.put(9028, "REST_CLIENT_EXCEPTION");
         messageMap.put(9029, "REST_CLIENT_RESPONSE_EXCEPTION");
+        messageMap.put(9030, "AVRO_CONSUMER_TOPIC_SUBSCRIBE_ERROR");
+        messageMap.put(9031, "AVRO_CONSUMER_EXCEPTION");
+        messageMap.put(9032, "NOT_VALID_STATUS_TO_PAUSE_OR_RESUME");
+        messageMap.put(9033, "TASK_PAUSE_OR_RESUME_FAILED_REVERTED_PRE-STATUS");
+        messageMap.put(9034, "FAILED_TO_REVERT_PRE-STATUS");
     }
 
     public static String getResponseMessage(int responseCode, String comments) {

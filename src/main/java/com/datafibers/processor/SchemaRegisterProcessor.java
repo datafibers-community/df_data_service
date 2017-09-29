@@ -29,7 +29,9 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
     private static final Logger LOG = Logger.getLogger(SchemaRegisterProcessor.class);
 
     /**
-     * Retrieve all subjects first; and then retrieve corresponding subject's schema information
+     * Retrieve all subjects first; and then retrieve corresponding subject's schema information.
+     * Here, we'll filter topic-value and topic-key subject since these are used by the kafka and CR.
+     * These subject are not available until SourceRecord is available.
      * Use block rest client, but unblock using vertx worker.
      * @param routingContext
      * @param schema_registry_host_and_port
@@ -60,7 +62,11 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
                     int count = 0;
                     if (subjects.compareToIgnoreCase("[]") != 0) { // Has active subjects
                         for (String subject : subjects.substring(2, subjects.length() - 2).split("\",\"")) {
-                            // {"subject":"Kafka-value","version":1,"id":1,"schema":"\"string\""}
+                            // If the subject is internal one, such as topic-key or topic-value or df_meta
+                            if(subject.equalsIgnoreCase("df_meta") ||
+                                    subject.contains("-value") ||
+                                    subject.contains("-key")) continue;
+
                             HttpResponse<JsonNode> resSubject = Unirest
                                     .get(restURI + "/" + subject + "/versions/latest")
                                     .header("accept", ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
@@ -76,7 +82,7 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
                                 if (compatibility == null || compatibility.isEmpty())
                                     compatibility = "NONE";
                                 jsonSchema.put(ConstantApp.COMPATIBILITY, compatibility);
-                                // Resample subject to id, id to schema id
+                                // Repack subject to id, id to schema id
                                 jsonSchema.put("schemaId", jsonSchema.get("id"));
                                 jsonSchema.put("id", subject);
                                 String schema = jsonSchema.toString();
@@ -205,9 +211,10 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
                     String rs = portRestResponse.getBody();
                     if (rs != null) {
                         LOG.info("Add schema status code " + portRestResponse.statusCode());
+
                         HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                 .setStatusCode(ConstantApp.STATUS_CODE_OK)
-                                .end(DFAPIMessage.logResponseMessage(1025, "schema is created"));
+                                .end(DFAPIMessage.logResponseMessage(1025, "schema - " + subject + " is created"));
                     }
                 }
         );

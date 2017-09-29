@@ -63,13 +63,28 @@ public final class ConstantApp {
     public static final String DF_SUBJECT_TO_TASK_REST_URL_WILD = "/api/df/s2t*";
     public static final String DF_SUBJECT_TO_TASK_REST_URL_WITH_ID = DF_SUBJECT_TO_TASK_REST_URL + "/:id";
 
+    // DF subject/topic simple consumer endpoint URLs
+    public static final String DF_AVRO_CONSUMER_REST_URL = "/api/df/avroconsumer";
+    public static final String DF_AVRO_CONSUMER_REST_URL_WILD = "/api/df/avroconsumer*";
+    public static final String DF_AVRO_CONSUMER_REST_URL_WITH_ID = DF_AVRO_CONSUMER_REST_URL + "/:id";
+
+    // DF subject/topic partition information endpoint URLs
+    public static final String DF_SUBJECT_TO_PAR_REST_URL = "/api/df/s2p";
+    public static final String DF_SUBJECT_TO_PAR_REST_URL_WILD = "/api/df/s2p*";
+    public static final String DF_SUBJECT_TO_PAR_REST_URL_WITH_ID = DF_SUBJECT_TO_PAR_REST_URL + "/:id";
+
     // Kafka Connect endpoint URLs
     public static final String KAFKA_CONNECT_REST_URL = "/connectors";
     public static final String KAFKA_CONNECT_PLUGIN_REST_URL = "/connector-plugins";
     public static String KAFKA_CONNECT_PLUGIN_CONFIG = "/connectors/CONNECTOR_NAME_PLACEHOLDER/config";
+    public static final String KAFKA_CONNECT_ACTION_PAUSE = "pause";
+    public static final String KAFKA_CONNECT_ACTION_RESUME = "resume";
 
     // Kafka Other default settings
     public static String DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK = "df_trans_flink_group_id";
+    public static String DF_CONNECT_KAFKA_CONSUMER_GROUP_ID = "df_connect_avro_consumer_group_id";
+    public static int DF_CONNECT_KAFKA_CONSUMER_POLL_TIMEOUT = 100;
+    public static int AVRO_CONSUMER_BATCH_SIE = 10;
 
     // Flink rest api setting
     public static final String FLINK_REST_URL = "/jobs";
@@ -83,6 +98,7 @@ public final class ConstantApp {
     // HTTP status codes
     public static final int STATUS_CODE_OK = 200;
     public static final int STATUS_CODE_OK_CREATED = 201;
+    public static final int STATUS_CODE_OK_ACCEPTED = 202;
     public static final int STATUS_CODE_OK_NO_CONTENT = 204;
     public static final int STATUS_CODE_BAD_REQUEST = 400;
     public static final int STATUS_CODE_NOT_FOUND = 404;
@@ -114,10 +130,12 @@ public final class ConstantApp {
         CONNECT_SINK_KAFKA_FlatFile,
         CONNECT_SOURCE_KAFKA_FlatFile,
         CONNECT_SOURCE_KAFKA_JDBC,
+        CONNECT_SINK_KAFKA_JDBC,
         CONNECT_SOURCE_MONGODB_AvroDB,
         CONNECT_SINK_MONGODB_AvroDB,
         CONNECT_SOURCE_HDFS_AvroFile,
         CONNECT_SINK_HDFS_AvroFile,
+        CONNECT_SOURCE_STOCK_AvroFile,
         TRANSFORM_EXCHANGE_FLINK_SQLA2A,
         TRANSFORM_EXCHANGE_FLINK_Script,
         TRANSFORM_EXCHANGE_FLINK_UDF,
@@ -131,13 +149,18 @@ public final class ConstantApp {
         NONE
     }
 
+    // Kafka properties
+
     // Schema registry properties
     public static final String SCHEMA = "schema";
     public static final String COMPATIBILITY = "compatibility";
     public static final String SUBJECT = "subject";
     public static final String COMPATIBILITY_LEVEL = "compatibilityLevel";
+    public static final String PARTITIONS = "partitions";
+    public static final String REPLICATION_FACTOR = "replicationFactor";
     public static final int WORKER_POOL_SIZE = 20; // VERT.X Worker pool size
     public static final int MAX_RUNTIME = 6000;  // VERT.X Worker timeout in 6 sec
+    public static final String SCHEMA_URI_KEY = "schema.registry.url";
 
     // Properties keys for admin
     public static final String PK_DF_TOPICS_ALIAS = "topics,topic_in";

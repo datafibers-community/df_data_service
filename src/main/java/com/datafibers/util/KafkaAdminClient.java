@@ -1,109 +1,153 @@
 package com.datafibers.util;
 
-import kafka.admin.AdminUtils;
-import kafka.utils.ZKStringSerializer$;
-import kafka.utils.ZkUtils;
-import org.I0Itec.zkclient.ZkClient;
-import org.I0Itec.zkclient.ZkConnection;
-import scala.collection.JavaConversions;
-
-import java.util.List;
+import org.apache.kafka.clients.admin.*;
+import org.apache.kafka.common.errors.TimeoutException;
+import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.ExecutionException;
 
 /**
  * This class contains static methods to operate on queues, allowing queue
  * creation and deletion, checking whether queues exist on the broker, and
- * listing all queues on the broker.
- *
- * A topic represents a queue.
- *
- * Sample Usage
- *         KafkaAdminClient admin = new KafkaAdminClient();
- *         admin.createTopics("topic1, topic2").closeAdminClient();
+ * listing all queues on the broker. This new admin API is available after kafka 0.10.1.0.
+ * In new version of API, zookeeper are no longer required.
  */
 public class KafkaAdminClient
 {
-    private static final int DEFAULT_SESSION_TIMEOUT = 10 * 1000;
-    private static final int DEFAULT_CONNECTION_TIMEOUT = 8 * 1000;
-    private static String ZOOKEEPER_CONNECT;
-    private static ZkClient zkClient;
-    private static ZkUtils zkUtils;
+    private static final String DEFAULT_BOOTSTRAP_SERVERS_HOST_PORT = "localhost:9092";
 
-    /**
-     * Opens a new ZooKeeper client to access the Kafka broker.
-     */
-    public KafkaAdminClient () {
-        this("localhost:2181");
-    }
-
-    public KafkaAdminClient (String ZOOKEEPER_CONNECT_STRING) {
-        ZOOKEEPER_CONNECT = ZOOKEEPER_CONNECT_STRING;
-        this.zkClient = new ZkClient(ZOOKEEPER_CONNECT_STRING, DEFAULT_SESSION_TIMEOUT, DEFAULT_CONNECTION_TIMEOUT,
-                ZKStringSerializer$.MODULE$);
-        boolean isSecureCluster = false;
-        this.zkUtils = new ZkUtils(this.zkClient, new ZkConnection(ZOOKEEPER_CONNECT), isSecureCluster);
+    public static AdminClient createAdminClient (String BOOTSTRAP_SERVERS_HOST_PORT) {
+        Properties props = new Properties();
+        props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS_HOST_PORT);
+        return AdminClient.create(props);
     }
 
     /**
      * Given its name, checks if a topic exists on the Kafka broker.
      *
-     * @param name The name of the topic.
+     * @param topicName The name of the topic.
      *
      * @return <code>true</code> if the topic exists on the broker,
      *         <code>false</code> if it doesn't.
      */
-    public static boolean existsTopic (String name) {
-        boolean topicExists = AdminUtils.topicExists(zkUtils, name.trim());
-        return topicExists;
+    static boolean existsTopic (AdminClient adminClient, String topicName) {
+        try {
+            ListTopicsResult listTopicsResult = adminClient.listTopics();
+            return listTopicsResult.names().get().contains(topicName);
+
+        } catch (ExecutionException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 
     /**
      * Creates new topics, which remain persistent on the Kafka broker.
      *
-     * @param names The names of the topic separated by ,.
+     * @param topicName The names of the topic separated by ,.
      * @param partitions The number of partitions in the topic.
      * @param replication The number of brokers to host the topic.
      */
-    public KafkaAdminClient createTopics (String names, int partitions, int replication) {
-        for (String name: names.trim().replace(" ", "").split(",")) {
-            if (existsTopic(name))
-                continue;
-            AdminUtils.createTopic(zkUtils, name, partitions, replication, new Properties());
+    public static void createTopic (String BOOTSTRAP_SERVERS_HOST_PORT, String topicName, int partitions, int replication) {
+        AdminClient adminClient = createAdminClient(BOOTSTRAP_SERVERS_HOST_PORT);
+        if(!existsTopic(adminClient, topicName)) {
+            NewTopic topic = new NewTopic(topicName, partitions, (short)replication);
+            CreateTopicsResult createTopicsResult = adminClient.createTopics(Collections.singleton(topic));
+            try {
+                createTopicsResult.all().get();
+                // real failure cause is wrapped inside the raised ExecutionException
+            } catch (ExecutionException | InterruptedException e) {
+                e.printStackTrace();
+            } finally {
+                adminClient.close();
+            }
+        } else {
+            System.out.println(topicName + " already exists and will not create");
         }
-        return this;
     }
 
-    public KafkaAdminClient createTopics (String names) {
-        return createTopics(names, 1, 1);
+    public static void createTopic (String topicName, int partitions, int replication) {
+        createTopic(DEFAULT_BOOTSTRAP_SERVERS_HOST_PORT, topicName, partitions, replication);
+    }
+
+    public static void createTopic (String topicName) {
+        createTopic(DEFAULT_BOOTSTRAP_SERVERS_HOST_PORT, topicName, 1, 1);
     }
 
     /**
      * Given its name, deletes a topic on the Kafka broker.
      *
-     * @param names The name of the topic.
+     * @param topicsName The name of the topic.
      */
-    public KafkaAdminClient deleteTopics (String names) {
-        for (String name: names.trim().replace(" ", "").split(",")) {
-            if (!existsTopic(name))
-                return this;
-            AdminUtils.deleteTopic(zkUtils, name);
+    public static void deleteTopics (String BOOTSTRAP_SERVERS_HOST_PORT, String topicsName) {
+        AdminClient adminClient = createAdminClient(BOOTSTRAP_SERVERS_HOST_PORT);
+        // remove topic which is not already exists
+        DeleteTopicsResult deleteTopicsResult = adminClient.deleteTopics(Arrays.asList(topicsName.split(",")));
+        try {
+            deleteTopicsResult.all().get();
+            // real failure cause is wrapped inside the raised ExecutionException
+        } catch (ExecutionException | InterruptedException e) {
+            if (e.getCause() instanceof UnknownTopicOrPartitionException) {
+                System.err.println("Topic not exists !!");
+            } else if (e.getCause() instanceof TimeoutException) {
+                System.err.println("Timeout !!");
+            }
+            e.printStackTrace();
+        } finally {
+            adminClient.close();
         }
-        return this;
+    }
+
+    public static void deleteTopics (String topicsName) {
+        deleteTopics(DEFAULT_BOOTSTRAP_SERVERS_HOST_PORT, topicsName);
     }
 
     /**
      * Lists all topics on the Kafka broker.
      */
-    public void listTopics () {
-        List<String> brokerTopics = JavaConversions.seqAsJavaList(zkUtils.getAllTopics());
-        for (String topic: brokerTopics)
-            System.out.println(topic);
+    public static Set<String> listTopics (String BOOTSTRAP_SERVERS_HOST_PORT) {
+        AdminClient adminClient = createAdminClient(BOOTSTRAP_SERVERS_HOST_PORT);
+        try {
+            return adminClient.listTopics().names().get();
+        } catch (ExecutionException | InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            adminClient.close();
+        }
+        return null;
+    }
+
+    public static Set<String> listTopics () {
+       return listTopics(DEFAULT_BOOTSTRAP_SERVERS_HOST_PORT);
     }
 
     /**
-     * Close the adminClient for Kafka
+     * Given its name, deletes a topic on the Kafka broker.
+     *
+     * @param topicsName The name of the topic.
      */
-    public void closeAdminClient() {
-        zkClient.close();
+    public static void describeTopics (String BOOTSTRAP_SERVERS_HOST_PORT, String topicsName) {
+        AdminClient adminClient = createAdminClient(BOOTSTRAP_SERVERS_HOST_PORT);
+        // remove topic which is not already exists
+        DescribeTopicsResult describeTopicsResult = adminClient.describeTopics(Arrays.asList(topicsName.split(",")));
+        try {
+            describeTopicsResult.all().get().forEach((key, value) -> {
+                System.out.println("Key : " + key + " Value : " + value);
+            });
+            // real failure cause is wrapped inside the raised ExecutionException
+        } catch (ExecutionException | InterruptedException e) {
+            if (e.getCause() instanceof UnknownTopicOrPartitionException) {
+                System.err.println("Topic not exists !!");
+            } else if (e.getCause() instanceof TimeoutException) {
+                System.err.println("Timeout !!");
+            }
+            e.printStackTrace();
+        } finally {
+            adminClient.close();
+        }
     }
+
 }
