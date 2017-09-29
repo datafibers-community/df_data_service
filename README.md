@@ -1,7 +1,7 @@
 # DataFibers Data Services
 DataFibers (DF) - A pure streaming processing application on Kafka and Flink. 
 The DF processor has two components defined to deal with stream ETL (Extract, Transform, and Load).
-* **Connects** is to leverage Kafka Connect REST API on Confluent v.3.0.0 to landing or publishing data in or out of Apache Kafka.
+* **Connects** is to leverage Kafka Connect REST API on Confluent to landing or publishing data in or out of Apache Kafka.
 * **Transforms** is to leverage streaming processing engine, such as Apache Flink, for data transformation.
 
 ## Building
@@ -27,16 +27,16 @@ Once packaged, just launch the _fat jar_ as follows ways
 
 * Default with no parameters to launch standalone mode with web ui.
 ```
-java -jar df-data-service-1.0-SNAPSHOT-fat.jar
+java -jar df-data-service-<version>-SNAPSHOT-fat.jar
 ```
 
 * For more running features checking help option
 ```
-java -jar df-data-service-1.0-SNAPSHOT-fat.jar -h
+java -jar df-data-service-<version>-SNAPSHOT-fat.jar -h
 ```
 
 ## Web UI
-http://localhost:8000/admin/
+http://localhost:8000/ or http://localhost:8000/dfa/
 <img src="https://raw.githubusercontent.com/datafibers/datafibers_web_src/master/themes/hugo-agency-theme/static/img/UI.PNG" width="800">
 
 ## Manual
@@ -48,11 +48,10 @@ https://datafibers-community.gitbooks.io/datafibers-complete-guide/content/
 - [x] Need an initial method to import all available|paused|running connectors from kafka connect
 - [x] Add Flink Table API engine
 - [ ] Add memory LKP
-- [ ] Add Connects, Transforms Logging URL
+- [x] Add Connects, Transforms Logging URL
 - [ ] Add to generic function to do connector validation before creation
-- [ ] Add submit other job actions, such as start, hold, etc
+- [x] Add submit other job actions, such as start, hold, etc
 - [ ] Add Spark Structure Streaming
-- [ ] Topic visualization
+- [X] Topic visualization
 - [ ] Launch 3rd party jar
-- [ ] Job level control and schedule
-- [ ] Job metrics
+- [ ] Job level control, schedule, and metrics
