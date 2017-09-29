@@ -231,7 +231,7 @@ export const ConnectCreate = (props) => (
                                                                     { id: 'FULL', name: 'FULL' },
                                         ]} />
                     </DependentInput>
-                    <LongTextInput source="connectorConfig.hdfs_url" label="HDFS URL" defaultValue="hdfs://localhost:8020" style={{ width: 500 }} validate={[ required ]} />
+                    <LongTextInput source="connectorConfig.hdfs_url" label="HDFS URL" defaultValue="hdfs://localhost:9000" style={{ width: 500 }} validate={[ required ]} />
                     <NumberInput source="connectorConfig.flush_size" label="Bulk size of rows to sink" defaultValue="10" step={1} validate={[ required, minValue(1) ]} />
                 </DependentInput>
                 <DependentInput dependsOn="connectorType" value="CONNECT_SINK_KAFKA_JDBC">
