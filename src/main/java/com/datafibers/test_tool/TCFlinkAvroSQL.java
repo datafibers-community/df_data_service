@@ -1,12 +1,14 @@
 package com.datafibers.test_tool;
 
 import com.datafibers.flinknext.Kafka010AvroTableSource;
+import com.datafibers.flinknext.Kafka09AvroTableSink;
 import com.datafibers.flinknext.Kafka09AvroTableSource;
 import com.datafibers.util.ConstantApp;
 import com.datafibers.util.SchemaRegistryClient;
 import org.apache.commons.codec.DecoderException;
 import org.apache.flink.core.fs.FileSystem;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.connectors.kafka.partitioner.FlinkFixedPartitioner;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableEnvironment;
 import org.apache.flink.table.api.java.StreamTableEnvironment;
@@ -23,7 +25,7 @@ public class TCFlinkAvroSQL {
 
     private static final Logger LOG = Logger.getLogger(TCFlinkAvroSQL.class);
 
-    public static void tcFlinkAvroSQL(String SchemaRegistryHostPort, String srcTopic, String sqlState) {
+    public static void tcFlinkAvroSQL(String SchemaRegistryHostPort, String srcTopic, String targetTopic, String sqlState) {
         System.out.println("tcFlinkAvroSQL");
         String resultFile = "testResult";
 
@@ -41,8 +43,10 @@ public class TCFlinkAvroSQL {
         properties.setProperty(ConstantApp.PK_FLINK_TABLE_SINK_KEYS, "symbol");
 
         // delivered properties
-        //properties.setProperty(ConstantApp.PK_SCHEMA_ID_OUTPUT, SchemaRegistryClient.getLatestSchemaIDFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT) + "");
-        //properties.setProperty(ConstantApp.PK_SCHEMA_STR_OUTPUT, SchemaRegistryClient.getLatestSchemaFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT).toString());
+        properties.setProperty(ConstantApp.PK_SCHEMA_SUB_OUTPUT, targetTopic);
+        properties.setProperty(ConstantApp.PK_SCHEMA_ID_OUTPUT, SchemaRegistryClient.getLatestSchemaIDFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT) + "");
+        properties.setProperty(ConstantApp.PK_SCHEMA_STR_OUTPUT, SchemaRegistryClient.getLatestSchemaFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT).toString());
+
         String[] srcTopicList = srcTopic.split(",");
         for (int i = 0; i < srcTopicList.length; i++) {
             properties.setProperty(ConstantApp.PK_SCHEMA_SUB_INPUT, srcTopicList[i]);
@@ -54,7 +58,10 @@ public class TCFlinkAvroSQL {
         try {
             Table result = tableEnv.sql(sqlState);
             System.out.println(Paths.get(resultFile).toAbsolutePath());
-            result.writeToSink(new CsvTableSink(resultFile, "|", 1, FileSystem.WriteMode.OVERWRITE));
+            Kafka09AvroTableSink avro_sink =
+                    new Kafka09AvroTableSink(targetTopic, properties, new FlinkFixedPartitioner());
+            result.writeToSink(avro_sink);
+            //result.writeToSink(new CsvTableSink(resultFile, "|", 1, FileSystem.WriteMode.OVERWRITE));
             env.execute("tcFlinkAvroSQL");
         } catch (Exception e) {
             e.printStackTrace();
@@ -71,7 +78,7 @@ public class TCFlinkAvroSQL {
         String sqlState_select_04 =
                 "SELECT symbol, company_name, sum(bid_size) as total_bids FROM test_stock group by symbol, company_name";
 
-        tcFlinkAvroSQL("localhost:8002", "test_stock", sqlState_select_04);
+        tcFlinkAvroSQL("localhost:8002", "test_stock", "stock_out", sqlState_select_03);
     }
 
 }
