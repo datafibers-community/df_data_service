@@ -57,6 +57,10 @@ public class TCFlinkAvroSQL {
 
         try {
             Table result = tableEnv.sql(sqlState);
+            for(String colName : result.getSchema().getColumnNames()) {
+                System.out.println("column name = " + colName + "|column type = " + result.getSchema().getType(colName));
+            }
+            result.printSchema();
             System.out.println(Paths.get(resultFile).toAbsolutePath());
             Kafka09AvroTableSink avro_sink =
                     new Kafka09AvroTableSink(targetTopic, properties, new FlinkFixedPartitioner());
