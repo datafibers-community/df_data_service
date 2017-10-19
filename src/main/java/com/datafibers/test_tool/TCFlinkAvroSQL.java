@@ -73,18 +73,24 @@ public class TCFlinkAvroSQL {
                 "SELECT symbol, company_name FROM test_stock";
         String sqlState_select_02 =
                 "SELECT symbol, company_name, ask_size, bid_size, (ask_size + bid_size) as total FROM test_stock";
-        /* sqlState_select_03 output schema
-        curl -X POST -i -H "Content-Type: application/vnd.schemaregistry.v1+json" \
-    --data '{"schema": "{ \"type\": \"record\",\"name\": \"stock_out\",\"fields\":[{\"name\": \"symbol\", \"type\": \"string\"},{\"name\": \"company_name\", \"type\": \"string\"},{\"name\": \"bid_size\", \"type\": \"int\"}]}"}' \
+/* sqlState_select_03 output schema
+curl -X POST -i -H "Content-Type: application/vnd.schemaregistry.v1+json" \
+--data '{"schema": "{ \"type\": \"record\",\"name\": \"stock_out\",\"fields\":[{\"name\": \"symbol\", \"type\": \"string\"},{\"name\": \"company_name\", \"type\": \"string\"},{\"name\": \"bid_size\", \"type\": \"int\"}]}"}' \
 http://localhost:8081/subjects/stock_out/versions
-         */
+*/
         String sqlState_select_03 =
                 "SELECT symbol, company_name, bid_size FROM test_stock where bid_size > 50";
-        String sqlState_select_04 =
-                "SELECT symbol, company_name, sum(bid_size) as total_bids FROM test_stock group by symbol, company_name";
 
-        tcFlinkAvroSQL("localhost:8002", "test_stock", "stock_out", sqlState_select_03);
-        // Test: kafka-avro-console-consumer --zookeeper localhost:2181 --topic stock_out --from-beginning
+/* sqlState_select_04 output schema
+curl -X POST -i -H "Content-Type: application/vnd.schemaregistry.v1+json" \
+    --data '{"schema": "{ \"type\": \"record\",\"name\": \"stock_int\",\"fields\":[{\"name\": \"symbol\", \"type\": \"string\"},{\"name\": \"total_bids\", \"type\": \"int\"}]}"}' \
+http://localhost:8081/subjects/stock_int/versions
+*/
+        String sqlState_select_04 =
+                "SELECT symbol, sum(bid_size) as total_bids FROM test_stock group by symbol";
+
+        tcFlinkAvroSQL("localhost:8002", "test_stock", "stock_int", sqlState_select_04);
+        // Test: kafka-avro-console-consumer --zookeeper localhost:2181 --topic stock_int --from-beginning
     }
 
 }
