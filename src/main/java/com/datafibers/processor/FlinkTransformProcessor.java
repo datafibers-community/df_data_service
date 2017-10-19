@@ -68,7 +68,7 @@ public class FlinkTransformProcessor {
         properties.setProperty(ConstantApp.PK_KAFKA_HOST_PORT.replace("_", "."), kafkaHostPort); //has to use bootstrap.servers
         properties.setProperty(ConstantApp.PK_KAFKA_CONSUMER_GROURP, groupid);
         properties.setProperty(ConstantApp.PK_SCHEMA_SUB_OUTPUT, schemaSubjectOut);
-        properties.setProperty(ConstantApp.PK_KAFKA_SCHEMA_REGISTRY_HOST_PORT, SchemaRegistryHostPort);
+        properties.setProperty(ConstantApp.PK_KAFKA_SCHEMA_REGISTRY_HOST_PORT.replace("_", "."), SchemaRegistryHostPort);
         properties.setProperty(ConstantApp.PK_FLINK_TABLE_SINK_KEYS, sinkKeys);
 
         // delivered properties
