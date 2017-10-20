@@ -56,11 +56,11 @@ public class TCFlinkAvroSQL {
         }
 
         try {
+            String outputTopic = "test_output_topic";
             Table result = tableEnv.sql(sqlState);
-            for(String colName : result.getSchema().getColumnNames()) {
-                System.out.println("column name = " + colName + "|column type = " + result.getSchema().getType(colName));
-            }
             result.printSchema();
+            System.out.println("generated avro schema is = " + SchemaRegistryClient.tableAPIToAvroSchema(result, outputTopic));
+            SchemaRegistryClient.addSchemaFromTableResult(SchemaRegistryHostPort, outputTopic, result);
             System.out.println(Paths.get(resultFile).toAbsolutePath());
             Kafka09AvroTableSink avro_sink =
                     new Kafka09AvroTableSink(targetTopic, properties, new FlinkFixedPartitioner());

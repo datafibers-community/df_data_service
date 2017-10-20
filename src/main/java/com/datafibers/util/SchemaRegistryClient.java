@@ -494,7 +494,7 @@ public class SchemaRegistryClient {
         return fieldTypes;
     }
 
-    public void addSchemaIfNotAvailable(Properties properties) {
+    public static void addSchemaIfNotAvailable(Properties properties) {
 
         String schemaUri;
         String subject = properties.getProperty(ConstantApp.PK_SCHEMA_SUB_OUTPUT);
@@ -528,7 +528,7 @@ public class SchemaRegistryClient {
         }
     }
 
-    public void addSchemaFromTableResult(String schemaUri, String subject, Table result) {
+    public static void addSchemaFromTableResult(String schemaUri, String subject, Table result) {
 
         if (schemaUri == null) {
             schemaUri = "http://localhost:8081";
@@ -577,15 +577,17 @@ public class SchemaRegistryClient {
 
     public static String tableTypeToAvroType(String type) {
         String returnType;
-        switch (type.toLowerCase()) {
+        switch (type.toLowerCase().replaceAll("some|(|)", "")) {
             case "integer":
                 returnType = "int";
+                break;
+            case "byte":
+                returnType = "bytes";
                 break;
             default:
                 returnType = type.toLowerCase();
         }
         return returnType;
-
     }
 
 
