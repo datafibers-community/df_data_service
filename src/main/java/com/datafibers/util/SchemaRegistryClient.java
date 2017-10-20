@@ -7,6 +7,8 @@ import org.apache.avro.Schema;
 import org.apache.avro.SchemaParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.table.api.Table;
+import org.apache.sling.commons.json.JSONArray;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.apache.log4j.Logger;
@@ -492,7 +494,7 @@ public class SchemaRegistryClient {
         return fieldTypes;
     }
 
-    private void addSchemaIfNotAvailable(Properties properties) {
+    public void addSchemaIfNotAvailable(Properties properties) {
 
         String schemaUri;
         String subject = properties.getProperty(ConstantApp.PK_SCHEMA_SUB_OUTPUT);
@@ -525,4 +527,66 @@ public class SchemaRegistryClient {
             ue.printStackTrace();
         }
     }
+
+    public void addSchemaFromTableResult(String schemaUri, String subject, Table result) {
+
+        if (schemaUri == null) {
+            schemaUri = "http://localhost:8081";
+        }
+
+        String schemaRegistryRestURL = schemaUri + "/subjects/" + subject + "/versions";
+
+        try {
+            HttpResponse<String> schemaRes = Unirest.get(schemaRegistryRestURL + "/latest")
+                    .header("accept", HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                    .asString();
+
+            if(schemaRes.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND) { // Add the meta sink schema
+                Unirest.post(schemaRegistryRestURL)
+                        .header("accept", HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                        .header("Content-Type", AVRO_REGISTRY_CONTENT_TYPE)
+                        .body(tableAPIToAvroSchema(result, subject))
+                        .asString();
+
+                LOG.info("Subject - " + subject + " Not Found, so create it.");
+            } else {
+                LOG.info("Subject - " + subject + " Found.");
+            }
+        } catch (UnirestException ue) {
+            ue.printStackTrace();
+        }
+    }
+
+    public static String tableAPIToAvroSchema(Table result, String subject) {
+
+        result.printSchema();
+        JSONArray fields = new JSONArray();
+        for(String colName : result.getSchema().getColumnNames()) {
+            fields.put(new JSONObject()
+                    .put("name", colName)
+                    .put("type", tableTypeToAvroType(result.getSchema().getType(colName).toString())));
+        }
+
+        return new JSONObject().put("schema", new JSONObject()
+                .put("type", "record")
+                .put("name", subject)
+                .put("fields", fields)).toString();
+
+
+    }
+
+    public static String tableTypeToAvroType(String type) {
+        String returnType;
+        switch (type.toLowerCase()) {
+            case "integer":
+                returnType = "int";
+                break;
+            default:
+                returnType = type.toLowerCase();
+        }
+        return returnType;
+
+    }
+
+
 }
