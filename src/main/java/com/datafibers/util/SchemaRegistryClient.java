@@ -3,6 +3,8 @@ package com.datafibers.util;
 import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaParseException;
 import org.apache.commons.lang3.StringUtils;
@@ -534,6 +536,10 @@ public class SchemaRegistryClient {
             schemaUri = "http://localhost:8081";
         }
 
+        if(!schemaUri.startsWith("http")) {
+            schemaUri = "http://" + schemaUri;
+        }
+
         String schemaRegistryRestURL = schemaUri + "/subjects/" + subject + "/versions";
 
         try {
@@ -542,13 +548,13 @@ public class SchemaRegistryClient {
                     .asString();
 
             if(schemaRes.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND) { // Add the meta sink schema
-                Unirest.post(schemaRegistryRestURL)
+                schemaRes = Unirest.post(schemaRegistryRestURL)
                         .header("accept", HTTP_HEADER_APPLICATION_JSON_CHARSET)
                         .header("Content-Type", AVRO_REGISTRY_CONTENT_TYPE)
                         .body(tableAPIToAvroSchema(result, subject))
                         .asString();
 
-                LOG.info("Subject - " + subject + " Not Found, so create it.");
+                LOG.info("Subject - " + subject + " Not Found, so create it." + schemaRes.getStatus());
             } else {
                 LOG.info("Subject - " + subject + " Found.");
             }
@@ -558,26 +564,25 @@ public class SchemaRegistryClient {
     }
 
     public static String tableAPIToAvroSchema(Table result, String subject) {
-
-        result.printSchema();
-        JSONArray fields = new JSONArray();
+        JsonArray fields = new JsonArray();
         for(String colName : result.getSchema().getColumnNames()) {
-            fields.put(new JSONObject()
+            fields.add(new JsonObject()
                     .put("name", colName)
                     .put("type", tableTypeToAvroType(result.getSchema().getType(colName).toString())));
         }
 
-        return new JSONObject().put("schema", new JSONObject()
+        return new JsonObject().put("schema", new JsonObject()
                 .put("type", "record")
                 .put("name", subject)
-                .put("fields", fields)).toString();
+                .put("fields", fields).toString()).toString();
 
 
     }
 
     public static String tableTypeToAvroType(String type) {
         String returnType;
-        switch (type.toLowerCase().replaceAll("some|(|)", "")) {
+        String cleanedType = type.toLowerCase().replaceAll("some", "").replace("(", "").replace(")", "");
+        switch (cleanedType) {
             case "integer":
                 returnType = "int";
                 break;
@@ -585,7 +590,7 @@ public class SchemaRegistryClient {
                 returnType = "bytes";
                 break;
             default:
-                returnType = type.toLowerCase();
+                returnType = cleanedType;
         }
         return returnType;
     }
