@@ -29,8 +29,8 @@ public class TCFlinkAvroSQL {
         System.out.println("tcFlinkAvroSQL");
         String resultFile = "testResult";
 
-        String jarPath = "C:/Users/dadu/Coding/df_data_service/target/df-data-service-1.1-SNAPSHOT-fat.jar";
-        //String jarPath = "/Users/will/Documents/Coding/GitHub/df_data_service/target/df-data-service-1.1-SNAPSHOT-fat.jar";
+        //String jarPath = "C:/Users/dadu/Coding/df_data_service/target/df-data-service-1.1-SNAPSHOT-fat.jar";
+        String jarPath = "/Users/will/Documents/Coding/GitHub/df_data_service/target/df-data-service-1.1-SNAPSHOT-fat.jar";
         StreamExecutionEnvironment env = StreamExecutionEnvironment.createRemoteEnvironment("localhost", 6123, jarPath)
                 .setParallelism(1);
         StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
@@ -42,11 +42,6 @@ public class TCFlinkAvroSQL {
         properties.setProperty(ConstantApp.PK_KAFKA_SCHEMA_REGISTRY_HOST_PORT.replace("_", "."), SchemaRegistryHostPort);
         properties.setProperty(ConstantApp.PK_FLINK_TABLE_SINK_KEYS, "symbol");
 
-        // delivered properties
-        properties.setProperty(ConstantApp.PK_SCHEMA_SUB_OUTPUT, targetTopic);
-        properties.setProperty(ConstantApp.PK_SCHEMA_ID_OUTPUT, SchemaRegistryClient.getLatestSchemaIDFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT) + "");
-        properties.setProperty(ConstantApp.PK_SCHEMA_STR_OUTPUT, SchemaRegistryClient.getLatestSchemaFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT).toString());
-
         String[] srcTopicList = srcTopic.split(",");
         for (int i = 0; i < srcTopicList.length; i++) {
             properties.setProperty(ConstantApp.PK_SCHEMA_SUB_INPUT, srcTopicList[i]);
@@ -56,11 +51,16 @@ public class TCFlinkAvroSQL {
         }
 
         try {
-            String outputTopic = "test_output_topic";
             Table result = tableEnv.sql(sqlState);
             result.printSchema();
-            System.out.println("generated avro schema is = " + SchemaRegistryClient.tableAPIToAvroSchema(result, outputTopic));
-            SchemaRegistryClient.addSchemaFromTableResult(SchemaRegistryHostPort, outputTopic, result);
+            System.out.println("generated avro schema is = " + SchemaRegistryClient.tableAPIToAvroSchema(result, targetTopic));
+            SchemaRegistryClient.addSchemaFromTableResult(SchemaRegistryHostPort, targetTopic, result);
+
+            // delivered properties
+            properties.setProperty(ConstantApp.PK_SCHEMA_SUB_OUTPUT, targetTopic);
+            properties.setProperty(ConstantApp.PK_SCHEMA_ID_OUTPUT, SchemaRegistryClient.getLatestSchemaIDFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT) + "");
+            properties.setProperty(ConstantApp.PK_SCHEMA_STR_OUTPUT, SchemaRegistryClient.getLatestSchemaFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT).toString());
+
             System.out.println(Paths.get(resultFile).toAbsolutePath());
             Kafka09AvroTableSink avro_sink =
                     new Kafka09AvroTableSink(targetTopic, properties, new FlinkFixedPartitioner());
@@ -93,8 +93,8 @@ http://localhost:8081/subjects/stock_int/versions
         String sqlState_select_04 =
                 "SELECT symbol, sum(bid_size) as total_bids FROM test_stock group by symbol";
 
-        tcFlinkAvroSQL("localhost:8002", "test_stock", "stock_int", sqlState_select_04);
-        // Test: kafka-avro-console-consumer --zookeeper localhost:2181 --topic stock_int --from-beginning
+        tcFlinkAvroSQL("localhost:8002", "test_stock", "stock_int_test", sqlState_select_04);
+        // Test: kafka-avro-console-consumer --zookeeper localhost:2181 --topic stock_int_test --from-beginning
     }
 
 }
