@@ -1302,14 +1302,15 @@ public class DFDataProcessor extends AbstractVerticle {
      */
     private void addOneSchema(RoutingContext routingContext) {
         SchemaRegisterProcessor.forwardAddOneSchema(routingContext, rc_schema, schema_registry_host_and_port);
+
         JSONObject jsonObj = new JSONObject(routingContext.getBodyAsString());
+        String topic = jsonObj.getString("id");
         int partitions = 1;
         int replicaFactor = 1;
         if(jsonObj.has(ConstantApp.PARTITIONS)) partitions = jsonObj.getInt(ConstantApp.PARTITIONS);
         if(jsonObj.has(ConstantApp.REPLICATION_FACTOR)) replicaFactor = jsonObj.getInt(ConstantApp.REPLICATION_FACTOR);
         // Since vertx kafka admin still need zookeeper, we now use kafka native admin api until vertx version get updated
-        KafkaAdminClient.createTopic(kafka_server_host_and_port, routingContext.request().getParam("id"),
-                partitions, replicaFactor);
+        KafkaAdminClient.createTopic(kafka_server_host_and_port, topic, partitions, replicaFactor);
     }
 
     /**
