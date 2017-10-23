@@ -29,8 +29,8 @@ public class TCFlinkAvroSQL {
         System.out.println("tcFlinkAvroSQL");
         String resultFile = "testResult";
 
-        //String jarPath = "C:/Users/dadu/Coding/df_data_service/target/df-data-service-1.1-SNAPSHOT-fat.jar";
-        String jarPath = "/Users/will/Documents/Coding/GitHub/df_data_service/target/df-data-service-1.1-SNAPSHOT-fat.jar";
+        String jarPath = "C:/Users/dadu/Coding/df_data_service/target/df-data-service-1.1-SNAPSHOT-fat.jar";
+        //String jarPath = "/Users/will/Documents/Coding/GitHub/df_data_service/target/df-data-service-1.1-SNAPSHOT-fat.jar";
         StreamExecutionEnvironment env = StreamExecutionEnvironment.createRemoteEnvironment("localhost", 6123, jarPath)
                 .setParallelism(1);
         StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
@@ -73,27 +73,44 @@ public class TCFlinkAvroSQL {
     }
 
     public static void main(String[] args) throws IOException, DecoderException {
-        String sqlState_select_01 =
-                "SELECT symbol, company_name FROM test_stock";
-        String sqlState_select_02 =
+        //TODO since sink avro only support primary type, we cannot select other unsupport type in the select statement
+
+        final String SQLSTATE_PROJECT_01 =
                 "SELECT symbol, company_name, ask_size, bid_size, (ask_size + bid_size) as total FROM test_stock";
-/* sqlState_select_03 output schema
-curl -X POST -i -H "Content-Type: application/vnd.schemaregistry.v1+json" \
---data '{"schema": "{ \"type\": \"record\",\"name\": \"stock_out\",\"fields\":[{\"name\": \"symbol\", \"type\": \"string\"},{\"name\": \"company_name\", \"type\": \"string\"},{\"name\": \"bid_size\", \"type\": \"int\"}]}"}' \
-http://localhost:8081/subjects/stock_out/versions
-*/
-        String sqlState_select_03 =
+
+        final String SQLSTATE_PROJECT_02 =
                 "SELECT symbol, company_name, bid_size FROM test_stock where bid_size > 50";
 
-/* sqlState_select_04 output schema
-curl -X POST -i -H "Content-Type: application/vnd.schemaregistry.v1+json" \
-    --data '{"schema": "{ \"type\": \"record\",\"name\": \"stock_int\",\"fields\":[{\"name\": \"symbol\", \"type\": \"string\"},{\"name\": \"total_bids\", \"type\": \"int\"}]}"}' \
-http://localhost:8081/subjects/stock_int/versions
-*/
-        String sqlState_select_04 =
+        final String SQLSTATE_AGG_01 =
                 "SELECT symbol, sum(bid_size) as total_bids FROM test_stock group by symbol";
 
-        tcFlinkAvroSQL("localhost:8002", "test_stock", "stock_int_test", sqlState_select_04);
+        // TODO not support yet
+        final String SQLSTATE_AGG_02 =
+                "SELECT symbol, rowtime FROM test_stock";
+
+        // TODO not support yet
+        final String SQLSTATE_AGG_03 =
+                "SELECT symbol, cast(refresh_time as timestamp) as source_time FROM test_stock";
+
+        // TODO not support yet by table source
+        final String SQLSTATE_AGG_04 =
+                "SELECT symbol, sum(bid_size) as total_bids FROM test_stock group by TUMBLE(rowtime, INTERVAL '1' MINUTE), symbol";
+
+        final String SQLSTATE_AGG_05 =
+                "SELECT distinct symbol, bid_size FROM test_stock";
+
+        // TODO not support yet by table source
+        final String SQLSTATE_AGG_06 =
+                "SELECT COUNT(bid_size) OVER (PARTITION BY symbol ORDER BY proctime ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) FROM test_stock";
+
+        final String SQLSTATE_AGG_07 =
+                "SELECT symbol, sum(bid_size) as total_bids FROM test_stock group by symbol having sum(bid_size) > 1000";
+
+        final String SQLSTATE_UNION_01 =
+                "SELECT symbol, bid_size FROM test_stock where symbol = 'FB' union all SELECT symbol, bid_size FROM test_stock where symbol = 'SAP'";
+
+
+        tcFlinkAvroSQL("localhost:8002", "test_stock", "SQLSTATE_UNION_01", SQLSTATE_UNION_01);
         // Test: kafka-avro-console-consumer --zookeeper localhost:2181 --topic stock_int_test --from-beginning
     }
 

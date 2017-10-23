@@ -584,10 +584,22 @@ public class SchemaRegistryClient {
         String cleanedType = type.toLowerCase().replaceAll("some", "").replace("(", "").replace(")", "");
         switch (cleanedType) {
             case "integer":
+            case "short":
                 returnType = "int";
                 break;
             case "byte":
                 returnType = "bytes";
+                break;
+            case "timestamp":
+            case "time":
+            case "date":
+            case "decimal":
+            case "interval_months":
+            case "interval_millis":
+            case "primitive_array":
+            case "object_array":
+            case "map":
+                returnType = "string";
                 break;
             default:
                 returnType = cleanedType;
