@@ -71,12 +71,6 @@ public class FlinkTransformProcessor {
         properties.setProperty(ConstantApp.PK_KAFKA_SCHEMA_REGISTRY_HOST_PORT.replace("_", "."), SchemaRegistryHostPort);
         properties.setProperty(ConstantApp.PK_FLINK_TABLE_SINK_KEYS, sinkKeys);
 
-        // delivered properties
-        properties.setProperty(ConstantApp.PK_SCHEMA_ID_OUTPUT,
-                SchemaRegistryClient.getLatestSchemaIDFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT) + "");
-        properties.setProperty(ConstantApp.PK_SCHEMA_STR_OUTPUT,
-                SchemaRegistryClient.getLatestSchemaFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT).toString());
-
         // Check and validate properties
         String[] topicInList = topicIn.split(",");
         String[] schemaSubjectInList = schemaSubjectIn.split(",");
@@ -145,6 +139,14 @@ public class FlinkTransformProcessor {
                     default:
                         break;
                 }
+
+                SchemaRegistryClient.addSchemaFromTableResult(SchemaRegistryHostPort, schemaSubjectOut, result);
+
+                // delivered properties
+                properties.setProperty(ConstantApp.PK_SCHEMA_SUB_OUTPUT, schemaSubjectOut);
+                properties.setProperty(ConstantApp.PK_SCHEMA_ID_OUTPUT, SchemaRegistryClient.getLatestSchemaIDFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT) + "");
+                properties.setProperty(ConstantApp.PK_SCHEMA_STR_OUTPUT, SchemaRegistryClient.getLatestSchemaFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT).toString());
+
 
                 Kafka09AvroTableSink avro_sink =
                         new Kafka09AvroTableSink(topicOut, properties, new FlinkFixedPartitioner());
