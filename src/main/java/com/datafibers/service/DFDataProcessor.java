@@ -94,6 +94,9 @@ public class DFDataProcessor extends AbstractVerticle {
     private static String schema_registry_host_and_port;
     private static Integer schema_registry_rest_port;
 
+    // Flink Rest API
+    private static String flink_jar_id;
+
     private static final Logger LOG = Logger.getLogger(DFDataProcessor.class);
 
     @Override
@@ -134,6 +137,7 @@ public class DFDataProcessor extends AbstractVerticle {
         // Schema Registry
         this.schema_registry_rest_port = config().getInteger("kafka.schema.registry.rest.port", 8081);
         this.schema_registry_host_and_port = this.kafka_server_host + ":" + this.schema_registry_rest_port;
+
 
         /**
          * Create all application client
@@ -204,6 +208,18 @@ public class DFDataProcessor extends AbstractVerticle {
 //                        this.flink_server_port, jarPath)
 //                        .setParallelism(config().getInteger("flink.job.parallelism", 1));
             }
+        }
+
+        // upload df jar to flink rest server
+        if (this.transform_engine_flink_enabled) {
+            String flinkResrURL;
+            if(this.flink_server_host.contains("http")) {
+                flinkResrURL = this.flink_server_host + flink_rest_server_port + "/jars/upload";
+            } else {
+                flinkResrURL = "http://" + this.flink_server_host + flink_rest_server_port + "/jars/upload";
+            }
+            this.flink_jar_id = HelpFunc.uploadJar(flinkResrURL,
+                    getClass().getProtectionDomain().getCodeSource().getLocation().getPath());
         }
 
         // Import from remote server. It is blocking at this point.

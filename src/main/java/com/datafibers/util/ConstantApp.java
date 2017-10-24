@@ -88,6 +88,7 @@ public final class ConstantApp {
 
     // Flink rest api setting
     public static final String FLINK_REST_URL = "/jobs";
+    public static final String FLINK_REST_URL_JARS = "/jars";
     public static final String FLINK_DUMMY_JOB_ID = "00000000000000000000000000000000";
 
     // HTTP req/res constants
@@ -159,7 +160,7 @@ public final class ConstantApp {
     public static final String PARTITIONS = "partitions";
     public static final String REPLICATION_FACTOR = "replicationFactor";
     public static final int WORKER_POOL_SIZE = 20; // VERT.X Worker pool size
-    public static final int MAX_RUNTIME = 6000;  // VERT.X Worker timeout in 6 sec
+    public static final int MAX_RUNTIME = 120000;  // VERT.X Worker timeout in 6 sec
     public static final String SCHEMA_URI_KEY = "schema.registry.url";
 
     // Properties keys for admin

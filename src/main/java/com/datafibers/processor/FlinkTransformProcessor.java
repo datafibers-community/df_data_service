@@ -1,6 +1,7 @@
 package com.datafibers.processor;
 
 import com.datafibers.exception.DFPropertyValidationException;
+import com.datafibers.flinknext.Kafka010AvroTableSource;
 import com.datafibers.util.*;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.RestClient;
@@ -61,6 +62,7 @@ public class FlinkTransformProcessor {
                                          MongoClient mongoClient, String mongoCOLLECTION, String engine) {
 
         String uuid = dfJob.hashCode() + "";
+        LOG.debug("submitFlinkJobA2A is called with uuid = " + uuid);
         StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(flinkEnv);
 
         // Set all properties. Note, all inputTopic related properties are set later in loop
@@ -75,10 +77,17 @@ public class FlinkTransformProcessor {
         String[] topicInList = topicIn.split(",");
         String[] schemaSubjectInList = schemaSubjectIn.split(",");
 
-        if (topicInList.length != schemaSubjectInList.length)
+        if (topicInList.length != schemaSubjectInList.length) {
+            LOG.error("Number of inputTopic and inputTopicSchema Mismatch. topicInList.length=" + topicInList.length +
+                    " schemaSubjectInList.length=" + schemaSubjectInList.length);
             throw new DFPropertyValidationException("Number of inputTopic and inputTopicSchema Mismatch.");
-        if (engine.equalsIgnoreCase("TABLE_API") && (topicInList.length > 1 || schemaSubjectInList.length > 1))
+        }
+
+        if (engine.equalsIgnoreCase("TABLE_API") && (topicInList.length > 1 || schemaSubjectInList.length > 1)) {
+            LOG.error("Script/Table API only supports single inputTopic/inputTopicSchema. topicInList.length="
+                    + topicInList.length + " schemaSubjectInList.length=" + schemaSubjectInList.length);
             throw new DFPropertyValidationException("Script/Table API only supports single inputTopic/inputTopicSchema.");
+        }
 
         WorkerExecutor exec_flink = vertx.createSharedWorkerExecutor(dfJob.getName() + dfJob.hashCode(),
                 ConstantApp.WORKER_POOL_SIZE, ConstantApp.MAX_RUNTIME);
@@ -98,7 +107,7 @@ public class FlinkTransformProcessor {
                             SchemaRegistryClient.getLatestSchemaFromProperty(properties,
                                     ConstantApp.PK_SCHEMA_SUB_INPUT).toString());
 
-                    tableEnv.registerTableSource(topicInList[i], new Kafka09AvroTableSource(topicInList[i], properties));
+                    tableEnv.registerTableSource(topicInList[i], new Kafka010AvroTableSource(topicInList[i], properties));
                     for (String key : properties.stringPropertyNames()) {
                         LOG.debug("FLINK_PROPERTIES KEY:" + key + " VALUE:" + properties.getProperty(key));
                     }
