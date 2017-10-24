@@ -63,9 +63,9 @@ export const TransformEdit = (props) => (
                 <TextInput source="name" label="Name" validate={[ required ]} />
 		        <LongTextInput source="description" label="Task Description" style={{ width: 500 }} />
 		        <SelectField source="connectorType" label="Task Type" validate={[ required ]} choices={[
-    			{ id: 'TRANSFORM_EXCHANGE_FLINK_SQLA2A', name: 'Flink Streaming SQL' },
-    			{ id: 'TRANSFORM_EXCHANGE_FLINK_Script', name: 'Flink Table API' },
-  		        { id: 'TRANSFORM_EXCHANGE_FLINK_UDF',  name: 'Flink User Defined Function' },
+    			{ id: 'TRANSFORM_EXCHANGE_FLINK_SQLA2A', name: 'Streaming SQL' },
+    			{ id: 'TRANSFORM_EXCHANGE_FLINK_Script', name: 'Streaming Table API' },
+  		        { id: 'TRANSFORM_EXCHANGE_FLINK_UDF',  name: 'Streaming UDB' },
 		        ]} />
             </FormTab>
             <FormTab label="Setting">
@@ -112,22 +112,28 @@ export const TransformCreate = (props) => (
                 <TextInput source="name" label="Name" validate={[ required ]} style={{ width: 500 }} />
 		        <LongTextInput source="description" label="Task Description" style={{ width: 500 }} />
 		        <SelectInput source="connectorType" label="Task Type" validate={[ required ]} choices={[
-    			{ id: 'TRANSFORM_EXCHANGE_FLINK_SQLA2A', name: 'Flink Streaming SQL' },
-    			{ id: 'TRANSFORM_EXCHANGE_FLINK_Script', name: 'Flink Table API' },
-  		        { id: 'TRANSFORM_EXCHANGE_FLINK_UDF',  name: 'Flink User Defined Function' },
+    			{ id: 'TRANSFORM_EXCHANGE_FLINK_SQLA2A', name: 'Streaming SQL' },
+    			{ id: 'TRANSFORM_EXCHANGE_FLINK_Script', name: 'Streaming Table API' },
+  		        { id: 'TRANSFORM_EXCHANGE_FLINK_UDF',  name: 'Streaming UDF' },
 		        ]} />
             </FormTab>
             <FormTab label="Setting">
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_FLINK_SQLA2A">
-                    <ReferenceArrayInput source="connectorConfig.topic_in" label="Choose Topics to Read Data" reference="schema" validate={[ required ]} allowEmpty>
+                    <ReferenceArrayInput source="connectorConfig.topic_in" label="Choose Topics to Read Data" reference="schema" allowEmpty>
                         <SelectArrayInput optionText="subject" />
                     </ReferenceArrayInput>
-                    <ReferenceInput source="connectorConfig.topic_out" label="Choose a Topic to Write Data" reference="schema" validate={[ required ]} allowEmpty>
-                        <AutocompleteInput optionText="subject" />
-                    </ReferenceInput>
+                    <BooleanInput source="connectorConfig.choose_or_create" label="Auto Create Output Topic?" defaultValue={false} style={{ width: 500 }} />
+                    <DependentInput dependsOn="connectorConfig.choose_or_create" value={true}>
+                        <LongTextInput source="connectorConfig.topic_out" label="Name a Topic Automatically Created" style={{ width: 500 }}/>
+                    </DependentInput>
+                    <DependentInput dependsOn="connectorConfig.choose_or_create" value={false}>
+                        <ReferenceInput source="connectorConfig.topic_out" label="Choose a Topic to Write Data" reference="schema" validate={[ required ]} allowEmpty>
+                            <AutocompleteInput optionText="subject" />
+                        </ReferenceInput>
+                    </DependentInput>
                     <LongTextInput source="connectorConfig.group_id" label="Consumer ID to Read Data. (Optional)" style={{ width: 500 }} />
 		            <LongTextInput source="connectorConfig.sink_key_fields" label="Key Columns in Sink (separated by ,)" style={{ width: 500 }} />
-		            <LongTextInput source="connectorConfig.trans_sql" label="Stream SQL Statement" validate={[ required ]} style={{ width: 500 }} />
+		            <LongTextInput source="connectorConfig.trans_sql" label="Stream SQL Statement" defaultValue="SELECT [col.] ... FROM [topic_name]" validate={[ required ]} style={{ width: 500 }} />
 		        </DependentInput>
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_FLINK_Script">
                     <TextInput source="connectorConfig.topic_in" label="A Topic to Read Data" style={{ display: 'inline-block' }} validate={[ required ]} />
