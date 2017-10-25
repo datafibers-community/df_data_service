@@ -19,7 +19,6 @@ import java.util.Properties;
 import net.openhft.compiler.CompilerUtils;
 import org.apache.flink.client.CliFrontend;
 import org.apache.flink.client.program.ProgramInvocationException;
-import org.apache.flink.runtime.client.JobCancellationException;
 import org.apache.flink.streaming.connectors.kafka.partitioner.FlinkFixedPartitioner;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableEnvironment;
@@ -27,12 +26,57 @@ import org.apache.flink.table.api.java.StreamTableEnvironment;
 import org.apache.log4j.Logger;
 import com.datafibers.flinknext.DFRemoteStreamEnvironment;
 import com.datafibers.flinknext.Kafka09AvroTableSink;
-import com.datafibers.flinknext.Kafka09AvroTableSource;
 import com.datafibers.model.DFJobPOPJ;
 import org.json.JSONObject;
 
 public class FlinkTransformProcessor {
     private static final Logger LOG = Logger.getLogger(FlinkTransformProcessor.class);
+
+    public static void submitFlinkJar(RoutingContext routingContext, RestClient restClient, DFJobPOPJ dfJob, Vertx vertx, Integer maxRunTime,
+                                      DFRemoteStreamEnvironment flinkEnv, String kafkaHostPort,
+                                      String SchemaRegistryHostPort, String groupid,
+                                      String topicIn, String topicOut, String sinkKeys,
+                                      String transScript, String schemaSubjectIn, String schemaSubjectOut,
+                                      MongoClient mongoClient, String mongoCOLLECTION, String engine) {
+
+        // Create REST Client for Flink REST Forward
+        final RestClientRequest postRestClientRequest = restClient.post(ConstantApp.FLINK_REST_URL_JARS, String.class,
+                portRestResponse -> {
+                    String rs = portRestResponse.getBody();
+                    JsonObject jo = new JsonObject(rs);
+                    JsonArray jsonArray = jo.getJsonArray("files");
+
+                    LOG.debug("KAFKA_SERVER_ACK: " + portRestResponse.statusMessage() + " "
+                            + portRestResponse.statusCode());
+
+                    portRestResponse.exceptionHandler(exception -> {
+                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                .end(DFAPIMessage.getResponseMessage(9029));
+                        LOG.error(DFAPIMessage.logResponseMessage(9029, dfJobResponsed.getId()));
+                    });
+                });
+
+        postRestClientRequest.exceptionHandler(exception -> {
+            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                    .end(DFAPIMessage.getResponseMessage(9006));
+            LOG.error(DFAPIMessage.logResponseMessage(9006, dfJobResponsed.getId()));
+        });
+
+        restClient.exceptionHandler(exception -> {
+            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                    .end(DFAPIMessage.getResponseMessage(9028));
+            LOG.error(DFAPIMessage.logResponseMessage(9028, exception.getMessage()));
+        });
+
+        postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
+        postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
+        postRestClientRequest.end(dfJobResponsed.toKafkaConnectJson().toString());
+        LOG.debug("Message sent = " + dfJobResponsed.toKafkaConnectJson().toString());
+
+    }
 
     /**
      * This is to read AVRO data and output JSON format of data

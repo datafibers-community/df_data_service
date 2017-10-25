@@ -89,6 +89,7 @@ public final class ConstantApp {
     // Flink rest api setting
     public static final String FLINK_REST_URL = "/jobs";
     public static final String FLINK_REST_URL_JARS = "/jars";
+    public static final String FLINK_REST_URL_JARS_UPLOAD = FLINK_REST_URL_JARS + "/upload";
     public static final String FLINK_DUMMY_JOB_ID = "00000000000000000000000000000000";
 
     // HTTP req/res constants

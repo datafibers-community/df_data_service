@@ -9,9 +9,7 @@ public class UploadTest {
 
     public static void main(String[] args)  {
 
-        String fileName = HelpFunc.uploadJar("localhost:8001/jars/upload",
+        HelpFunc.uploadJar("http://localhost:8001/jars/upload",
                 "C:/Users/dadu/Coding/df_data_service/target/df-data-service-1.1-SNAPSHOT-fat.jar");
-
-        System.out.println(fileName);
     }
 }

@@ -71,6 +71,7 @@ public class DFDataProcessor extends AbstractVerticle {
     private RestClient rc;
     private RestClient rc_schema;
     private RestClient rc_flink;
+    private static String df_jar_path;
 
     // Connects attributes
     private static Boolean kafka_connect_enabled;
@@ -83,6 +84,7 @@ public class DFDataProcessor extends AbstractVerticle {
     private static String flink_server_host;
     private static Integer flink_server_port;
     private static Integer flink_rest_server_port;
+    private static String flink_rest_server_host_port;
     public static DFRemoteStreamEnvironment env;
 
     // Kafka attributes
@@ -103,6 +105,8 @@ public class DFDataProcessor extends AbstractVerticle {
     public void start(Future<Void> fut) {
         // Turn off
         Logger.getLogger("io.vertx.core.impl.BlockedThreadChecker").setLevel(Level.OFF);
+
+        this.df_jar_path = getClass().getProtectionDomain().getCodeSource().getLocation().getPath();
 
         /**
          * Get all application configurations
@@ -128,6 +132,8 @@ public class DFDataProcessor extends AbstractVerticle {
         this.flink_server_host = config().getString("flink.servers.host", "localhost");
         this.flink_server_port = config().getInteger("flink.servers.port", 6123);
         this.flink_rest_server_port = config().getInteger("flink.rest.server.port", 8001); // Same to Flink Web Dashboard
+        this.flink_rest_server_host_port = (this.flink_server_host.contains("http")?
+                this.flink_server_host : "http://" + this.flink_server_host) + ":" + this.flink_rest_server_port;
 
         // Kafka config
         this.kafka_server_host = this.kafka_connect_rest_host;
@@ -198,11 +204,10 @@ public class DFDataProcessor extends AbstractVerticle {
 //                env = StreamExecutionEnvironment.getExecutionEnvironment()
 //                        .setParallelism(config().getInteger("flink.job.parallelism", 1));
             } else {
-                String jarPath = getClass().getProtectionDomain().getCodeSource().getLocation().getPath();
                 LOG.debug("Flink resource manager is started at " + this.flink_server_host + ":" + this.flink_server_port);
                 LOG.debug("Distributed below Jar to above Flink resource manager.");
-                LOG.debug(jarPath);
-                env = new DFRemoteStreamEnvironment(this.flink_server_host, this.flink_server_port, jarPath)
+                LOG.debug(this.df_jar_path);
+                env = new DFRemoteStreamEnvironment(this.flink_server_host, this.flink_server_port, this.df_jar_path)
                         .setParallelism(config().getInteger("flink.job.parallelism", 1));
 //                env = StreamExecutionEnvironment.createRemoteEnvironment(this.flink_server_host,
 //                        this.flink_server_port, jarPath)
@@ -211,16 +216,12 @@ public class DFDataProcessor extends AbstractVerticle {
         }
 
         // upload df jar to flink rest server
-        if (this.transform_engine_flink_enabled) {
-            String flinkResrURL;
-            if(this.flink_server_host.contains("http")) {
-                flinkResrURL = this.flink_server_host + flink_rest_server_port + "/jars/upload";
-            } else {
-                flinkResrURL = "http://" + this.flink_server_host + flink_rest_server_port + "/jars/upload";
-            }
-            this.flink_jar_id = HelpFunc.uploadJar(flinkResrURL,
-                    getClass().getProtectionDomain().getCodeSource().getLocation().getPath());
-        }
+        vertx.executeBlocking(future -> {
+            HelpFunc.uploadJar(flink_rest_server_host_port, this.df_jar_path);
+            //TODO put the jar info inro mongodb so that we can use it later
+        }, res -> {
+            LOG.info("Uploading DF Jars are Complete.");
+        });
 
         // Import from remote server. It is blocking at this point.
         if (this.kafka_connect_enabled && this.kafka_connect_import_start) {
@@ -1256,37 +1257,40 @@ public class DFDataProcessor extends AbstractVerticle {
                 FlinkTransformProcessor.runFlinkJar(dfJob.getUdfUpload(),
                         this.flink_server_host + ":" + this.flink_server_port);
             } else {
-                String engine = "";
-                if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_SQLA2A.name()) {
-                    engine = "SQL_API";
-                }
 
-                if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_Script.name()) {
-                    engine = "TABLE_API";
-                }
+
 
                 if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_UDF.name()) {
                     FlinkTransformProcessor.runFlinkJar(dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_JAR),
                             this.flink_server_host + this.flink_server_port);
-                }
+                } else {
+                    String engine = "";
+                    if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_SQLA2A.name()) {
+                        engine = "SQL_API";
+                    }
 
-                // When schema name are not provided, got them from topic
-                FlinkTransformProcessor.submitFlinkJobA2A(dfJob, vertx,
-                        config().getInteger("flink.trans.client.timeout", 8000), env,
-                        this.kafka_server_host_and_port,
-                        this.schema_registry_host_and_port,
-                        HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_CONSUMER_GROURP),
-                                ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
-                        dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_INPUT),
-                        dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_OUTPUT),
-                        dfJob.getConnectorConfig().get(ConstantApp.PK_FLINK_TABLE_SINK_KEYS),
-                        dfJob.getConnectorConfig().get(engine == "SQL_API" ?
-                                ConstantApp.PK_TRANSFORM_SQL:ConstantApp.PK_TRANSFORM_SCRIPT),
-                        HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_SCHEMA_SUB_INPUT),
-                                dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_INPUT)),
-                        HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_SCHEMA_SUB_OUTPUT),
-                                dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_OUTPUT)),
-                        mongo, COLLECTION, engine);
+                    if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_Script.name()) {
+                        engine = "TABLE_API";
+                    }
+
+                    // When schema name are not provided, got them from topic
+                    FlinkTransformProcessor.submitFlinkJobA2A(dfJob, vertx,
+                            config().getInteger("flink.trans.client.timeout", 8000), env,
+                            this.kafka_server_host_and_port,
+                            this.schema_registry_host_and_port,
+                            HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_CONSUMER_GROURP),
+                                    ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
+                            dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_INPUT),
+                            dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_OUTPUT),
+                            dfJob.getConnectorConfig().get(ConstantApp.PK_FLINK_TABLE_SINK_KEYS),
+                            dfJob.getConnectorConfig().get(engine == "SQL_API" ?
+                                    ConstantApp.PK_TRANSFORM_SQL:ConstantApp.PK_TRANSFORM_SCRIPT),
+                            HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_SCHEMA_SUB_INPUT),
+                                    dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_INPUT)),
+                            HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_SCHEMA_SUB_OUTPUT),
+                                    dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_OUTPUT)),
+                            mongo, COLLECTION, engine);
+                }
             }
         }
 
