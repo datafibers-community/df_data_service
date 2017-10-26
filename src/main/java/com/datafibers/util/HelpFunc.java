@@ -388,14 +388,15 @@ public class HelpFunc {
         return sortedJsonArray;
     }
 
-    public static void uploadJar(String postURL, String jarFilePath) {
-            try {
-                Unirest.post(postURL)
-                        .field("file", new File(jarFilePath))
-                        .asString();
-
-            } catch (UnirestException e) {
-                e.printStackTrace();
-            }
+    public static String uploadJar(String postURL, String jarFilePath) {
+        HttpResponse<String> jsonResponse = null;
+        try {
+            jsonResponse = Unirest.post(postURL)
+                    .field("file", new File(jarFilePath))
+                    .asString();
+        } catch (UnirestException e) {
+            e.printStackTrace();
+        }
+        return jsonResponse.getBody();
     }
 }

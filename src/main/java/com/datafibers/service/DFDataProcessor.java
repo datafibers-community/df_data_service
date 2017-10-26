@@ -19,7 +19,6 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.*;
 import java.util.stream.Collectors;
-
 import io.vertx.ext.web.handler.TimeoutHandler;
 import io.vertx.kafka.client.common.PartitionInfo;
 import io.vertx.kafka.client.consumer.KafkaConsumer;
@@ -217,8 +216,12 @@ public class DFDataProcessor extends AbstractVerticle {
 
         // upload df jar to flink rest server
         vertx.executeBlocking(future -> {
-            HelpFunc.uploadJar(flink_rest_server_host_port, this.df_jar_path);
-            //TODO put the jar info inro mongodb so that we can use it later
+            String df_jar_info =
+                    HelpFunc.uploadJar(flink_rest_server_host_port + ConstantApp.FLINK_REST_URL_JARS_UPLOAD,
+                            this.df_jar_path);
+            System.out.println("df_jar_info = " + df_jar_info);
+            mongo.insert(COLLECTION_INSTALLED, new JsonObject(df_jar_info).put("_id", "df_jar_uploaded_to_flink"),
+                    r -> LOG.info("New DF_JAR_INFO is saved to " + COLLECTION_INSTALLED));
         }, res -> {
             LOG.info("Uploading DF Jars are Complete.");
         });

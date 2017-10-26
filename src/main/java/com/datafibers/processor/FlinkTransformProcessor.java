@@ -53,7 +53,7 @@ public class FlinkTransformProcessor {
                         HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                 .setStatusCode(ConstantApp.STATUS_CODE_OK)
                                 .end(DFAPIMessage.getResponseMessage(9029));
-                        LOG.error(DFAPIMessage.logResponseMessage(9029, dfJobResponsed.getId()));
+                        LOG.error(DFAPIMessage.logResponseMessage(9029, dfJob.getId()));
                     });
                 });
 
@@ -61,7 +61,7 @@ public class FlinkTransformProcessor {
             HelpFunc.responseCorsHandleAddOn(routingContext.response())
                     .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
                     .end(DFAPIMessage.getResponseMessage(9006));
-            LOG.error(DFAPIMessage.logResponseMessage(9006, dfJobResponsed.getId()));
+            LOG.error(DFAPIMessage.logResponseMessage(9006, dfJob.getId()));
         });
 
         restClient.exceptionHandler(exception -> {
@@ -73,8 +73,8 @@ public class FlinkTransformProcessor {
 
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
         postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
-        postRestClientRequest.end(dfJobResponsed.toKafkaConnectJson().toString());
-        LOG.debug("Message sent = " + dfJobResponsed.toKafkaConnectJson().toString());
+        postRestClientRequest.end(dfJob.toKafkaConnectJson().toString());
+        LOG.debug("Message sent = " + dfJob.toKafkaConnectJson().toString());
 
     }
 
