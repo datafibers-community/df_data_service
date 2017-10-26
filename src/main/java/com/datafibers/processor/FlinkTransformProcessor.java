@@ -32,49 +32,68 @@ import org.json.JSONObject;
 public class FlinkTransformProcessor {
     private static final Logger LOG = Logger.getLogger(FlinkTransformProcessor.class);
 
-    public static void submitFlinkJar(RoutingContext routingContext, RestClient restClient, DFJobPOPJ dfJob, Vertx vertx, Integer maxRunTime,
-                                      DFRemoteStreamEnvironment flinkEnv, String kafkaHostPort,
-                                      String SchemaRegistryHostPort, String groupid,
-                                      String topicIn, String topicOut, String sinkKeys,
-                                      String transScript, String schemaSubjectIn, String schemaSubjectOut,
-                                      MongoClient mongoClient, String mongoCOLLECTION, String engine) {
+    /**
+     * submitFlinkJar is a generic function to submit specific jar file with proper configurations, such as jar para,
+     * to the Flink Rest API. This is used for Flink SQL, UDF, and Table API submission with different client class.
+     * @param routingContext vertx context
+     * @param restClient flink rest client
+     * @param dfJob jd job object
+     * @param submitPara parameters used by the jar files separated by " "
+     * @param mongo mongo admin client
+     * @param COLLECTION mongo collection name
+     */
+    public static void submitFlinkJar(RoutingContext routingContext, RestClient restClient, DFJobPOPJ dfJob,
+                                      String submitPara, MongoClient mongo, String COLLECTION) {
+        // Search mongo to get the flink_jar_id
+        mongo.findOne(COLLECTION, new JsonObject().put("_id", ConstantApp.FLINK_JAR_ID_IN_MONGO), null, res -> {
+                    if (res.succeeded()) {
+                        String df_jar_id = res.result().getString(ConstantApp.FLINK_JAR_VALUE_IN_MONGO);
+                        LOG.info("DF_JAR_ID found = " + df_jar_id);
+                        // Submit jar to Flink Rest API
+                        String flinkJobSubmitPostURL = ConstantApp.FLINK_REST_URL_JARS + "/" + df_jar_id + "/run?" +
+                                submitPara;
 
-        // Create REST Client for Flink REST Forward
-        final RestClientRequest postRestClientRequest = restClient.post(ConstantApp.FLINK_REST_URL_JARS, String.class,
-                portRestResponse -> {
-                    String rs = portRestResponse.getBody();
-                    JsonObject jo = new JsonObject(rs);
-                    JsonArray jsonArray = jo.getJsonArray("files");
+                        final RestClientRequest pr = restClient.post(flinkJobSubmitPostURL, String.class,
+                                portRestResponse -> {
+                                    JsonObject jo = new JsonObject(portRestResponse.getBody());
+                                    String jobId = jo.getString(ConstantApp.FLINK_JOB_SUBMIT_RESPONSE_KEY);
+                                    dfJob.setFlinkIDToJobConfig(jobId).setStatus(ConstantApp.DF_STATUS.RUNNING.name());
+                                    LOG.info(DFAPIMessage.logResponseMessage(1005,
+                                            "Flink_Job_ID = " + df_jar_id + "at task " + dfJob.getId()));
+                                    // Update job_id in job config in repo
+                                    mongo.updateCollection(COLLECTION, new JsonObject().put("_id", dfJob.getId()),
+                                            new JsonObject().put("$set", dfJob.toJson()), v -> {
+                                                if (v.failed()) {
+                                                    LOG.error(DFAPIMessage.logResponseMessage(1001, dfJob.getId()));
+                                                }
+                                            }
+                                    );
+                        });
 
-                    LOG.debug("KAFKA_SERVER_ACK: " + portRestResponse.statusMessage() + " "
-                            + portRestResponse.statusCode());
+                        pr.exceptionHandler(exception -> {
+                            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                                    .end(DFAPIMessage.getResponseMessage(9006));
+                            LOG.error(DFAPIMessage.logResponseMessage(9006, dfJob.getId()));
+                        });
 
-                    portRestResponse.exceptionHandler(exception -> {
-                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                                .setStatusCode(ConstantApp.STATUS_CODE_OK)
-                                .end(DFAPIMessage.getResponseMessage(9029));
-                        LOG.error(DFAPIMessage.logResponseMessage(9029, dfJob.getId()));
-                    });
-                });
+                        restClient.exceptionHandler(exception -> {
+                            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                                    .end(DFAPIMessage.getResponseMessage(9028));
+                            LOG.error(DFAPIMessage.logResponseMessage(9028, exception.getMessage()));
+                        });
 
-        postRestClientRequest.exceptionHandler(exception -> {
-            HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
-                    .end(DFAPIMessage.getResponseMessage(9006));
-            LOG.error(DFAPIMessage.logResponseMessage(9006, dfJob.getId()));
+                        pr.setContentType(MediaType.APPLICATION_JSON);
+                        pr.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
+                        pr.end();
+
+                    } else {
+                        LOG.error(DFAPIMessage.
+                                logResponseMessage(9035, dfJob.getId() + " details - "
+                                        + res.cause()));
+                    }
         });
-
-        restClient.exceptionHandler(exception -> {
-            HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
-                    .end(DFAPIMessage.getResponseMessage(9028));
-            LOG.error(DFAPIMessage.logResponseMessage(9028, exception.getMessage()));
-        });
-
-        postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
-        postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
-        postRestClientRequest.end(dfJob.toKafkaConnectJson().toString());
-        LOG.debug("Message sent = " + dfJob.toKafkaConnectJson().toString());
 
     }
 
@@ -98,6 +117,7 @@ public class FlinkTransformProcessor {
      * @param mongoCOLLECTION
      * @param engine          - SQL_API or TABLE_API
      */
+    @Deprecated
     public static void submitFlinkJobA2A(DFJobPOPJ dfJob, Vertx vertx, Integer maxRunTime,
                                          DFRemoteStreamEnvironment flinkEnv, String kafkaHostPort,
                                          String SchemaRegistryHostPort, String groupid,
@@ -357,6 +377,7 @@ public class FlinkTransformProcessor {
      * @param jobManagerHostPort The job manager address and port where to send cancel
      * @param jarFile The Jar file name uploaded
      */
+    @Deprecated
     public static void runFlinkJar (String jarFile, String jobManagerHostPort) {
 
         try {

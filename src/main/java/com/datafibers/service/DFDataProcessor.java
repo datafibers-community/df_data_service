@@ -216,14 +216,14 @@ public class DFDataProcessor extends AbstractVerticle {
 
         // upload df jar to flink rest server
         vertx.executeBlocking(future -> {
+            //TODO delete all df jars already uploaded
             String df_jar_info =
                     HelpFunc.uploadJar(flink_rest_server_host_port + ConstantApp.FLINK_REST_URL_JARS_UPLOAD,
                             this.df_jar_path);
-            System.out.println("df_jar_info = " + df_jar_info);
-            mongo.insert(COLLECTION_INSTALLED, new JsonObject(df_jar_info).put("_id", "df_jar_uploaded_to_flink"),
+            mongo.insert(COLLECTION_INSTALLED, new JsonObject(df_jar_info).put("_id", ConstantApp.FLINK_JAR_ID_IN_MONGO),
                     r -> LOG.info("New DF_JAR_INFO is saved to " + COLLECTION_INSTALLED));
         }, res -> {
-            LOG.info("Uploading DF Jars are Complete.");
+            LOG.info(DFAPIMessage.logResponseMessage(1027, "JAR_UPLOAD"));
         });
 
         // Import from remote server. It is blocking at this point.
@@ -1247,7 +1247,7 @@ public class DFDataProcessor extends AbstractVerticle {
      *       "message" : "POST Request exception - Conflict."
      *     }
      */
-    private void addOneTransforms(RoutingContext routingContext) {
+    private void addOneTransformsOld(RoutingContext routingContext) {
         final DFJobPOPJ dfJob = Json.decodeValue(
                 HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()), DFJobPOPJ.class);
         dfJob.setStatus(ConstantApp.DF_STATUS.RUNNING.name());
@@ -1264,7 +1264,7 @@ public class DFDataProcessor extends AbstractVerticle {
 
 
                 if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_UDF.name()) {
-                    FlinkTransformProcessor.runFlinkJar(dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_JAR),
+                    FlinkTransformProcessor.runFlinkJar(dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_JAR_CLASS_NAME),
                             this.flink_server_host + this.flink_server_port);
                 } else {
                     String engine = "";
@@ -1296,6 +1296,48 @@ public class DFDataProcessor extends AbstractVerticle {
                 }
             }
         }
+
+        mongo.insert(COLLECTION, dfJob.toJson(), r ->
+                HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                        .setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
+                        .end(Json.encodePrettily(dfJob)));
+        LOG.info(DFAPIMessage.logResponseMessage(1000, dfJob.getId()));
+    }
+
+    private void addOneTransforms(RoutingContext routingContext) {
+        final DFJobPOPJ dfJob = Json.decodeValue(
+                HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()), DFJobPOPJ.class);
+        dfJob.setStatus(ConstantApp.DF_STATUS.UNASSIGNED.name());
+        String mongoId = new ObjectId().toString();
+        dfJob.setConnectUid(mongoId).setId(mongoId).getConnectorConfig().put(ConstantApp.PK_TRANSFORM_CUID, mongoId);
+
+        String jobPara = "";
+
+        if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_SQLA2A.name()) {
+            jobPara = "allowNonRestoredState=" + "false" + "&" +
+                    "entry-class=" + ConstantApp.FLINK_SQL_CLIENT_CLASS_NAME + "&" +
+                    "parallelism=" + "1" + "&" +
+                    "program-args=" + String.join(" ",
+                            this.kafka_server_host_and_port,
+                            this.schema_registry_host_and_port,
+                            dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_INPUT),
+                            dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_OUTPUT),
+                            dfJob.getConnectorConfig().get(ConstantApp.PK_FLINK_TABLE_SINK_KEYS),
+                            HelpFunc.coalesce( dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_CONSUMER_GROURP),
+                                    ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
+                            dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL)) + "&" +
+                "savepointPath=" + "";
+        }
+
+        if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_UDF.name()) {
+            jobPara = "allowNonRestoredState=" + "false" + "&" +
+                    "entry-class=" + dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_JAR_CLASS_NAME)+ "&" +
+                    "parallelism=" + "1" + "&" +
+                    "program-args=" + dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_JAR_PARA) + "&" +
+                    "savepointPath=" + "";
+        }
+
+        FlinkTransformProcessor.submitFlinkJar(routingContext, rc_flink, dfJob, jobPara, mongo, COLLECTION);
 
         mongo.insert(COLLECTION, dfJob.toJson(), r ->
                 HelpFunc.responseCorsHandleAddOn(routingContext.response())
