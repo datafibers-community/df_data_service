@@ -14,6 +14,7 @@ import io.vertx.ext.mongo.UpdateOptions;
 import io.vertx.ext.web.FileUpload;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.handler.BodyHandler;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -71,6 +72,7 @@ public class DFDataProcessor extends AbstractVerticle {
     private RestClient rc;
     private RestClient rc_schema;
     private RestClient rc_flink;
+    private WebClient wc_flink;
     private static String df_jar_path;
 
     // Connects attributes
@@ -195,6 +197,7 @@ public class DFDataProcessor extends AbstractVerticle {
         if (this.transform_engine_flink_enabled) {
             this.rc_flink = RestClient.create(vertx, restClientOptions.setDefaultHost(this.flink_server_host)
                     .setDefaultPort(this.flink_rest_server_port), httpMessageConverters);
+            this.wc_flink = WebClient.create(vertx);
         }
 
         // Flink stream environment for data transformation
@@ -1256,6 +1259,7 @@ public class DFDataProcessor extends AbstractVerticle {
     private void addOneTransforms(RoutingContext routingContext) {
         final DFJobPOPJ dfJob = Json.decodeValue(
                 HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()), DFJobPOPJ.class);
+
         dfJob.setStatus(ConstantApp.DF_STATUS.UNASSIGNED.name());
         String mongoId = new ObjectId().toString();
         dfJob.setConnectUid(mongoId).setId(mongoId).getConnectorConfig().put(ConstantApp.PK_TRANSFORM_CUID, mongoId);
@@ -1263,7 +1267,7 @@ public class DFDataProcessor extends AbstractVerticle {
         String allowNonRestoredState = "false";
         String savepointPath = "";
         String parallelism = "1";
-        String entryClass = "";
+        String entryClass = ConstantApp.PK_TRANSFORM_JAR_CLASS_NAME;
         String programArgs = "";
 
         if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_SQLA2A.name()) {
@@ -1278,12 +1282,11 @@ public class DFDataProcessor extends AbstractVerticle {
                             "\"" + dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL) + "\"");
         } else
             if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_UDF.name()) {
-            entryClass = ConstantApp.PK_TRANSFORM_JAR_CLASS_NAME;
             programArgs = ConstantApp.PK_TRANSFORM_JAR_PARA;
         }
 
-        FlinkTransformProcessor.submitFlinkJar(dfJob, mongo, COLLECTION_INSTALLED,
-                flink_rest_server_host_port + ConstantApp.FLINK_REST_URL_JARS,
+        FlinkTransformProcessor.submitFlinkJar(wc_flink, dfJob, mongo, COLLECTION_INSTALLED, COLLECTION,
+                flink_server_host, flink_rest_server_port,
                 allowNonRestoredState, savepointPath, entryClass, parallelism, programArgs);
 
         mongo.insert(COLLECTION, dfJob.toJson(), r ->
@@ -1963,8 +1966,8 @@ public class DFDataProcessor extends AbstractVerticle {
                                     HelpFunc.getTaskStatusFlink(resConnectorStatus.getBody().getObject());
                         } catch (UnirestException ue) {
                             // When jobId not found, set status LOST with error message.
-                            LOG.info(DFAPIMessage.logResponseMessage(9006, "TRANSFORM_STATUS_REFRESH:" +
-                                    "DELETE_LOST_TRANSFORMS at " + taskId));
+                            LOG.info(DFAPIMessage.logResponseMessage(9006,
+                                    "TRANSFORM_STATUS_REFRESH_FOUND " + taskId + " LOST"));
                             resStatus = ConstantApp.DF_STATUS.LOST.name();
                         }
 
