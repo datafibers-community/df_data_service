@@ -6,6 +6,9 @@ import com.datafibers.util.*;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.RestClient;
 import com.hubrick.vertx.rest.RestClientRequest;
+import com.mashape.unirest.http.HttpResponse;
+import com.mashape.unirest.http.Unirest;
+import com.mashape.unirest.http.exceptions.UnirestException;
 import io.vertx.core.Vertx;
 import io.vertx.core.WorkerExecutor;
 import io.vertx.core.json.Json;
@@ -14,6 +17,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.RoutingContext;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.Properties;
 import net.openhft.compiler.CompilerUtils;
@@ -46,55 +50,42 @@ public class FlinkTransformProcessor {
                                       String submitPara, MongoClient mongo, String COLLECTION) {
         // Search mongo to get the flink_jar_id
         mongo.findOne(COLLECTION, new JsonObject().put("_id", ConstantApp.FLINK_JAR_ID_IN_MONGO), null, res -> {
-                    if (res.succeeded()) {
-                        String df_jar_id = res.result().getString(ConstantApp.FLINK_JAR_VALUE_IN_MONGO);
-                        LOG.info("DF_JAR_ID found = " + df_jar_id);
-                        // Submit jar to Flink Rest API
-                        String flinkJobSubmitPostURL = ConstantApp.FLINK_REST_URL_JARS + "/" + df_jar_id + "/run?" +
-                                submitPara;
+            if (res.succeeded()) {
+                String df_jar_id = res.result().getString(ConstantApp.FLINK_JAR_VALUE_IN_MONGO);
+                LOG.info("DF_JAR_ID found = " + df_jar_id);
+                // Submit jar to Flink Rest API
+                //TODO to test and use unirest queryString function
+                String flinkJobSubmitPostURL = "http://localhost:8001" + ConstantApp.FLINK_REST_URL_JARS + "/" + df_jar_id + "/run?" +
+                        "allowNonRestoredState=false&entry-class=com.datafibers.util.FlinkAvroSQLClient&parallelism=1&program-args=localhost:9092+localhost:8081+test_stock+SQLSTATE_AGG_01+symbol+df_trans_flink_group_id+%22SELECT+symbol,+sum(bid_size)+as+total_bids+FROM+test_stock+group+by+symbol%22&savepointPath=";
 
-                        final RestClientRequest pr = restClient.post(flinkJobSubmitPostURL, String.class,
-                                portRestResponse -> {
-                                    JsonObject jo = new JsonObject(portRestResponse.getBody());
-                                    String jobId = jo.getString(ConstantApp.FLINK_JOB_SUBMIT_RESPONSE_KEY);
-                                    dfJob.setFlinkIDToJobConfig(jobId).setStatus(ConstantApp.DF_STATUS.RUNNING.name());
-                                    LOG.info(DFAPIMessage.logResponseMessage(1005,
-                                            "Flink_Job_ID = " + df_jar_id + "at task " + dfJob.getId()));
-                                    // Update job_id in job config in repo
-                                    mongo.updateCollection(COLLECTION, new JsonObject().put("_id", dfJob.getId()),
-                                            new JsonObject().put("$set", dfJob.toJson()), v -> {
-                                                if (v.failed()) {
-                                                    LOG.error(DFAPIMessage.logResponseMessage(1001, dfJob.getId()));
-                                                }
-                                            }
-                                    );
-                        });
+                HttpResponse<String> jsonResponse = null;
+                try {
+                    jsonResponse = Unirest.post(flinkJobSubmitPostURL)
+                            .asString();
+                } catch (UnirestException e) {
+                    e.printStackTrace();
+                }
 
-                        pr.exceptionHandler(exception -> {
-                            HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
-                                    .end(DFAPIMessage.getResponseMessage(9006));
-                            LOG.error(DFAPIMessage.logResponseMessage(9006, dfJob.getId()));
-                        });
+                JsonObject jo = new JsonObject(jsonResponse.getBody());
+                String jobId = jo.getString(ConstantApp.FLINK_JOB_SUBMIT_RESPONSE_KEY);
+                dfJob.setFlinkIDToJobConfig(jobId).setStatus(ConstantApp.DF_STATUS.RUNNING.name());
+                LOG.info(DFAPIMessage.logResponseMessage(1005,
+                        "Flink_Job_ID = " + jobId + " at task " + dfJob.getId()));
 
-                        restClient.exceptionHandler(exception -> {
-                            HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
-                                    .end(DFAPIMessage.getResponseMessage(9028));
-                            LOG.error(DFAPIMessage.logResponseMessage(9028, exception.getMessage()));
-                        });
-
-                        pr.setContentType(MediaType.APPLICATION_JSON);
-                        pr.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
-                        pr.end();
-
-                    } else {
-                        LOG.error(DFAPIMessage.
-                                logResponseMessage(9035, dfJob.getId() + " details - "
-                                        + res.cause()));
-                    }
+                // Update job_id in job config in repo
+                mongo.updateCollection(COLLECTION, new JsonObject().put("_id", dfJob.getId()),
+                        new JsonObject().put("$set", dfJob.toJson()), v -> {
+                            if (v.failed()) {
+                                LOG.error(DFAPIMessage.logResponseMessage(1001, dfJob.getId()));
+                            }
+                        }
+                );
+            } else {
+                LOG.error(DFAPIMessage.
+                        logResponseMessage(9035, dfJob.getId() + " details - "
+                                + res.cause()));
+            }
         });
-
     }
 
     /**

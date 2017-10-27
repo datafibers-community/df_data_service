@@ -10,6 +10,7 @@ import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.MongoClient;
+import io.vertx.ext.mongo.UpdateOptions;
 import io.vertx.ext.web.FileUpload;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
@@ -214,16 +215,21 @@ public class DFDataProcessor extends AbstractVerticle {
             }
         }
 
-        // upload df jar to flink rest server
+        // upload df jar to flink rest server and keep the latest jar_id in mongo
         vertx.executeBlocking(future -> {
             //TODO delete all df jars already uploaded
             String df_jar_info =
                     HelpFunc.uploadJar(flink_rest_server_host_port + ConstantApp.FLINK_REST_URL_JARS_UPLOAD,
                             this.df_jar_path);
-            mongo.insert(COLLECTION_INSTALLED, new JsonObject(df_jar_info).put("_id", ConstantApp.FLINK_JAR_ID_IN_MONGO),
-                    r -> LOG.info("New DF_JAR_INFO is saved to " + COLLECTION_INSTALLED));
+            // Mongo insert or else update
+            mongo.updateCollectionWithOptions(COLLECTION_INSTALLED,
+                    new JsonObject().put("_id", ConstantApp.FLINK_JAR_ID_IN_MONGO),
+                    new JsonObject().put("$set", new JsonObject(df_jar_info)),
+                    new UpdateOptions().setUpsert(true),
+                    r -> LOG.debug("New DF_JAR_INFO is saved to " + COLLECTION_INSTALLED));
+
         }, res -> {
-            LOG.info(DFAPIMessage.logResponseMessage(1027, "JAR_UPLOAD"));
+            LOG.info(DFAPIMessage.logResponseMessage(1027, "JAR_UPLOAD_TO_COLLECTION_INSTALLED"));
         });
 
         // Import from remote server. It is blocking at this point.
@@ -1323,9 +1329,9 @@ public class DFDataProcessor extends AbstractVerticle {
                             dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_INPUT),
                             dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_OUTPUT),
                             dfJob.getConnectorConfig().get(ConstantApp.PK_FLINK_TABLE_SINK_KEYS),
-                            HelpFunc.coalesce( dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_CONSUMER_GROURP),
+                            HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_CONSUMER_GROURP),
                                     ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
-                            dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL)) + "&" +
+                            "%22" + dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL) + "%22") + "&" +
                 "savepointPath=" + "";
         }
 
@@ -1337,7 +1343,9 @@ public class DFDataProcessor extends AbstractVerticle {
                     "savepointPath=" + "";
         }
 
-        FlinkTransformProcessor.submitFlinkJar(routingContext, rc_flink, dfJob, jobPara, mongo, COLLECTION);
+        LOG.debug("jobPara = " + jobPara);
+
+        FlinkTransformProcessor.submitFlinkJar(routingContext, rc_flink, dfJob, jobPara, mongo, COLLECTION_INSTALLED);
 
         mongo.insert(COLLECTION, dfJob.toJson(), r ->
                 HelpFunc.responseCorsHandleAddOn(routingContext.response())
