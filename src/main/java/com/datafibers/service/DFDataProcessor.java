@@ -193,47 +193,40 @@ public class DFDataProcessor extends AbstractVerticle {
                     .setDefaultPort(this.schema_registry_rest_port), httpMessageConverters);
 
         }
+        
         // Non-blocking Vertx Rest API Client to talk toFlink Rest when needed
         if (this.transform_engine_flink_enabled) {
             this.rc_flink = RestClient.create(vertx, restClientOptions.setDefaultHost(this.flink_server_host)
                     .setDefaultPort(this.flink_rest_server_port), httpMessageConverters);
             this.wc_flink = WebClient.create(vertx);
-        }
 
-        // Flink stream environment for data transformation
-        if(transform_engine_flink_enabled) {
             if (config().getBoolean("debug.mode", Boolean.FALSE)) {
                 // TODO Add DF LocalExecutionEnvironment Support
-//                env = StreamExecutionEnvironment.getExecutionEnvironment()
-//                        .setParallelism(config().getInteger("flink.job.parallelism", 1));
             } else {
                 LOG.debug("Flink resource manager is started at " + this.flink_server_host + ":" + this.flink_server_port);
                 LOG.debug("Distributed below Jar to above Flink resource manager.");
                 LOG.debug(this.df_jar_path);
                 env = new DFRemoteStreamEnvironment(this.flink_server_host, this.flink_server_port, this.df_jar_path)
                         .setParallelism(config().getInteger("flink.job.parallelism", 1));
-//                env = StreamExecutionEnvironment.createRemoteEnvironment(this.flink_server_host,
-//                        this.flink_server_port, jarPath)
-//                        .setParallelism(config().getInteger("flink.job.parallelism", 1));
             }
+
+            // upload df jar to flink rest server and keep the latest jar_id in mongo
+            vertx.executeBlocking(future -> {
+                //TODO delete all df jars already uploaded
+                String df_jar_info =
+                        HelpFunc.uploadJar(flink_rest_server_host_port + ConstantApp.FLINK_REST_URL_JARS_UPLOAD,
+                                this.df_jar_path);
+                // Mongo insert or else update
+                mongo.updateCollectionWithOptions(COLLECTION_INSTALLED,
+                        new JsonObject().put("_id", ConstantApp.FLINK_JAR_ID_IN_MONGO),
+                        new JsonObject().put("$set", new JsonObject(df_jar_info)),
+                        new UpdateOptions().setUpsert(true),
+                        r -> LOG.debug("New DF_JAR_INFO is saved to " + COLLECTION_INSTALLED));
+
+            }, res -> {
+                LOG.info(DFAPIMessage.logResponseMessage(1027, "JAR_UPLOAD_TO_COLLECTION_INSTALLED"));
+            });
         }
-
-        // upload df jar to flink rest server and keep the latest jar_id in mongo
-        vertx.executeBlocking(future -> {
-            //TODO delete all df jars already uploaded
-            String df_jar_info =
-                    HelpFunc.uploadJar(flink_rest_server_host_port + ConstantApp.FLINK_REST_URL_JARS_UPLOAD,
-                            this.df_jar_path);
-            // Mongo insert or else update
-            mongo.updateCollectionWithOptions(COLLECTION_INSTALLED,
-                    new JsonObject().put("_id", ConstantApp.FLINK_JAR_ID_IN_MONGO),
-                    new JsonObject().put("$set", new JsonObject(df_jar_info)),
-                    new UpdateOptions().setUpsert(true),
-                    r -> LOG.debug("New DF_JAR_INFO is saved to " + COLLECTION_INSTALLED));
-
-        }, res -> {
-            LOG.info(DFAPIMessage.logResponseMessage(1027, "JAR_UPLOAD_TO_COLLECTION_INSTALLED"));
-        });
 
         // Import from remote server. It is blocking at this point.
         if (this.kafka_connect_enabled && this.kafka_connect_import_start) {

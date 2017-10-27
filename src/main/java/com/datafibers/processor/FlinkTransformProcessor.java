@@ -99,20 +99,6 @@ public class FlinkTransformProcessor {
      * This method first submit a flink job against Kafka streaming in other thread.
      * At the end, update the record at repo - mongo as response.
      * It supports both SQL and table API
-     *
-     * @param dfJob
-     * @param vertx
-     * @param maxRunTime
-     * @param flinkEnv
-     * @param kafkaHostPort
-     * @param groupid
-     * @param topicIn
-     * @param topicOut
-     * @param sinkKeys
-     * @param transScript     - this either SQL or table API
-     * @param mongoClient
-     * @param mongoCOLLECTION
-     * @param engine          - SQL_API or TABLE_API
      */
     @Deprecated
     public static void submitFlinkJobA2A(DFJobPOPJ dfJob, Vertx vertx, Integer maxRunTime,
