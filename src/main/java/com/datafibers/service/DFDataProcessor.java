@@ -1253,63 +1253,6 @@ public class DFDataProcessor extends AbstractVerticle {
      *       "message" : "POST Request exception - Conflict."
      *     }
      */
-    private void addOneTransformsOld(RoutingContext routingContext) {
-        final DFJobPOPJ dfJob = Json.decodeValue(
-                HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()), DFJobPOPJ.class);
-        dfJob.setStatus(ConstantApp.DF_STATUS.RUNNING.name());
-        String mongoId = new ObjectId().toString();
-        dfJob.setConnectUid(mongoId).setId(mongoId).getConnectorConfig().put(ConstantApp.PK_TRANSFORM_CUID, mongoId);
-
-        if (this.transform_engine_flink_enabled) {
-            // Submit Flink UDF
-            if(dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_UDF.name()) {
-                FlinkTransformProcessor.runFlinkJar(dfJob.getUdfUpload(),
-                        this.flink_server_host + ":" + this.flink_server_port);
-            } else {
-
-
-
-                if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_UDF.name()) {
-                    FlinkTransformProcessor.runFlinkJar(dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_JAR_CLASS_NAME),
-                            this.flink_server_host + this.flink_server_port);
-                } else {
-                    String engine = "";
-                    if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_SQLA2A.name()) {
-                        engine = "SQL_API";
-                    }
-
-                    if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_Script.name()) {
-                        engine = "TABLE_API";
-                    }
-
-                    // When schema name are not provided, got them from topic
-                    FlinkTransformProcessor.submitFlinkJobA2A(dfJob, vertx,
-                            config().getInteger("flink.trans.client.timeout", 8000), env,
-                            this.kafka_server_host_and_port,
-                            this.schema_registry_host_and_port,
-                            HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_CONSUMER_GROURP),
-                                    ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
-                            dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_INPUT),
-                            dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_OUTPUT),
-                            dfJob.getConnectorConfig().get(ConstantApp.PK_FLINK_TABLE_SINK_KEYS),
-                            dfJob.getConnectorConfig().get(engine == "SQL_API" ?
-                                    ConstantApp.PK_TRANSFORM_SQL:ConstantApp.PK_TRANSFORM_SCRIPT),
-                            HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_SCHEMA_SUB_INPUT),
-                                    dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_INPUT)),
-                            HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_SCHEMA_SUB_OUTPUT),
-                                    dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_OUTPUT)),
-                            mongo, COLLECTION, engine);
-                }
-            }
-        }
-
-        mongo.insert(COLLECTION, dfJob.toJson(), r ->
-                HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                        .setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
-                        .end(Json.encodePrettily(dfJob)));
-        LOG.info(DFAPIMessage.logResponseMessage(1000, dfJob.getId()));
-    }
-
     private void addOneTransforms(RoutingContext routingContext) {
         final DFJobPOPJ dfJob = Json.decodeValue(
                 HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()), DFJobPOPJ.class);
@@ -1317,35 +1260,31 @@ public class DFDataProcessor extends AbstractVerticle {
         String mongoId = new ObjectId().toString();
         dfJob.setConnectUid(mongoId).setId(mongoId).getConnectorConfig().put(ConstantApp.PK_TRANSFORM_CUID, mongoId);
 
-        String jobPara = "";
+        String allowNonRestoredState = "false";
+        String savepointPath = "";
+        String parallelism = "1";
+        String entryClass = "";
+        String programArgs = "";
 
         if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_SQLA2A.name()) {
-            jobPara = "allowNonRestoredState=" + "false" + "&" +
-                    "entry-class=" + ConstantApp.FLINK_SQL_CLIENT_CLASS_NAME + "&" +
-                    "parallelism=" + "1" + "&" +
-                    "program-args=" + String.join(" ",
-                            this.kafka_server_host_and_port,
-                            this.schema_registry_host_and_port,
+            entryClass = ConstantApp.FLINK_SQL_CLIENT_CLASS_NAME;
+            programArgs = String.join(" ",
+                            this.kafka_server_host_and_port, this.schema_registry_host_and_port,
                             dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_INPUT),
                             dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_OUTPUT),
                             dfJob.getConnectorConfig().get(ConstantApp.PK_FLINK_TABLE_SINK_KEYS),
                             HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_CONSUMER_GROURP),
                                     ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
-                            "%22" + dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL) + "%22") + "&" +
-                "savepointPath=" + "";
+                            "\"" + dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL) + "\"");
+        } else
+            if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_UDF.name()) {
+            entryClass = ConstantApp.PK_TRANSFORM_JAR_CLASS_NAME;
+            programArgs = ConstantApp.PK_TRANSFORM_JAR_PARA;
         }
 
-        if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_UDF.name()) {
-            jobPara = "allowNonRestoredState=" + "false" + "&" +
-                    "entry-class=" + dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_JAR_CLASS_NAME)+ "&" +
-                    "parallelism=" + "1" + "&" +
-                    "program-args=" + dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_JAR_PARA) + "&" +
-                    "savepointPath=" + "";
-        }
-
-        LOG.debug("jobPara = " + jobPara);
-
-        FlinkTransformProcessor.submitFlinkJar(routingContext, rc_flink, dfJob, jobPara, mongo, COLLECTION_INSTALLED);
+        FlinkTransformProcessor.submitFlinkJar(dfJob, mongo, COLLECTION_INSTALLED,
+                flink_rest_server_host_port + ConstantApp.FLINK_REST_URL_JARS,
+                allowNonRestoredState, savepointPath, entryClass, parallelism, programArgs);
 
         mongo.insert(COLLECTION, dfJob.toJson(), r ->
                 HelpFunc.responseCorsHandleAddOn(routingContext.response())
@@ -2014,21 +1953,22 @@ public class DFDataProcessor extends AbstractVerticle {
                         resStatus = ConstantApp.DF_STATUS.LOST.name();
                     } else if (json.getJsonObject("jobConfig").containsKey(ConstantApp.PK_FLINK_SUBMIT_JOB_ID)) {
                         jobId = json.getJsonObject("jobConfig").getString(ConstantApp.PK_FLINK_SUBMIT_JOB_ID);
+
+                        // Get task status when flink job id is available
+                        try {
+                            HttpResponse<JsonNode> resConnectorStatus =
+                                    Unirest.get(restURI + "/" + jobId).header("accept", "application/json").asJson();
+                            resStatus = resConnectorStatus.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND ?
+                                    ConstantApp.DF_STATUS.LOST.name():// Not find - Mark status as LOST
+                                    HelpFunc.getTaskStatusFlink(resConnectorStatus.getBody().getObject());
+                        } catch (UnirestException ue) {
+                            // When jobId not found, set status LOST with error message.
+                            LOG.info(DFAPIMessage.logResponseMessage(9006, "TRANSFORM_STATUS_REFRESH:" +
+                                    "DELETE_LOST_TRANSFORMS at " + taskId));
+                            resStatus = ConstantApp.DF_STATUS.LOST.name();
+                        }
+
                     } else {
-                        resStatus = ConstantApp.DF_STATUS.LOST.name();
-                    }
-
-                    // Get task status
-
-                    try {
-                        HttpResponse<JsonNode> resConnectorStatus =
-                                Unirest.get(restURI + "/" + jobId).header("accept", "application/json").asJson();
-                        resStatus = resConnectorStatus.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND ?
-                            ConstantApp.DF_STATUS.LOST.name():// Not find - Mark status as LOST
-                                HelpFunc.getTaskStatusFlink(resConnectorStatus.getBody().getObject());
-                    } catch (UnirestException ue) {
-                        // When jobId not found, set status LOST with error message.
-                        LOG.info(DFAPIMessage.logResponseMessage(9006, "TRANSFORM_STATUS_REFRESH:" + "DELETE_LOST_TRANSFORMS"));
                         resStatus = ConstantApp.DF_STATUS.LOST.name();
                     }
 

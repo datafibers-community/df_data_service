@@ -16,8 +16,6 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.RoutingContext;
-
-import java.io.File;
 import java.util.Arrays;
 import java.util.Properties;
 import net.openhft.compiler.CompilerUtils;
@@ -39,53 +37,67 @@ public class FlinkTransformProcessor {
     /**
      * submitFlinkJar is a generic function to submit specific jar file with proper configurations, such as jar para,
      * to the Flink Rest API. This is used for Flink SQL, UDF, and Table API submission with different client class.
-     * @param routingContext vertx context
-     * @param restClient flink rest client
      * @param dfJob jd job object
-     * @param submitPara parameters used by the jar files separated by " "
+     * @param programArgs parameters used by the jar files separated by " "
      * @param mongo mongo admin client
      * @param COLLECTION mongo collection name
      */
-    public static void submitFlinkJar(RoutingContext routingContext, RestClient restClient, DFJobPOPJ dfJob,
-                                      String submitPara, MongoClient mongo, String COLLECTION) {
+    public static void submitFlinkJar(DFJobPOPJ dfJob, MongoClient mongo, String COLLECTION, String flinkRestURLBase,
+                                      String allowNonRestoredState, String savepointPath, String entryClass,
+                                      String parallelism, String programArgs) {
+        LOG.debug("SUBMIT JOB START");
         // Search mongo to get the flink_jar_id
         mongo.findOne(COLLECTION, new JsonObject().put("_id", ConstantApp.FLINK_JAR_ID_IN_MONGO), null, res -> {
             if (res.succeeded()) {
                 String df_jar_id = res.result().getString(ConstantApp.FLINK_JAR_VALUE_IN_MONGO);
-                LOG.info("DF_JAR_ID found = " + df_jar_id);
+
                 // Submit jar to Flink Rest API
-                //TODO to test and use unirest queryString function
-                String flinkJobSubmitPostURL = "http://localhost:8001" + ConstantApp.FLINK_REST_URL_JARS + "/" + df_jar_id + "/run?" +
-                        "allowNonRestoredState=false&entry-class=com.datafibers.util.FlinkAvroSQLClient&parallelism=1&program-args=localhost:9092+localhost:8081+test_stock+SQLSTATE_AGG_01+symbol+df_trans_flink_group_id+%22SELECT+symbol,+sum(bid_size)+as+total_bids+FROM+test_stock+group+by+symbol%22&savepointPath=";
+                //String flinkJobSubmitPostURL = "http://localhost:8001" + ConstantApp.FLINK_REST_URL_JARS + "/" + df_jar_id + "/run?" +
+                        //"allowNonRestoredState=false&entry-class=com.datafibers.util.FlinkAvroSQLClient&parallelism=1&program-args=localhost:9092+localhost:8081+test_stock+SQLSTATE_AGG_01+symbol+df_trans_flink_group_id+%22SELECT+symbol,+sum(bid_size)+as+total_bids+FROM+test_stock+group+by+symbol%22&savepointPath=";
+
+                String submitJarRestURL = String.join("/", flinkRestURLBase, df_jar_id, "run");
+                LOG.debug("submitJarRestURL=" + submitJarRestURL);
 
                 HttpResponse<String> jsonResponse = null;
                 try {
-                    jsonResponse = Unirest.post(flinkJobSubmitPostURL)
+                    jsonResponse = Unirest.post(submitJarRestURL)
+                            .queryString("allowNonRestoredState", allowNonRestoredState)
+                            .queryString("savepointPath", savepointPath)
+                            .queryString("entry-class", entryClass)
+                            .queryString("parallelism", parallelism)
+                            .queryString("allowNonRestoredState", allowNonRestoredState)
+                            .queryString("program-args", programArgs)
                             .asString();
                 } catch (UnirestException e) {
                     e.printStackTrace();
                 }
 
-                JsonObject jo = new JsonObject(jsonResponse.getBody());
-                String jobId = jo.getString(ConstantApp.FLINK_JOB_SUBMIT_RESPONSE_KEY);
+                String jobId = new JsonObject(jsonResponse.getBody()).getString(ConstantApp.FLINK_JOB_SUBMIT_RESPONSE_KEY);
+                LOG.debug("Flink submit job_id = " + jobId);
+
+                // Set id and status to the dfobj
                 dfJob.setFlinkIDToJobConfig(jobId).setStatus(ConstantApp.DF_STATUS.RUNNING.name());
-                LOG.info(DFAPIMessage.logResponseMessage(1005,
-                        "Flink_Job_ID = " + jobId + " at task " + dfJob.getId()));
+
+                LOG.debug("update dfpopj after get flink job_id = " + dfJob.toJson());
 
                 // Update job_id in job config in repo
                 mongo.updateCollection(COLLECTION, new JsonObject().put("_id", dfJob.getId()),
                         new JsonObject().put("$set", dfJob.toJson()), v -> {
                             if (v.failed()) {
                                 LOG.error(DFAPIMessage.logResponseMessage(1001, dfJob.getId()));
+                            } else {
+                                LOG.info(DFAPIMessage.logResponseMessage(1005,
+                                        "Flink_Job_ID = " + jobId + " for task " + dfJob.getId()));
                             }
                         }
                 );
             } else {
                 LOG.error(DFAPIMessage.
-                        logResponseMessage(9035, dfJob.getId() + " details - "
-                                + res.cause()));
+                        logResponseMessage(9035, dfJob.getId() + " details - " + res.cause()));
             }
         });
+
+        LOG.debug("SUBMIT JOB END");
     }
 
     /**
