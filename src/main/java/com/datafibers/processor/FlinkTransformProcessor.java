@@ -1,24 +1,29 @@
 package com.datafibers.processor;
 
 import com.datafibers.exception.DFPropertyValidationException;
+import com.datafibers.flinknext.Kafka010AvroTableSource;
 import com.datafibers.util.*;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.RestClient;
 import com.hubrick.vertx.rest.RestClientRequest;
+import com.mashape.unirest.http.HttpResponse;
+import com.mashape.unirest.http.Unirest;
+import com.mashape.unirest.http.exceptions.UnirestException;
 import io.vertx.core.Vertx;
 import io.vertx.core.WorkerExecutor;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.RoutingContext;
-
 import java.util.Arrays;
 import java.util.Properties;
+
+import io.vertx.ext.web.client.WebClient;
 import net.openhft.compiler.CompilerUtils;
 import org.apache.flink.client.CliFrontend;
 import org.apache.flink.client.program.ProgramInvocationException;
-import org.apache.flink.runtime.client.JobCancellationException;
 import org.apache.flink.streaming.connectors.kafka.partitioner.FlinkFixedPartitioner;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableEnvironment;
@@ -26,7 +31,6 @@ import org.apache.flink.table.api.java.StreamTableEnvironment;
 import org.apache.log4j.Logger;
 import com.datafibers.flinknext.DFRemoteStreamEnvironment;
 import com.datafibers.flinknext.Kafka09AvroTableSink;
-import com.datafibers.flinknext.Kafka09AvroTableSource;
 import com.datafibers.model.DFJobPOPJ;
 import org.json.JSONObject;
 
@@ -34,25 +38,71 @@ public class FlinkTransformProcessor {
     private static final Logger LOG = Logger.getLogger(FlinkTransformProcessor.class);
 
     /**
+     * submitFlinkJar is a generic function to submit specific jar file with proper configurations, such as jar para,
+     * to the Flink Rest API. This is used for Flink SQL, UDF, and Table API submission with different client class.
+     * @param dfJob jd job object
+     * @param programArgs parameters used by the jar files separated by " "
+     * @param mongo mongo admin client
+     * @param COLLECTION mongo collection name
+     */
+    public static void submitFlinkJar(WebClient client, DFJobPOPJ dfJob, MongoClient mongo,
+                                      String jarVersionCollection, String taskCollection,
+                                      String flinkRestHost, int flinkRestPort,
+                                      String allowNonRestoredState, String savepointPath, String entryClass,
+                                      String parallelism, String programArgs) {
+        LOG.debug("SUBMIT JOB START");
+        String taskId = dfJob.getId();
+        // Search mongo to get the flink_jar_id
+        mongo.findOne(jarVersionCollection, new JsonObject().put("_id", ConstantApp.FLINK_JAR_ID_IN_MONGO), null, res -> {
+            if (res.succeeded()) {
+                String df_jar_id = res.result().getString(ConstantApp.FLINK_JAR_VALUE_IN_MONGO);
+                // Submit jar to Flink Rest API
+                client.post(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL_JARS + "/" + df_jar_id + "/run")
+                        .addQueryParam("allowNonRestoredState", allowNonRestoredState)
+                        .addQueryParam("savepointPath", savepointPath)
+                        .addQueryParam("entry-class", entryClass)
+                        .addQueryParam("parallelism", parallelism)
+                        .addQueryParam("allowNonRestoredState", allowNonRestoredState)
+                        .addQueryParam("program-args", programArgs)
+                        .send(ar -> {
+                            if (ar.succeeded()) {
+                                String flinkJobId = ar.result().bodyAsJsonObject()
+                                        .getString(ConstantApp.FLINK_JOB_SUBMIT_RESPONSE_KEY);
+
+                                dfJob.setFlinkIDToJobConfig(flinkJobId)
+                                        .setStatus(ConstantApp.DF_STATUS.RUNNING.name());
+                                LOG.debug("dfJob to Json = " + dfJob.toJson());
+
+                                mongo.updateCollection(taskCollection, new JsonObject().put("_id", taskId),
+                                        new JsonObject().put("$set", dfJob.toJson()), v -> {
+                                            if (v.failed()) {
+                                                LOG.error(DFAPIMessage.logResponseMessage(1001, taskId));
+                                            } else {
+                                                LOG.info(DFAPIMessage.logResponseMessage(1005,
+                                                        taskId + " flinkJobId = " + flinkJobId));
+                                            }
+                                        }
+                                );
+                            } else {
+                                LOG.error(DFAPIMessage.logResponseMessage(9010, taskId +
+                                        " details - " + ar.cause()));
+                            }
+                        });
+            } else {
+                LOG.error(DFAPIMessage.
+                        logResponseMessage(9035, taskId + " details - " + res.cause()));
+            }
+        });
+        LOG.debug("SUBMIT JOB END");
+    }
+
+    /**
      * This is to read AVRO data and output JSON format of data
      * This method first submit a flink job against Kafka streaming in other thread.
      * At the end, update the record at repo - mongo as response.
      * It supports both SQL and table API
-     *
-     * @param dfJob
-     * @param vertx
-     * @param maxRunTime
-     * @param flinkEnv
-     * @param kafkaHostPort
-     * @param groupid
-     * @param topicIn
-     * @param topicOut
-     * @param sinkKeys
-     * @param transScript     - this either SQL or table API
-     * @param mongoClient
-     * @param mongoCOLLECTION
-     * @param engine          - SQL_API or TABLE_API
      */
+    @Deprecated
     public static void submitFlinkJobA2A(DFJobPOPJ dfJob, Vertx vertx, Integer maxRunTime,
                                          DFRemoteStreamEnvironment flinkEnv, String kafkaHostPort,
                                          String SchemaRegistryHostPort, String groupid,
@@ -61,6 +111,7 @@ public class FlinkTransformProcessor {
                                          MongoClient mongoClient, String mongoCOLLECTION, String engine) {
 
         String uuid = dfJob.hashCode() + "";
+        LOG.debug("submitFlinkJobA2A is called with uuid = " + uuid);
         StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(flinkEnv);
 
         // Set all properties. Note, all inputTopic related properties are set later in loop
@@ -68,23 +119,24 @@ public class FlinkTransformProcessor {
         properties.setProperty(ConstantApp.PK_KAFKA_HOST_PORT.replace("_", "."), kafkaHostPort); //has to use bootstrap.servers
         properties.setProperty(ConstantApp.PK_KAFKA_CONSUMER_GROURP, groupid);
         properties.setProperty(ConstantApp.PK_SCHEMA_SUB_OUTPUT, schemaSubjectOut);
-        properties.setProperty(ConstantApp.PK_KAFKA_SCHEMA_REGISTRY_HOST_PORT, SchemaRegistryHostPort);
+        properties.setProperty(ConstantApp.PK_KAFKA_SCHEMA_REGISTRY_HOST_PORT.replace("_", "."), SchemaRegistryHostPort);
         properties.setProperty(ConstantApp.PK_FLINK_TABLE_SINK_KEYS, sinkKeys);
-
-        // delivered properties
-        properties.setProperty(ConstantApp.PK_SCHEMA_ID_OUTPUT,
-                SchemaRegistryClient.getLatestSchemaIDFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT) + "");
-        properties.setProperty(ConstantApp.PK_SCHEMA_STR_OUTPUT,
-                SchemaRegistryClient.getLatestSchemaFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT).toString());
 
         // Check and validate properties
         String[] topicInList = topicIn.split(",");
         String[] schemaSubjectInList = schemaSubjectIn.split(",");
 
-        if (topicInList.length != schemaSubjectInList.length)
+        if (topicInList.length != schemaSubjectInList.length) {
+            LOG.error("Number of inputTopic and inputTopicSchema Mismatch. topicInList.length=" + topicInList.length +
+                    " schemaSubjectInList.length=" + schemaSubjectInList.length);
             throw new DFPropertyValidationException("Number of inputTopic and inputTopicSchema Mismatch.");
-        if (engine.equalsIgnoreCase("TABLE_API") && (topicInList.length > 1 || schemaSubjectInList.length > 1))
+        }
+
+        if (engine.equalsIgnoreCase("TABLE_API") && (topicInList.length > 1 || schemaSubjectInList.length > 1)) {
+            LOG.error("Script/Table API only supports single inputTopic/inputTopicSchema. topicInList.length="
+                    + topicInList.length + " schemaSubjectInList.length=" + schemaSubjectInList.length);
             throw new DFPropertyValidationException("Script/Table API only supports single inputTopic/inputTopicSchema.");
+        }
 
         WorkerExecutor exec_flink = vertx.createSharedWorkerExecutor(dfJob.getName() + dfJob.hashCode(),
                 ConstantApp.WORKER_POOL_SIZE, ConstantApp.MAX_RUNTIME);
@@ -104,7 +156,7 @@ public class FlinkTransformProcessor {
                             SchemaRegistryClient.getLatestSchemaFromProperty(properties,
                                     ConstantApp.PK_SCHEMA_SUB_INPUT).toString());
 
-                    tableEnv.registerTableSource(topicInList[i], new Kafka09AvroTableSource(topicInList[i], properties));
+                    tableEnv.registerTableSource(topicInList[i], new Kafka010AvroTableSource(topicInList[i], properties));
                     for (String key : properties.stringPropertyNames()) {
                         LOG.debug("FLINK_PROPERTIES KEY:" + key + " VALUE:" + properties.getProperty(key));
                     }
@@ -145,6 +197,14 @@ public class FlinkTransformProcessor {
                     default:
                         break;
                 }
+
+                SchemaRegistryClient.addSchemaFromTableResult(SchemaRegistryHostPort, schemaSubjectOut, result);
+
+                // delivered properties
+                properties.setProperty(ConstantApp.PK_SCHEMA_SUB_OUTPUT, schemaSubjectOut);
+                properties.setProperty(ConstantApp.PK_SCHEMA_ID_OUTPUT, SchemaRegistryClient.getLatestSchemaIDFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT) + "");
+                properties.setProperty(ConstantApp.PK_SCHEMA_STR_OUTPUT, SchemaRegistryClient.getLatestSchemaFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT).toString());
+
 
                 Kafka09AvroTableSink avro_sink =
                         new Kafka09AvroTableSink(topicOut, properties, new FlinkFixedPartitioner());
@@ -302,6 +362,7 @@ public class FlinkTransformProcessor {
      * @param jobManagerHostPort The job manager address and port where to send cancel
      * @param jarFile The Jar file name uploaded
      */
+    @Deprecated
     public static void runFlinkJar (String jarFile, String jobManagerHostPort) {
 
         try {
@@ -331,63 +392,65 @@ public class FlinkTransformProcessor {
      * @param taskId This is the id used to look up status
      */
     public static void forwardGetAsGetOne(RoutingContext routingContext, RestClient restClient, String taskId, String jobId) {
-        // Create REST Client for Kafka Connect REST Forward
-        final RestClientRequest postRestClientRequest =
-                restClient.get(ConstantApp.FLINK_REST_URL + "/" + jobId, String.class,
-                        portRestResponse -> {
-                            JsonObject jo = new JsonObject(portRestResponse.getBody());
-                            JsonArray subTaskArray = jo.getJsonArray("vertices");
-                            for (int i = 0; i < subTaskArray.size(); i++) {
-                                subTaskArray.getJsonObject(i)
-                                        .put("subTaskId", subTaskArray.getJsonObject(i).getString("id"))
-                                        .put("id", taskId + "_" + subTaskArray.getJsonObject(i).getString("id"))
-                                        .put("jobId", jo.getString("jid"))
-                                        .put("dfTaskState", HelpFunc.getTaskStatusFlink(new JSONObject(jo.toString())))
-                                        .put("taskState", jo.getString("state"));
-                            }
-                            HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                                    .setStatusCode(ConstantApp.STATUS_CODE_OK)
-                                    .putHeader("X-Total-Count", subTaskArray.size() + "" )
-                                    .end(Json.encodePrettily(subTaskArray.getList()));
-                            LOG.info(DFAPIMessage.logResponseMessage(1024, taskId));
-
-                            portRestResponse.exceptionHandler(exception -> {
+        if(!jobId.isEmpty() || jobId != null) {
+            // Create REST Client for Kafka Connect REST Forward
+            final RestClientRequest postRestClientRequest =
+                    restClient.get(ConstantApp.FLINK_REST_URL + "/" + jobId, String.class,
+                            portRestResponse -> {
+                                JsonObject jo = new JsonObject(portRestResponse.getBody());
+                                JsonArray subTaskArray = jo.getJsonArray("vertices");
+                                for (int i = 0; i < subTaskArray.size(); i++) {
+                                    subTaskArray.getJsonObject(i)
+                                            .put("subTaskId", subTaskArray.getJsonObject(i).getString("id"))
+                                            .put("id", taskId + "_" + subTaskArray.getJsonObject(i).getString("id"))
+                                            .put("jobId", jo.getString("jid"))
+                                            .put("dfTaskState", HelpFunc.getTaskStatusFlink(new JSONObject(jo.toString())))
+                                            .put("taskState", jo.getString("state"));
+                                }
                                 HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                         .setStatusCode(ConstantApp.STATUS_CODE_OK)
-                                        .end(DFAPIMessage.getResponseMessage(9029));
-                                LOG.error(DFAPIMessage.logResponseMessage(9029, taskId));
+                                        .putHeader("X-Total-Count", subTaskArray.size() + "" )
+                                        .end(Json.encodePrettily(subTaskArray.getList()));
+                                LOG.info(DFAPIMessage.logResponseMessage(1024, taskId));
+
+                                portRestResponse.exceptionHandler(exception -> {
+                                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                            .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                            .end(DFAPIMessage.getResponseMessage(9029));
+                                    LOG.error(DFAPIMessage.logResponseMessage(9029, taskId));
+                                });
                             });
-                        });
 
-        // Return a lost status when there is exception
-        postRestClientRequest.exceptionHandler(exception -> {
-            HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                    .setStatusCode(ConstantApp.STATUS_CODE_OK)
-                    //.setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                    .end(Json.encodePrettily(new JsonObject()
-                            .put("id", taskId)
-                            .put("jobId", jobId)
-                            .put("state", ConstantApp.DF_STATUS.LOST.name())
-                            .put("jobState", ConstantApp.DF_STATUS.LOST.name())
-                            .put("subTask", new JsonArray().add("NULL"))));
-            LOG.error(DFAPIMessage.logResponseMessage(9006, taskId));
-        });
+            // Return a lost status when there is exception
+            postRestClientRequest.exceptionHandler(exception -> {
+                HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                        .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                        //.setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                        .end(Json.encodePrettily(new JsonObject()
+                                .put("id", taskId)
+                                .put("jobId", jobId)
+                                .put("state", ConstantApp.DF_STATUS.LOST.name())
+                                .put("jobState", ConstantApp.DF_STATUS.LOST.name())
+                                .put("subTask", new JsonArray().add("NULL"))));
+                LOG.error(DFAPIMessage.logResponseMessage(9006, taskId));
+            });
 
-        restClient.exceptionHandler(exception -> {
-            HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                    .setStatusCode(ConstantApp.STATUS_CODE_OK)
-                    //.setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                    .end(Json.encodePrettily(new JsonObject()
-                            .put("id", taskId)
-                            .put("jobId", jobId)
-                            .put("state", ConstantApp.DF_STATUS.LOST.name())
-                            .put("jobState", ConstantApp.DF_STATUS.LOST.name())
-                            .put("subTask", new JsonArray().add("NULL"))));
-            LOG.error(DFAPIMessage.logResponseMessage(9028, taskId));
-        });
+            restClient.exceptionHandler(exception -> {
+                HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                        .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                        //.setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                        .end(Json.encodePrettily(new JsonObject()
+                                .put("id", taskId)
+                                .put("jobId", jobId)
+                                .put("state", ConstantApp.DF_STATUS.LOST.name())
+                                .put("jobState", ConstantApp.DF_STATUS.LOST.name())
+                                .put("subTask", new JsonArray().add("NULL"))));
+                LOG.error(DFAPIMessage.logResponseMessage(9028, taskId));
+            });
 
-        postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
-        postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
-        postRestClientRequest.end();
+            postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
+            postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
+            postRestClientRequest.end();
+        }
     }
 }

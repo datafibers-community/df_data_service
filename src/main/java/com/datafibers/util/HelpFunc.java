@@ -1,8 +1,13 @@
 package com.datafibers.util;
 
+import com.mashape.unirest.http.HttpResponse;
+import com.mashape.unirest.http.Unirest;
+import com.mashape.unirest.http.exceptions.UnirestException;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+
+import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import io.vertx.ext.mongo.FindOptions;
@@ -381,5 +386,17 @@ public class HelpFunc {
             sortedJsonArray.put(jsonValues.get(i));
         }
         return sortedJsonArray;
+    }
+
+    public static String uploadJar(String postURL, String jarFilePath) {
+        HttpResponse<String> jsonResponse = null;
+        try {
+            jsonResponse = Unirest.post(postURL)
+                    .field("file", new File(jarFilePath))
+                    .asString();
+        } catch (UnirestException e) {
+            e.printStackTrace();
+        }
+        return jsonResponse.getBody();
     }
 }

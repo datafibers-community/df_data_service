@@ -1,14 +1,11 @@
 package com.datafibers.processor;
 
-import com.datafibers.model.DFJobPOPJ;
 import com.datafibers.util.DFAPIMessage;
 import com.datafibers.util.DFMediaType;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.RestClientRequest;
 import io.vertx.core.Vertx;
 import io.vertx.core.WorkerExecutor;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.RoutingContext;
 import java.net.ConnectException;
 import java.util.Arrays;

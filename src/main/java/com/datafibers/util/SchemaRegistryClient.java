@@ -1,12 +1,21 @@
 package com.datafibers.util;
 
+import com.mashape.unirest.http.HttpResponse;
+import com.mashape.unirest.http.Unirest;
+import com.mashape.unirest.http.exceptions.UnirestException;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.table.api.Table;
+import org.apache.sling.commons.json.JSONArray;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.apache.log4j.Logger;
+import org.json.JSONObject;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -20,6 +29,10 @@ import static org.apache.avro.Schema.Type.RECORD;
 public class SchemaRegistryClient {
 
     private static final Logger LOG = Logger.getLogger(SchemaRegistryClient.class);
+    public static final String KEY_FIELD = "symbol";
+    public static final String VALUE_FIELD = "refresh_time";
+    public static final String HTTP_HEADER_APPLICATION_JSON_CHARSET = "application/json; charset=utf-8";
+    public static final String AVRO_REGISTRY_CONTENT_TYPE = "application/vnd.schemaregistry.v1+json";
 
     public static Schema getSchemaFromRegistry (String schemaUri, String schemaSubject, String schemaVersion) {
 
@@ -482,4 +495,117 @@ public class SchemaRegistryClient {
 
         return fieldTypes;
     }
+
+    public static void addSchemaIfNotAvailable(Properties properties) {
+
+        String schemaUri;
+        String subject = properties.getProperty(ConstantApp.PK_SCHEMA_SUB_OUTPUT);
+        String schemaString = properties.getProperty(ConstantApp.PK_SCHEMA_STR_OUTPUT);
+        String srKey = ConstantApp.PK_KAFKA_SCHEMA_REGISTRY_HOST_PORT.replace("_", ".");
+
+        if (properties.getProperty(srKey) == null) {
+            schemaUri = "http://localhost:8081";
+        } else {
+            schemaUri = "http://" + properties.getProperty(srKey);
+        }
+
+        String schemaRegistryRestURL = schemaUri + "/subjects/" + subject + "/versions";
+
+        try {
+            HttpResponse<String> schemaRes = Unirest.get(schemaRegistryRestURL + "/latest")
+                    .header("accept", HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                    .asString();
+
+            if(schemaRes.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND) { // Add the meta sink schema
+                Unirest.post(schemaRegistryRestURL)
+                        .header("accept", HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                        .header("Content-Type", AVRO_REGISTRY_CONTENT_TYPE)
+                        .body(schemaString).asString();
+                LOG.info("Subject - " + subject + " Not Found, so create it.");
+            } else {
+                LOG.info("Subject - " + subject + " Found.");
+            }
+        } catch (UnirestException ue) {
+            ue.printStackTrace();
+        }
+    }
+
+    public static void addSchemaFromTableResult(String schemaUri, String subject, Table result) {
+
+        if (schemaUri == null) {
+            schemaUri = "http://localhost:8081";
+        }
+
+        if(!schemaUri.startsWith("http")) {
+            schemaUri = "http://" + schemaUri;
+        }
+
+        String schemaRegistryRestURL = schemaUri + "/subjects/" + subject + "/versions";
+
+        try {
+            HttpResponse<String> schemaRes = Unirest.get(schemaRegistryRestURL + "/latest")
+                    .header("accept", HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                    .asString();
+
+            if(schemaRes.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND) { // Add the meta sink schema
+                schemaRes = Unirest.post(schemaRegistryRestURL)
+                        .header("accept", HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                        .header("Content-Type", AVRO_REGISTRY_CONTENT_TYPE)
+                        .body(tableAPIToAvroSchema(result, subject))
+                        .asString();
+
+                LOG.info("Subject - " + subject + " Not Found, so create it." + schemaRes.getStatus());
+            } else {
+                LOG.info("Subject - " + subject + " Found.");
+            }
+        } catch (UnirestException ue) {
+            ue.printStackTrace();
+        }
+    }
+
+    public static String tableAPIToAvroSchema(Table result, String subject) {
+        JsonArray fields = new JsonArray();
+        for(String colName : result.getSchema().getColumnNames()) {
+            fields.add(new JsonObject()
+                    .put("name", colName)
+                    .put("type", tableTypeToAvroType(result.getSchema().getType(colName).toString())));
+        }
+
+        return new JsonObject().put("schema", new JsonObject()
+                .put("type", "record")
+                .put("name", subject)
+                .put("fields", fields).toString()).toString();
+
+
+    }
+
+    public static String tableTypeToAvroType(String type) {
+        String returnType;
+        String cleanedType = type.toLowerCase().replaceAll("some", "").replace("(", "").replace(")", "");
+        switch (cleanedType) {
+            case "integer":
+            case "short":
+                returnType = "int";
+                break;
+            case "byte":
+                returnType = "bytes";
+                break;
+            case "timestamp":
+            case "time":
+            case "date":
+            case "decimal":
+            case "interval_months":
+            case "interval_millis":
+            case "primitive_array":
+            case "object_array":
+            case "map":
+                returnType = "string";
+                break;
+            default:
+                returnType = cleanedType;
+        }
+        return returnType;
+    }
+
+
 }

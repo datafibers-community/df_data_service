@@ -88,6 +88,13 @@ public final class ConstantApp {
 
     // Flink rest api setting
     public static final String FLINK_REST_URL = "/jobs";
+    public static final String FLINK_REST_URL_JARS = "/jars";
+    public static final String FLINK_REST_URL_JARS_UPLOAD = FLINK_REST_URL_JARS + "/upload";
+    public static final String FLINK_JAR_ID_IN_MONGO = "df_jar_uploaded_to_flink";
+    public static final String FLINK_JAR_VALUE_IN_MONGO = "filename";
+    public static final String FLINK_JOB_SUBMIT_RESPONSE_KEY = "jobid";
+    public static final String FLINK_SQL_CLIENT_CLASS_NAME = "com.datafibers.util.FlinkAvroSQLClient";
+    public static final String FLINK_TABLEAPI_CLIENT_CLASS_NAME = "com.datafibers.util.FlinkAvroTableAPIClient";
     public static final String FLINK_DUMMY_JOB_ID = "00000000000000000000000000000000";
 
     // HTTP req/res constants
@@ -159,7 +166,7 @@ public final class ConstantApp {
     public static final String PARTITIONS = "partitions";
     public static final String REPLICATION_FACTOR = "replicationFactor";
     public static final int WORKER_POOL_SIZE = 20; // VERT.X Worker pool size
-    public static final int MAX_RUNTIME = 6000;  // VERT.X Worker timeout in 6 sec
+    public static final int MAX_RUNTIME = 120000;  // VERT.X Worker timeout in 6 sec
     public static final String SCHEMA_URI_KEY = "schema.registry.url";
 
     // Properties keys for admin
@@ -188,5 +195,6 @@ public final class ConstantApp {
     public static final String PK_KAFKA_TOPIC_OUTPUT = "topic_out";
     public static final String PK_TRANSFORM_SQL = "trans_sql";
     public static final String PK_TRANSFORM_SCRIPT = "trans_script";
-    public static final String PK_TRANSFORM_JAR = "trans_jar";
+    public static final String PK_TRANSFORM_JAR_CLASS_NAME = "trans_jar";
+    public static final String PK_TRANSFORM_JAR_PARA = "trans_jar_para";
 }

@@ -10,16 +10,17 @@ import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.MongoClient;
+import io.vertx.ext.mongo.UpdateOptions;
 import io.vertx.ext.web.FileUpload;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.handler.BodyHandler;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.*;
 import java.util.stream.Collectors;
-
 import io.vertx.ext.web.handler.TimeoutHandler;
 import io.vertx.kafka.client.common.PartitionInfo;
 import io.vertx.kafka.client.consumer.KafkaConsumer;
@@ -71,6 +72,8 @@ public class DFDataProcessor extends AbstractVerticle {
     private RestClient rc;
     private RestClient rc_schema;
     private RestClient rc_flink;
+    private WebClient wc_flink;
+    private static String df_jar_path;
 
     // Connects attributes
     private static Boolean kafka_connect_enabled;
@@ -83,6 +86,7 @@ public class DFDataProcessor extends AbstractVerticle {
     private static String flink_server_host;
     private static Integer flink_server_port;
     private static Integer flink_rest_server_port;
+    private static String flink_rest_server_host_port;
     public static DFRemoteStreamEnvironment env;
 
     // Kafka attributes
@@ -94,12 +98,17 @@ public class DFDataProcessor extends AbstractVerticle {
     private static String schema_registry_host_and_port;
     private static Integer schema_registry_rest_port;
 
+    // Flink Rest API
+    private static String flink_jar_id;
+
     private static final Logger LOG = Logger.getLogger(DFDataProcessor.class);
 
     @Override
     public void start(Future<Void> fut) {
         // Turn off
         Logger.getLogger("io.vertx.core.impl.BlockedThreadChecker").setLevel(Level.OFF);
+
+        this.df_jar_path = getClass().getProtectionDomain().getCodeSource().getLocation().getPath();
 
         /**
          * Get all application configurations
@@ -125,6 +134,8 @@ public class DFDataProcessor extends AbstractVerticle {
         this.flink_server_host = config().getString("flink.servers.host", "localhost");
         this.flink_server_port = config().getInteger("flink.servers.port", 6123);
         this.flink_rest_server_port = config().getInteger("flink.rest.server.port", 8001); // Same to Flink Web Dashboard
+        this.flink_rest_server_host_port = (this.flink_server_host.contains("http")?
+                this.flink_server_host : "http://" + this.flink_server_host) + ":" + this.flink_rest_server_port;
 
         // Kafka config
         this.kafka_server_host = this.kafka_connect_rest_host;
@@ -134,6 +145,7 @@ public class DFDataProcessor extends AbstractVerticle {
         // Schema Registry
         this.schema_registry_rest_port = config().getInteger("kafka.schema.registry.rest.port", 8081);
         this.schema_registry_host_and_port = this.kafka_server_host + ":" + this.schema_registry_rest_port;
+
 
         /**
          * Create all application client
@@ -181,29 +193,39 @@ public class DFDataProcessor extends AbstractVerticle {
                     .setDefaultPort(this.schema_registry_rest_port), httpMessageConverters);
 
         }
+        
         // Non-blocking Vertx Rest API Client to talk toFlink Rest when needed
         if (this.transform_engine_flink_enabled) {
             this.rc_flink = RestClient.create(vertx, restClientOptions.setDefaultHost(this.flink_server_host)
                     .setDefaultPort(this.flink_rest_server_port), httpMessageConverters);
-        }
+            this.wc_flink = WebClient.create(vertx);
 
-        // Flink stream environment for data transformation
-        if(transform_engine_flink_enabled) {
             if (config().getBoolean("debug.mode", Boolean.FALSE)) {
                 // TODO Add DF LocalExecutionEnvironment Support
-//                env = StreamExecutionEnvironment.getExecutionEnvironment()
-//                        .setParallelism(config().getInteger("flink.job.parallelism", 1));
             } else {
-                String jarPath = getClass().getProtectionDomain().getCodeSource().getLocation().getPath();
                 LOG.debug("Flink resource manager is started at " + this.flink_server_host + ":" + this.flink_server_port);
                 LOG.debug("Distributed below Jar to above Flink resource manager.");
-                LOG.debug(jarPath);
-                env = new DFRemoteStreamEnvironment(this.flink_server_host, this.flink_server_port, jarPath)
+                LOG.debug(this.df_jar_path);
+                env = new DFRemoteStreamEnvironment(this.flink_server_host, this.flink_server_port, this.df_jar_path)
                         .setParallelism(config().getInteger("flink.job.parallelism", 1));
-//                env = StreamExecutionEnvironment.createRemoteEnvironment(this.flink_server_host,
-//                        this.flink_server_port, jarPath)
-//                        .setParallelism(config().getInteger("flink.job.parallelism", 1));
             }
+
+            // upload df jar to flink rest server and keep the latest jar_id in mongo
+            vertx.executeBlocking(future -> {
+                //TODO delete all df jars already uploaded
+                String df_jar_info =
+                        HelpFunc.uploadJar(flink_rest_server_host_port + ConstantApp.FLINK_REST_URL_JARS_UPLOAD,
+                                this.df_jar_path);
+                // Mongo insert or else update
+                mongo.updateCollectionWithOptions(COLLECTION_INSTALLED,
+                        new JsonObject().put("_id", ConstantApp.FLINK_JAR_ID_IN_MONGO),
+                        new JsonObject().put("$set", new JsonObject(df_jar_info)),
+                        new UpdateOptions().setUpsert(true),
+                        r -> LOG.debug(DFAPIMessage.logResponseMessage(1027, "JAR_UPLOAD_TO_COLLECTION_INSTALLED")));
+
+            }, res -> {
+                LOG.info(DFAPIMessage.logResponseMessage(1027, "JAR_UPLOAD_TO_COLLECTION_INSTALLED"));
+            });
         }
 
         // Import from remote server. It is blocking at this point.
@@ -1230,49 +1252,35 @@ public class DFDataProcessor extends AbstractVerticle {
     private void addOneTransforms(RoutingContext routingContext) {
         final DFJobPOPJ dfJob = Json.decodeValue(
                 HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()), DFJobPOPJ.class);
-        dfJob.setStatus(ConstantApp.DF_STATUS.RUNNING.name());
+
+        dfJob.setStatus(ConstantApp.DF_STATUS.UNASSIGNED.name());
         String mongoId = new ObjectId().toString();
         dfJob.setConnectUid(mongoId).setId(mongoId).getConnectorConfig().put(ConstantApp.PK_TRANSFORM_CUID, mongoId);
 
-        if (this.transform_engine_flink_enabled) {
-            // Submit Flink UDF
-            if(dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_UDF.name()) {
-                FlinkTransformProcessor.runFlinkJar(dfJob.getUdfUpload(),
-                        this.flink_server_host + ":" + this.flink_server_port);
-            } else {
-                String engine = "";
-                if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_SQLA2A.name()) {
-                    engine = "SQL_API";
-                }
+        String allowNonRestoredState = "false";
+        String savepointPath = "";
+        String parallelism = "1";
+        String entryClass = ConstantApp.PK_TRANSFORM_JAR_CLASS_NAME;
+        String programArgs = "";
 
-                if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_Script.name()) {
-                    engine = "TABLE_API";
-                }
-
-                if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_UDF.name()) {
-                    FlinkTransformProcessor.runFlinkJar(dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_JAR),
-                            this.flink_server_host + this.flink_server_port);
-                }
-
-                // When schema name are not provided, got them from topic
-                FlinkTransformProcessor.submitFlinkJobA2A(dfJob, vertx,
-                        config().getInteger("flink.trans.client.timeout", 8000), env,
-                        this.kafka_server_host_and_port,
-                        this.schema_registry_host_and_port,
-                        HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_CONSUMER_GROURP),
-                                ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
-                        dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_INPUT),
-                        dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_OUTPUT),
-                        dfJob.getConnectorConfig().get(ConstantApp.PK_FLINK_TABLE_SINK_KEYS),
-                        dfJob.getConnectorConfig().get(engine == "SQL_API" ?
-                                ConstantApp.PK_TRANSFORM_SQL:ConstantApp.PK_TRANSFORM_SCRIPT),
-                        HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_SCHEMA_SUB_INPUT),
-                                dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_INPUT)),
-                        HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_SCHEMA_SUB_OUTPUT),
-                                dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_OUTPUT)),
-                        mongo, COLLECTION, engine);
-            }
+        if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_SQLA2A.name()) {
+            entryClass = ConstantApp.FLINK_SQL_CLIENT_CLASS_NAME;
+            programArgs = String.join(" ",
+                            this.kafka_server_host_and_port, this.schema_registry_host_and_port,
+                            dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_INPUT),
+                            dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_OUTPUT),
+                            dfJob.getConnectorConfig().get(ConstantApp.PK_FLINK_TABLE_SINK_KEYS),
+                            HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_CONSUMER_GROURP),
+                                    ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
+                            "\"" + dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL) + "\"");
+        } else
+            if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_UDF.name()) {
+            programArgs = ConstantApp.PK_TRANSFORM_JAR_PARA;
         }
+
+        FlinkTransformProcessor.submitFlinkJar(wc_flink, dfJob, mongo, COLLECTION_INSTALLED, COLLECTION,
+                flink_server_host, flink_rest_server_port,
+                allowNonRestoredState, savepointPath, entryClass, parallelism, programArgs);
 
         mongo.insert(COLLECTION, dfJob.toJson(), r ->
                 HelpFunc.responseCorsHandleAddOn(routingContext.response())
@@ -1302,14 +1310,15 @@ public class DFDataProcessor extends AbstractVerticle {
      */
     private void addOneSchema(RoutingContext routingContext) {
         SchemaRegisterProcessor.forwardAddOneSchema(routingContext, rc_schema, schema_registry_host_and_port);
+
         JSONObject jsonObj = new JSONObject(routingContext.getBodyAsString());
+        String topic = jsonObj.getString("id");
         int partitions = 1;
         int replicaFactor = 1;
         if(jsonObj.has(ConstantApp.PARTITIONS)) partitions = jsonObj.getInt(ConstantApp.PARTITIONS);
         if(jsonObj.has(ConstantApp.REPLICATION_FACTOR)) replicaFactor = jsonObj.getInt(ConstantApp.REPLICATION_FACTOR);
         // Since vertx kafka admin still need zookeeper, we now use kafka native admin api until vertx version get updated
-        KafkaAdminClient.createTopic(kafka_server_host_and_port, routingContext.request().getParam("id"),
-                partitions, replicaFactor);
+        KafkaAdminClient.createTopic(kafka_server_host_and_port, topic, partitions, replicaFactor);
     }
 
     /**
@@ -1940,21 +1949,22 @@ public class DFDataProcessor extends AbstractVerticle {
                         resStatus = ConstantApp.DF_STATUS.LOST.name();
                     } else if (json.getJsonObject("jobConfig").containsKey(ConstantApp.PK_FLINK_SUBMIT_JOB_ID)) {
                         jobId = json.getJsonObject("jobConfig").getString(ConstantApp.PK_FLINK_SUBMIT_JOB_ID);
+
+                        // Get task status when flink job id is available
+                        try {
+                            HttpResponse<JsonNode> resConnectorStatus =
+                                    Unirest.get(restURI + "/" + jobId).header("accept", "application/json").asJson();
+                            resStatus = resConnectorStatus.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND ?
+                                    ConstantApp.DF_STATUS.LOST.name():// Not find - Mark status as LOST
+                                    HelpFunc.getTaskStatusFlink(resConnectorStatus.getBody().getObject());
+                        } catch (UnirestException ue) {
+                            // When jobId not found, set status LOST with error message.
+                            LOG.info(DFAPIMessage.logResponseMessage(9006,
+                                    "TRANSFORM_STATUS_REFRESH_FOUND " + taskId + " LOST"));
+                            resStatus = ConstantApp.DF_STATUS.LOST.name();
+                        }
+
                     } else {
-                        resStatus = ConstantApp.DF_STATUS.LOST.name();
-                    }
-
-                    // Get task status
-
-                    try {
-                        HttpResponse<JsonNode> resConnectorStatus =
-                                Unirest.get(restURI + "/" + jobId).header("accept", "application/json").asJson();
-                        resStatus = resConnectorStatus.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND ?
-                            ConstantApp.DF_STATUS.LOST.name():// Not find - Mark status as LOST
-                                HelpFunc.getTaskStatusFlink(resConnectorStatus.getBody().getObject());
-                    } catch (UnirestException ue) {
-                        // When jobId not found, set status LOST with error message.
-                        LOG.info(DFAPIMessage.logResponseMessage(9006, "TRANSFORM_STATUS_REFRESH:" + "DELETE_LOST_TRANSFORMS"));
                         resStatus = ConstantApp.DF_STATUS.LOST.name();
                     }
 
