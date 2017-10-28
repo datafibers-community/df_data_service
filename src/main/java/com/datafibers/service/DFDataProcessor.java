@@ -221,7 +221,7 @@ public class DFDataProcessor extends AbstractVerticle {
                         new JsonObject().put("_id", ConstantApp.FLINK_JAR_ID_IN_MONGO),
                         new JsonObject().put("$set", new JsonObject(df_jar_info)),
                         new UpdateOptions().setUpsert(true),
-                        r -> LOG.debug("New DF_JAR_INFO is saved to " + COLLECTION_INSTALLED));
+                        r -> LOG.debug(DFAPIMessage.logResponseMessage(1027, "JAR_UPLOAD_TO_COLLECTION_INSTALLED")));
 
             }, res -> {
                 LOG.info(DFAPIMessage.logResponseMessage(1027, "JAR_UPLOAD_TO_COLLECTION_INSTALLED"));

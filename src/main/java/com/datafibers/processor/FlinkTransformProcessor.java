@@ -71,6 +71,8 @@ public class FlinkTransformProcessor {
 
                                 dfJob.setFlinkIDToJobConfig(flinkJobId)
                                         .setStatus(ConstantApp.DF_STATUS.RUNNING.name());
+                                LOG.debug("dfJob to Json = " + dfJob.toJson());
+
                                 mongo.updateCollection(taskCollection, new JsonObject().put("_id", taskId),
                                         new JsonObject().put("$set", dfJob.toJson()), v -> {
                                             if (v.failed()) {
