@@ -41,5 +41,5 @@
     "eject": "react-scripts eject",
     "deploy": "gh-pages -d build"
   },
-  "homepage": "http://localhost/dfa/"
+  "homepage": "http://localhost:8000/dfa/"
 }
