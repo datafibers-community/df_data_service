@@ -41,5 +41,5 @@
     "eject": "react-scripts eject",
     "deploy": "gh-pages -d build"
   },
-  "homepage": "http://marmelab.com/admin-on-rest-demo/"
+  "homepage": "http://localhost/dfa/"
 }
