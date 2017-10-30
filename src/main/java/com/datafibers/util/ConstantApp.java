@@ -195,6 +195,6 @@ public final class ConstantApp {
     public static final String PK_KAFKA_TOPIC_OUTPUT = "topic_out";
     public static final String PK_TRANSFORM_SQL = "trans_sql";
     public static final String PK_TRANSFORM_SCRIPT = "trans_script";
-    public static final String PK_TRANSFORM_JAR_CLASS_NAME = "trans_jar";
+    public static final String PK_TRANSFORM_JAR_CLASS_NAME = "trans_jar_class";
     public static final String PK_TRANSFORM_JAR_PARA = "trans_jar_para";
 }

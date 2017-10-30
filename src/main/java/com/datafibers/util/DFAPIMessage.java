@@ -86,15 +86,23 @@ public final class DFAPIMessage {
     }
 
     public static String getResponseMessage(int responseCode, String comments) {
+        return Json.encodePrettily(getResponseJsonObj(responseCode, comments));
+    }
+
+    public static JsonObject getResponseJsonObj(int responseCode, String comments) {
         String messageType = responseCode >= 9000 ? "ERROR" : "INFO";
         JsonObject response = new JsonObject();
         response.put("message", messageType + " " + String.format("%04d", responseCode) + " - " + messageMap.get(responseCode));
         if (!comments.equalsIgnoreCase("")) response.put("comments", comments);
-        return Json.encodePrettily(response);
+        return response;
     }
 
     public static String getResponseMessage(int responseCode) {
         return getResponseMessage(responseCode, "");
+    }
+
+    public static JsonObject getResponseJsonObj(int responseCode) {
+        return getResponseJsonObj(responseCode, "");
     }
 
     public static String logResponseMessage(int responseCode, String comments) {

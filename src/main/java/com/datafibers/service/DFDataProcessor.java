@@ -30,7 +30,6 @@ import org.apache.log4j.Level;
 import org.bson.types.ObjectId;
 import org.json.JSONObject;
 import org.apache.log4j.Logger;
-import com.datafibers.flinknext.DFRemoteStreamEnvironment;
 import com.datafibers.model.DFJobPOPJ;
 import com.datafibers.processor.FlinkTransformProcessor;
 import com.datafibers.processor.KafkaConnectProcessor;
@@ -87,7 +86,6 @@ public class DFDataProcessor extends AbstractVerticle {
     private static Integer flink_server_port;
     private static Integer flink_rest_server_port;
     private static String flink_rest_server_host_port;
-    public static DFRemoteStreamEnvironment env;
 
     // Kafka attributes
     private static String kafka_server_host;
@@ -199,16 +197,6 @@ public class DFDataProcessor extends AbstractVerticle {
             this.rc_flink = RestClient.create(vertx, restClientOptions.setDefaultHost(this.flink_server_host)
                     .setDefaultPort(this.flink_rest_server_port), httpMessageConverters);
             this.wc_flink = WebClient.create(vertx);
-
-            if (config().getBoolean("debug.mode", Boolean.FALSE)) {
-                // TODO Add DF LocalExecutionEnvironment Support
-            } else {
-                LOG.debug("Flink resource manager is started at " + this.flink_server_host + ":" + this.flink_server_port);
-                LOG.debug("Distributed below Jar to above Flink resource manager.");
-                LOG.debug(this.df_jar_path);
-                env = new DFRemoteStreamEnvironment(this.flink_server_host, this.flink_server_port, this.df_jar_path)
-                        .setParallelism(config().getInteger("flink.job.parallelism", 1));
-            }
 
             // upload df jar to flink rest server and keep the latest jar_id in mongo
             vertx.executeBlocking(future -> {
@@ -1257,30 +1245,17 @@ public class DFDataProcessor extends AbstractVerticle {
         String mongoId = new ObjectId().toString();
         dfJob.setConnectUid(mongoId).setId(mongoId).getConnectorConfig().put(ConstantApp.PK_TRANSFORM_CUID, mongoId);
 
-        String allowNonRestoredState = "false";
-        String savepointPath = "";
-        String parallelism = "1";
-        String entryClass = ConstantApp.PK_TRANSFORM_JAR_CLASS_NAME;
-        String programArgs = "";
+        JsonObject para = HelpFunc.getFlinkJarPara(dfJob,
+                this.kafka_server_host_and_port,
+                this.schema_registry_host_and_port);
 
-        if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_SQLA2A.name()) {
-            entryClass = ConstantApp.FLINK_SQL_CLIENT_CLASS_NAME;
-            programArgs = String.join(" ",
-                            this.kafka_server_host_and_port, this.schema_registry_host_and_port,
-                            dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_INPUT),
-                            dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_OUTPUT),
-                            dfJob.getConnectorConfig().get(ConstantApp.PK_FLINK_TABLE_SINK_KEYS),
-                            HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_CONSUMER_GROURP),
-                                    ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
-                            "\"" + dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL) + "\"");
-        } else
-            if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_UDF.name()) {
-            programArgs = ConstantApp.PK_TRANSFORM_JAR_PARA;
-        }
-
-        FlinkTransformProcessor.submitFlinkJar(wc_flink, dfJob, mongo, COLLECTION_INSTALLED, COLLECTION,
+        FlinkTransformProcessor.forwardPostAsSubmitJar(wc_flink, dfJob, mongo, COLLECTION_INSTALLED, COLLECTION,
                 flink_server_host, flink_rest_server_port,
-                allowNonRestoredState, savepointPath, entryClass, parallelism, programArgs);
+                para.getString("allowNonRestoredState"),
+                para.getString("savepointPath"),
+                para.getString("entryClass"),
+                para.getString("parallelism"),
+                para.getString("programArgs"));
 
         mongo.insert(COLLECTION, dfJob.toJson(), r ->
                 HelpFunc.responseCorsHandleAddOn(routingContext.response())
@@ -1441,47 +1416,63 @@ public class DFDataProcessor extends AbstractVerticle {
                             String before_update_connectorConfigString = res.result()
                                     .getJsonObject("connectorConfig").toString();
                             // Detect changes in connectConfig
-                            if (this.transform_engine_flink_enabled && dfJob.getConnectorType().contains("FLINK") &&
+                            if (this.transform_engine_flink_enabled &&
+                                    dfJob.getConnectorType().contains("FLINK") &&
                                     connectorConfigString.compareTo(before_update_connectorConfigString) != 0) {
 
-                                // TODO - if running then cancel and resubmit, else resubmit for flink UDF/JAR
-
-                                //here update is to cancel exiting job and submit a new one
-                                FlinkTransformProcessor.updateFlinkSQL(dfJob, vertx,
-                                        config().getInteger("flink.trans.client.timeout", 8000), env,
+                                JsonObject para = HelpFunc.getFlinkJarPara(dfJob,
                                         this.kafka_server_host_and_port,
-                                        HelpFunc.coalesce(dfJob.getConnectorConfig()
-                                                .get(ConstantApp.PK_KAFKA_CONSUMER_GROURP),
-                                                ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
-                                        dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_INPUT),
-                                        dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_OUTPUT),
-                                        dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL),
-                                        mongo, COLLECTION, this.flink_server_host + ":" + this.flink_server_port,
-                                        routingContext, this.schema_registry_host_and_port,
-                                        HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_SCHEMA_SUB_INPUT),
-                                                dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_INPUT)),
-                                        HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_SCHEMA_SUB_OUTPUT),
-                                                dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_OUTPUT)),
-                                        dfJob.getConnectorConfig().get(ConstantApp.PK_FLINK_TABLE_SINK_KEYS),
-                                        rc_flink);
-
-                            } else { // Where there is no change detected
-                                LOG.info(DFAPIMessage.logResponseMessage(1007, id));
-                                mongo.updateCollection(COLLECTION, new JsonObject().put("_id", id), // Select a unique document
-                                        // The update syntax: {$set, the json object containing the fields to update}
-                                        new JsonObject().put("$set", dfJob.toJson()), v -> {
-                                            if (v.failed()) {
-                                                routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
-                                                        .end(DFAPIMessage.getResponseMessage(9003));
-                                                LOG.error(DFAPIMessage.logResponseMessage(9003, id));
-                                            } else {
-                                                HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                                                        .end(DFAPIMessage.getResponseMessage(1001));
-                                                LOG.info(DFAPIMessage.logResponseMessage(1001, id));
-                                            }
-                                        }
+                                        this.schema_registry_host_and_port
                                 );
+
+                                //if task is running then cancel and resubmit, else resubmit
+                                if(dfJob.getStatus().equalsIgnoreCase(ConstantApp.DF_STATUS.RUNNING.name())) {
+                                    FlinkTransformProcessor.forwardPutAsRestartJob(
+                                            routingContext,
+                                            wc_flink,
+                                            mongo, COLLECTION_INSTALLED, COLLECTION,
+                                            flink_server_host, flink_rest_server_port,
+                                            dfJob.getJobConfig().get(ConstantApp.PK_FLINK_SUBMIT_JOB_ID), dfJob,
+                                            para.getString("allowNonRestoredState"),
+                                            para.getString("savepointPath"),
+                                            para.getString("entryClass"),
+                                            para.getString("parallelism"),
+                                            para.getString("programArgs")
+                                    );
+                                } else {
+                                    FlinkTransformProcessor.forwardPostAsSubmitJar(
+                                            wc_flink, dfJob, mongo, COLLECTION_INSTALLED, COLLECTION,
+                                            flink_server_host, flink_rest_server_port,
+                                            para.getString("allowNonRestoredState"),
+                                            para.getString("savepointPath"),
+                                            para.getString("entryClass"),
+                                            para.getString("parallelism"),
+                                            para.getString("programArgs"));
+                                }
+
+                                //update df status properly before response
+                                dfJob.setStatus(ConstantApp.DF_STATUS.UNASSIGNED.name());
+
+                            } else {
+                                LOG.info(DFAPIMessage.logResponseMessage(1007, id));
                             }
+                            // Where there is no change detected or detected changes, always update repo right away
+                            // The only difference is whether to update status. Either way, do not remove tasks.
+                            mongo.updateCollection(COLLECTION, new JsonObject().put("_id", id), // Select a unique document
+                                    // The update syntax: {$set, the json object containing the fields to update}
+                                    new JsonObject().put("$set", dfJob.toJson()), v -> {
+                                        if (v.failed()) {
+                                            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
+                                                    .end(DFAPIMessage.getResponseMessage(9003));
+                                            LOG.error(DFAPIMessage.logResponseMessage(9003, id));
+                                        } else {
+                                            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                                    .end(DFAPIMessage.getResponseMessage(1001));
+                                            LOG.info(DFAPIMessage.logResponseMessage(1001, id));
+                                        }
+                                    }
+                            );
+
                         } else {
                             LOG.error(DFAPIMessage.
                                     logResponseMessage(9014, id + " details - " + res.cause()));
@@ -1605,14 +1596,18 @@ public class DFDataProcessor extends AbstractVerticle {
                     }
                     DFJobPOPJ dfJob = new DFJobPOPJ(ar.result());
 
-                    String jobId = null;
-                    if(dfJob.getJobConfig() != null &&
+                    String jobId;
+                    if(dfJob.getJobConfig() != null && this.transform_engine_flink_enabled &&
+                            dfJob.getConnectorType().contains("FLINK") &&
                             dfJob.getJobConfig().containsKey(ConstantApp.PK_FLINK_SUBMIT_JOB_ID)) {
                         jobId = dfJob.getJobConfig().get(ConstantApp.PK_FLINK_SUBMIT_JOB_ID);
-                        if (this.transform_engine_flink_enabled &&
-                                dfJob.getConnectorType().contains("FLINK") &&
-                                dfJob.getStatus().equalsIgnoreCase("RUNNING")) {
-                            FlinkTransformProcessor.cancelFlinkJob(jobId, mongo, COLLECTION, routingContext, rc_flink);
+                        if (dfJob.getStatus().equalsIgnoreCase("RUNNING")) {
+                            // For cancel a running job, we want remove tasks from repo only when cancel is done
+                            FlinkTransformProcessor.forwardDeleteAsCancelJob(
+                                    routingContext, wc_flink,
+                                    mongo, COLLECTION,
+                                    this.flink_server_host, this.flink_rest_server_port,
+                                    jobId);
                             LOG.info(DFAPIMessage.logResponseMessage(1006, id));
                         } else {
                             mongo.removeDocument(COLLECTION, new JsonObject().put("_id", id),

@@ -1,5 +1,6 @@
 package com.datafibers.util;
 
+import com.datafibers.model.DFJobPOPJ;
 import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
@@ -398,5 +399,38 @@ public class HelpFunc {
             e.printStackTrace();
         }
         return jsonResponse.getBody();
+    }
+
+    public static JsonObject getFlinkJarPara(DFJobPOPJ dfJob, String kafkaRestHostName, String srRestHostName ) {
+
+        String allowNonRestoredState = "false";
+        String savepointPath = "";
+        String parallelism = "1";
+        String entryClass = "";
+        String programArgs = "";
+
+        if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_SQLA2A.name()) {
+            entryClass = ConstantApp.FLINK_SQL_CLIENT_CLASS_NAME;
+            programArgs = String.join(" ", kafkaRestHostName, srRestHostName,
+                    dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_INPUT),
+                    dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_OUTPUT),
+                    dfJob.getConnectorConfig().get(ConstantApp.PK_FLINK_TABLE_SINK_KEYS),
+                    HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_CONSUMER_GROURP),
+                            ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
+                    "\"" + dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL) + "\"");
+        } else if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_UDF.name()) {
+            entryClass = dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_JAR_CLASS_NAME);
+            programArgs = dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_JAR_PARA);
+        } else if(dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_Script.name()) {
+            entryClass = dfJob.getConnectorConfig().get(ConstantApp.FLINK_TABLEAPI_CLIENT_CLASS_NAME);
+            programArgs = dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_JAR_PARA);
+        }
+
+        return new JsonObject()
+                .put("allowNonRestoredState", allowNonRestoredState)
+                .put("savepointPath", savepointPath)
+                .put("parallelism", parallelism)
+                .put("entryClass", entryClass)
+                .put("programArgs", programArgs);
     }
 }
