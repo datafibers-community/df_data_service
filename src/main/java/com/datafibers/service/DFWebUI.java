@@ -18,8 +18,6 @@ public class DFWebUI extends AbstractVerticle {
         // Create a router object for web ui
         Router routerWeb = Router.router(vertx);
 
-        // Bind web ui
-        routerWeb.route("/admin/*").handler(StaticHandler.create("admin").setCachingEnabled(false));
         // Bind new web ui
         routerWeb.route("/dfa/*").handler(StaticHandler.create("dfa").setCachingEnabled(false));
         // Bind api doc
