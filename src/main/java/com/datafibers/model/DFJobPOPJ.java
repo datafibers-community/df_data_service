@@ -247,9 +247,9 @@ public class DFJobPOPJ {
 
     @JsonIgnore
     public String getFlinkIDFromJobConfig() {
-        if (this.jobConfig != null)
+        if (this.jobConfig != null && this.jobConfig.containsKey(ConstantApp.PK_FLINK_SUBMIT_JOB_ID))
             return this.jobConfig.get(ConstantApp.PK_FLINK_SUBMIT_JOB_ID);
-        return ConstantApp.PK_FLINK_SUBMIT_JOB_ID + "_IS_NULL";
+        return "";
     }
 
     public void setUdfUpload(String tmpUDFUpload) {

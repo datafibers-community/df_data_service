@@ -1141,8 +1141,11 @@ public class DFDataProcessor extends AbstractVerticle {
                     }
                     if(dfJob.getConnectorCategory().equalsIgnoreCase("TRANSFORM")) {
                         // Find status from Flink API
-                        FlinkTransformProcessor.forwardGetAsGetOne(routingContext, rc_flink, id,
-                                dfJob.getFlinkIDFromJobConfig());
+                        FlinkTransformProcessor.forwardGetAsJobStatus(
+                                routingContext, wc_flink,
+                                flink_server_host,
+                                flink_rest_server_port,
+                                id, dfJob.getFlinkIDFromJobConfig());
                     }
                 } else {
                     routingContext.response()

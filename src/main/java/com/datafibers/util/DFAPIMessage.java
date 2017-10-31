@@ -81,20 +81,24 @@ public final class DFAPIMessage {
         messageMap.put(9032, "NOT_VALID_STATUS_TO_PAUSE_OR_RESUME");
         messageMap.put(9033, "TASK_PAUSE_OR_RESUME_FAILED_REVERTED_PRE-STATUS");
         messageMap.put(9034, "FAILED_TO_REVERT_PRE-STATUS");
-        messageMap.put(9035, "FAILED_TO_GET_DF_JAR_ID_FROM_REPO");
+    }
 
+    public static JsonObject getResponseJsonObj(int responseCode, String comments, String message) {
+        String messageType = responseCode >= 9000 ? "ERROR" : "INFO";
+        JsonObject response = new JsonObject();
+        response.put("info", messageType + " " + String.format("%04d", responseCode) + "-" + messageMap.get(responseCode));
+        if (!comments.equalsIgnoreCase("")) response.put("comments", comments);
+        //message can be show from web ui directly
+        if (!message.equalsIgnoreCase("")) response.put("message", message);
+        return response;
+    }
+
+    public static String getResponseMessage(int responseCode, String comments, String message) {
+        return Json.encodePrettily(getResponseJsonObj(responseCode, comments, message));
     }
 
     public static String getResponseMessage(int responseCode, String comments) {
-        return Json.encodePrettily(getResponseJsonObj(responseCode, comments));
-    }
-
-    public static JsonObject getResponseJsonObj(int responseCode, String comments) {
-        String messageType = responseCode >= 9000 ? "ERROR" : "INFO";
-        JsonObject response = new JsonObject();
-        response.put("message", messageType + " " + String.format("%04d", responseCode) + " - " + messageMap.get(responseCode));
-        if (!comments.equalsIgnoreCase("")) response.put("comments", comments);
-        return response;
+        return Json.encodePrettily(getResponseJsonObj(responseCode, comments, ""));
     }
 
     public static String getResponseMessage(int responseCode) {
@@ -102,7 +106,7 @@ public final class DFAPIMessage {
     }
 
     public static JsonObject getResponseJsonObj(int responseCode) {
-        return getResponseJsonObj(responseCode, "");
+        return getResponseJsonObj(responseCode, "", "");
     }
 
     public static String logResponseMessage(int responseCode, String comments) {
