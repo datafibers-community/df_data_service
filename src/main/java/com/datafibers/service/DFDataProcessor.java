@@ -16,6 +16,8 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.handler.BodyHandler;
+
+import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
@@ -72,6 +74,8 @@ public class DFDataProcessor extends AbstractVerticle {
     private RestClient rc_schema;
     private WebClient wc_flink;
     private static String df_jar_path;
+    private static String df_jar_name;
+    private static String flink_jar_id;
 
     // Connects attributes
     private static Boolean kafka_connect_enabled;
@@ -95,9 +99,6 @@ public class DFDataProcessor extends AbstractVerticle {
     private static String schema_registry_host_and_port;
     private static Integer schema_registry_rest_port;
 
-    // Flink Rest API
-    private static String flink_jar_id;
-
     private static final Logger LOG = Logger.getLogger(DFDataProcessor.class);
 
     @Override
@@ -106,6 +107,7 @@ public class DFDataProcessor extends AbstractVerticle {
         Logger.getLogger("io.vertx.core.impl.BlockedThreadChecker").setLevel(Level.OFF);
 
         this.df_jar_path = getClass().getProtectionDomain().getCodeSource().getLocation().getPath();
+        this.df_jar_name = new File(df_jar_path).getName();
 
         /**
          * Get all application configurations
@@ -191,24 +193,42 @@ public class DFDataProcessor extends AbstractVerticle {
 
         }
         
-        // Non-blocking Vertx Rest API Client to talk toFlink Rest when needed
+        // Non-blocking Vertx Rest API Client to talk to Flink Rest when needed
         if (this.transform_engine_flink_enabled) {
             this.wc_flink = WebClient.create(vertx);
+            // Delete all df jars already uploaded
+            wc_flink.get(flink_rest_server_port, flink_server_host, ConstantApp.FLINK_REST_URL_JARS)
+                    .send(ar -> {
+                        if (ar.succeeded()) {
+                            // Obtain response
+                            JsonArray jarArray = ar.result().bodyAsJsonObject().getJsonArray("files");
+                            for (int i = 0; i < jarArray.size(); i++) {
+                                if(jarArray.getJsonObject(i).getString("name").equalsIgnoreCase(df_jar_name)) {
+                                    // delete it
+                                    wc_flink.delete(flink_rest_server_port, flink_server_host,
+                                            ConstantApp.FLINK_REST_URL_JARS + "/" +
+                                                    jarArray.getJsonObject(i).getString("id"))
+                                            .send(dar -> {});
+                                }
+                            };
 
-            // upload df jar to flink rest server and keep the latest jar_id in mongo
-            vertx.executeBlocking(future -> {
-                //TODO delete all df jars already uploaded
-                // Web Client does not support muti file yet
-                this.flink_jar_id = HelpFunc.uploadJar(
-                        flink_rest_server_host_port + ConstantApp.FLINK_REST_URL_JARS_UPLOAD,
-                                this.df_jar_path
-                );
-                if(flink_jar_id.isEmpty()) {
-                    LOG.error(DFAPIMessage.logResponseMessage(9035, flink_jar_id));
-                } else {
-                    LOG.info(DFAPIMessage.logResponseMessage(1028, flink_jar_id));
-                }
-            }, res -> {});
+                            // upload df jar to flink rest server and keep the latest jar_id in mongo
+                            vertx.executeBlocking(future -> {
+                                // Web Client does not support muti file yet
+                                this.flink_jar_id = HelpFunc.uploadJar(
+                                        flink_rest_server_host_port + ConstantApp.FLINK_REST_URL_JARS_UPLOAD,
+                                        this.df_jar_path
+                                );
+                                if(flink_jar_id.isEmpty()) {
+                                    LOG.error(DFAPIMessage.logResponseMessage(9035, flink_jar_id));
+                                } else {
+                                    LOG.info(DFAPIMessage.logResponseMessage(1028, flink_jar_id));
+                                }
+                            }, res -> {});
+                        } else {
+                            LOG.error(DFAPIMessage.logResponseMessage(9035, flink_jar_id));
+                        }
+                    });
         }
 
         // Import from remote server. It is blocking at this point.

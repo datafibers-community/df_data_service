@@ -23,7 +23,6 @@ public class FlinkTransformProcessor {
      * @param client vertx web client for rest
      * @param dfJob jd job object
      * @param mongo mongodb client
-     * @param jarVersionCollection mongo collection to keep jar version uploaded to flink rest
      * @param taskCollection mongo collection name to keep df tasks
      * @param flinkRestHost flinbk rest hostname
      * @param flinkRestPort flink rest port number
