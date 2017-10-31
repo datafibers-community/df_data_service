@@ -1,14 +1,9 @@
 package com.datafibers.processor;
 
-import com.datafibers.exception.DFPropertyValidationException;
-import com.datafibers.flinknext.Kafka010AvroTableSource;
 import com.datafibers.util.*;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.RestClient;
 import com.hubrick.vertx.rest.RestClientRequest;
-import com.mongodb.Mongo;
-import io.vertx.core.Vertx;
-import io.vertx.core.WorkerExecutor;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -191,13 +186,54 @@ public class FlinkTransformProcessor {
 
     /**
      * This method first decode the REST GET request to DFJobPOPJ object. Then, it updates its job status and repack
-     * for Kafka REST GET. After that, it forward the new GET to Flink API.
+     * for REST GET. After that, it forward the new GET to Flink API.
      * Once REST API forward is successful, response.
      *
      * @param routingContext This is the contect from REST API
      * @param restClient This is vertx non-blocking rest client used for forwarding
      * @param taskId This is the id used to look up status
      */
+    public static void forwardGetAsJobStatus(RoutingContext routingContext, WebClient client,
+                                             String flinkRestHost, int flinkRestPort,
+                                             String taskId, String jobId) {
+
+        if (jobId == null || jobId.trim().isEmpty()) {
+            LOG.error(DFAPIMessage.logResponseMessage(9000, taskId));
+        } else {
+            client.get(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL + "/" + jobId)
+                    .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                    .sendJsonObject(DFAPIMessage.getResponseJsonObj(1003),
+                            ar -> {
+                                if (ar.succeeded()) {
+                                    JsonObject jo = ar.result().bodyAsJsonObject();
+                                    JsonArray subTaskArray = jo.getJsonArray("vertices");
+                                    for (int i = 0; i < subTaskArray.size(); i++) {
+                                        subTaskArray.getJsonObject(i)
+                                                .put("subTaskId", subTaskArray.getJsonObject(i).getString("id"))
+                                                .put("id", taskId + "_" + subTaskArray.getJsonObject(i).getString("id"))
+                                                .put("jobId", jo.getString("jid"))
+                                                .put("dfTaskState",
+                                                        HelpFunc.getTaskStatusFlink(new JSONObject(jo.toString())))
+                                                .put("taskState", jo.getString("state"));
+                                    }
+                                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                            .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                            .putHeader("X-Total-Count", subTaskArray.size() + "" )
+                                            .end(Json.encodePrettily(subTaskArray.getList()));
+                                    LOG.info(DFAPIMessage.logResponseMessage(1024, taskId));
+
+                                } else {
+                                    // If response is failed, repose df ui and still keep the task
+                                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                            .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                                            .end(DFAPIMessage.getResponseMessage(9029));
+                                    LOG.info(DFAPIMessage.logResponseMessage(9029, taskId));
+                                }
+                            }
+                    );
+        }
+    }
+
     // TODO rewrite using web client
     public static void forwardGetAsGetOne(RoutingContext routingContext, RestClient restClient, String taskId, String jobId) {
         if(!jobId.isEmpty() || jobId != null) {
