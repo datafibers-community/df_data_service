@@ -70,7 +70,6 @@ public class DFDataProcessor extends AbstractVerticle {
     private MongoAdminClient mongoDFInstalled;
     private RestClient rc;
     private RestClient rc_schema;
-    private RestClient rc_flink;
     private WebClient wc_flink;
     private static String df_jar_path;
 
@@ -194,26 +193,22 @@ public class DFDataProcessor extends AbstractVerticle {
         
         // Non-blocking Vertx Rest API Client to talk toFlink Rest when needed
         if (this.transform_engine_flink_enabled) {
-            this.rc_flink = RestClient.create(vertx, restClientOptions.setDefaultHost(this.flink_server_host)
-                    .setDefaultPort(this.flink_rest_server_port), httpMessageConverters);
             this.wc_flink = WebClient.create(vertx);
 
             // upload df jar to flink rest server and keep the latest jar_id in mongo
             vertx.executeBlocking(future -> {
                 //TODO delete all df jars already uploaded
-                String df_jar_info =
-                        HelpFunc.uploadJar(flink_rest_server_host_port + ConstantApp.FLINK_REST_URL_JARS_UPLOAD,
-                                this.df_jar_path);
-                // Mongo insert or else update
-                mongo.updateCollectionWithOptions(COLLECTION_INSTALLED,
-                        new JsonObject().put("_id", ConstantApp.FLINK_JAR_ID_IN_MONGO),
-                        new JsonObject().put("$set", new JsonObject(df_jar_info)),
-                        new UpdateOptions().setUpsert(true),
-                        r -> LOG.debug(DFAPIMessage.logResponseMessage(1027, "JAR_UPLOAD_TO_COLLECTION_INSTALLED")));
-
-            }, res -> {
-                LOG.info(DFAPIMessage.logResponseMessage(1027, "JAR_UPLOAD_TO_COLLECTION_INSTALLED"));
-            });
+                // Web Client does not support muti file yet
+                this.flink_jar_id = HelpFunc.uploadJar(
+                        flink_rest_server_host_port + ConstantApp.FLINK_REST_URL_JARS_UPLOAD,
+                                this.df_jar_path
+                );
+                if(flink_jar_id.isEmpty()) {
+                    LOG.error(DFAPIMessage.logResponseMessage(9035, flink_jar_id));
+                } else {
+                    LOG.info(DFAPIMessage.logResponseMessage(1028, flink_jar_id));
+                }
+            }, res -> {});
         }
 
         // Import from remote server. It is blocking at this point.
@@ -344,7 +339,7 @@ public class DFDataProcessor extends AbstractVerticle {
         this.mongoDFInstalled.close();
         this.rc.close();
         this.rc_schema.close();
-        this.rc_flink.close();
+        this.wc_flink.close();
     }
 
     /**
@@ -429,7 +424,6 @@ public class DFDataProcessor extends AbstractVerticle {
      * @param routingContext
      */
     private void getAll(RoutingContext routingContext, String connectorCategoryFilter) {
-
         JsonObject searchCondition;
         if (connectorCategoryFilter.equalsIgnoreCase("all")) {
             searchCondition = new JsonObject();
@@ -1252,8 +1246,8 @@ public class DFDataProcessor extends AbstractVerticle {
                 this.kafka_server_host_and_port,
                 this.schema_registry_host_and_port);
 
-        FlinkTransformProcessor.forwardPostAsSubmitJar(wc_flink, dfJob, mongo, COLLECTION_INSTALLED, COLLECTION,
-                flink_server_host, flink_rest_server_port,
+        FlinkTransformProcessor.forwardPostAsSubmitJar(wc_flink, dfJob, mongo, COLLECTION,
+                flink_server_host, flink_rest_server_port, flink_jar_id,
                 para.getString("allowNonRestoredState"),
                 para.getString("savepointPath"),
                 para.getString("entryClass"),
@@ -1434,7 +1428,7 @@ public class DFDataProcessor extends AbstractVerticle {
                                             routingContext,
                                             wc_flink,
                                             mongo, COLLECTION_INSTALLED, COLLECTION,
-                                            flink_server_host, flink_rest_server_port,
+                                            flink_server_host, flink_rest_server_port, flink_jar_id,
                                             dfJob.getJobConfig().get(ConstantApp.PK_FLINK_SUBMIT_JOB_ID), dfJob,
                                             para.getString("allowNonRestoredState"),
                                             para.getString("savepointPath"),
@@ -1444,8 +1438,8 @@ public class DFDataProcessor extends AbstractVerticle {
                                     );
                                 } else {
                                     FlinkTransformProcessor.forwardPostAsSubmitJar(
-                                            wc_flink, dfJob, mongo, COLLECTION_INSTALLED, COLLECTION,
-                                            flink_server_host, flink_rest_server_port,
+                                            wc_flink, dfJob, mongo, COLLECTION,
+                                            flink_server_host, flink_rest_server_port, flink_jar_id,
                                             para.getString("allowNonRestoredState"),
                                             para.getString("savepointPath"),
                                             para.getString("entryClass"),

@@ -81,6 +81,7 @@ public final class DFAPIMessage {
         messageMap.put(9032, "NOT_VALID_STATUS_TO_PAUSE_OR_RESUME");
         messageMap.put(9033, "TASK_PAUSE_OR_RESUME_FAILED_REVERTED_PRE-STATUS");
         messageMap.put(9034, "FAILED_TO_REVERT_PRE-STATUS");
+        messageMap.put(9035, "DF_JAR_UPLOAD_FAILED_FOR_FLINK");
     }
 
     public static JsonObject getResponseJsonObj(int responseCode, String comments, String message) {

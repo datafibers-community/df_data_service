@@ -398,7 +398,13 @@ public class HelpFunc {
         } catch (UnirestException e) {
             e.printStackTrace();
         }
-        return jsonResponse.getBody();
+
+        JsonObject response = new JsonObject(jsonResponse.getBody());
+        if(response.containsKey("filename")) {
+            return response.getString("filename");
+        } else {
+            return "";
+        }
     }
 
     public static JsonObject getFlinkJarPara(DFJobPOPJ dfJob, String kafkaRestHostName, String srRestHostName ) {

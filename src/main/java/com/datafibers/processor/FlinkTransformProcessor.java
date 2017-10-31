@@ -34,52 +34,46 @@ public class FlinkTransformProcessor {
      * @param programArgs parameters used by the jar files separated by " "
      */
     public static void forwardPostAsSubmitJar(WebClient client, DFJobPOPJ dfJob, MongoClient mongo,
-                                      String jarVersionCollection, String taskCollection,
-                                      String flinkRestHost, int flinkRestPort,
+                                      String taskCollection, String flinkRestHost, int flinkRestPort, String jarId,
                                       String allowNonRestoredState, String savepointPath, String entryClass,
                                       String parallelism, String programArgs) {
         String taskId = dfJob.getId();
-        // Search mongo to get the flink_jar_id
-        mongo.findOne(jarVersionCollection, new JsonObject().put("_id", ConstantApp.FLINK_JAR_ID_IN_MONGO), null, res -> {
-            if (res.succeeded()) {
-                String df_jar_id = res.result().getString(ConstantApp.FLINK_JAR_VALUE_IN_MONGO);
-                // Submit jar to Flink Rest API
-                client.post(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL_JARS + "/" + df_jar_id + "/run")
-                        .addQueryParam("allowNonRestoredState", allowNonRestoredState)
-                        .addQueryParam("savepointPath", savepointPath)
-                        .addQueryParam("entry-class", entryClass)
-                        .addQueryParam("parallelism", parallelism)
-                        .addQueryParam("allowNonRestoredState", allowNonRestoredState)
-                        .addQueryParam("program-args", programArgs)
-                        .send(ar -> {
-                            if (ar.succeeded()) {
-                                String flinkJobId = ar.result().bodyAsJsonObject()
-                                        .getString(ConstantApp.FLINK_JOB_SUBMIT_RESPONSE_KEY);
+        if (jarId.isEmpty()) {
+            LOG.error(DFAPIMessage.logResponseMessage(9000, taskId));
+        } else {
+            // Search mongo to get the flink_jar_id
+            client.post(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL_JARS + "/" + jarId + "/run")
+                    .addQueryParam("allowNonRestoredState", allowNonRestoredState)
+                    .addQueryParam("savepointPath", savepointPath)
+                    .addQueryParam("entry-class", entryClass)
+                    .addQueryParam("parallelism", parallelism)
+                    .addQueryParam("allowNonRestoredState", allowNonRestoredState)
+                    .addQueryParam("program-args", programArgs)
+                    .send(ar -> {
+                        if (ar.succeeded()) {
+                            String flinkJobId = ar.result().bodyAsJsonObject()
+                                    .getString(ConstantApp.FLINK_JOB_SUBMIT_RESPONSE_KEY);
 
-                                dfJob.setFlinkIDToJobConfig(flinkJobId)
-                                        .setStatus(ConstantApp.DF_STATUS.RUNNING.name());
-                                LOG.debug("dfJob to Json = " + dfJob.toJson());
+                            dfJob.setFlinkIDToJobConfig(flinkJobId)
+                                    .setStatus(ConstantApp.DF_STATUS.RUNNING.name());
+                            LOG.debug("dfJob to Json = " + dfJob.toJson());
 
-                                mongo.updateCollection(taskCollection, new JsonObject().put("_id", taskId),
-                                        new JsonObject().put("$set", dfJob.toJson()), v -> {
-                                            if (v.failed()) {
-                                                LOG.error(DFAPIMessage.logResponseMessage(1001, taskId));
-                                            } else {
-                                                LOG.info(DFAPIMessage.logResponseMessage(1005,
-                                                        taskId + " flinkJobId = " + flinkJobId));
-                                            }
+                            mongo.updateCollection(taskCollection, new JsonObject().put("_id", taskId),
+                                    new JsonObject().put("$set", dfJob.toJson()), v -> {
+                                        if (v.failed()) {
+                                            LOG.error(DFAPIMessage.logResponseMessage(1001, taskId));
+                                        } else {
+                                            LOG.info(DFAPIMessage.logResponseMessage(1005,
+                                                    taskId + " flinkJobId = " + flinkJobId));
                                         }
-                                );
-                            } else {
-                                LOG.error(DFAPIMessage.logResponseMessage(9010, taskId +
-                                        " details - " + ar.cause()));
-                            }
-                        });
-            } else {
-                LOG.error(DFAPIMessage.
-                        logResponseMessage(9035, taskId + " details - " + res.cause()));
-            }
-        });
+                                    }
+                            );
+                        } else {
+                            LOG.error(DFAPIMessage.logResponseMessage(9010, taskId +
+                                    " details - " + ar.cause()));
+                        }
+                    });
+        }
     }
 
     /**
@@ -141,7 +135,8 @@ public class FlinkTransformProcessor {
      */
     public static void forwardPutAsRestartJob(RoutingContext routingContext, WebClient client,
                                               MongoClient mongoClient, String jarVersionCollection, String taskCollection,
-                                              String flinkRestHost, int flinkRestPort, String jobID, DFJobPOPJ dfJob,
+                                              String flinkRestHost, int flinkRestPort, String jarId,
+                                              String jobID, DFJobPOPJ dfJob,
                                               String allowNonRestoredState, String savepointPath, String entryClass,
                                               String parallelism, String programArgs) {
         String id = routingContext.request().getParam("id");
@@ -159,10 +154,10 @@ public class FlinkTransformProcessor {
                                     forwardPostAsSubmitJar(client,
                                             dfJob,
                                             mongoClient,
-                                            jarVersionCollection,
                                             taskCollection,
                                             flinkRestHost,
                                             flinkRestPort,
+                                            jarId,
                                             allowNonRestoredState,
                                             savepointPath,
                                             entryClass,
