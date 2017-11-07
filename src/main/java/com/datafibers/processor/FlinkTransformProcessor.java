@@ -20,7 +20,7 @@ public class FlinkTransformProcessor {
      * This function will not response df ui. Since the UI is refreshed right way. Submit status will refreshed in status
      * thread separately.
      *
-     * @param client vertx web client for rest
+     * @param webClient vertx web client for rest
      * @param dfJob jd job object
      * @param mongo mongodb client
      * @param taskCollection mongo collection name to keep df tasks
@@ -32,7 +32,7 @@ public class FlinkTransformProcessor {
      * @param parallelism number of jobs run in parallelism
      * @param programArgs parameters used by the jar files separated by " "
      */
-    public static void forwardPostAsSubmitJar(WebClient client, DFJobPOPJ dfJob, MongoClient mongo,
+    public static void forwardPostAsSubmitJar(WebClient webClient, DFJobPOPJ dfJob, MongoClient mongo,
                                       String taskCollection, String flinkRestHost, int flinkRestPort, String jarId,
                                       String allowNonRestoredState, String savepointPath, String entryClass,
                                       String parallelism, String programArgs) {
@@ -41,7 +41,7 @@ public class FlinkTransformProcessor {
             LOG.error(DFAPIMessage.logResponseMessage(9000, taskId));
         } else {
             // Search mongo to get the flink_jar_id
-            client.post(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL_JARS + "/" + jarId + "/run")
+            webClient.post(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL_JARS + "/" + jarId + "/run")
                     .addQueryParam("allowNonRestoredState", allowNonRestoredState)
                     .addQueryParam("savepointPath", savepointPath)
                     .addQueryParam("entry-class", entryClass)
@@ -80,21 +80,21 @@ public class FlinkTransformProcessor {
      * Job may not exist or got exception. In this case, just delete it for now.
      *
      * @param routingContext  response for rest client
-     * @param client web client for rest
+     * @param webClient web client for rest
      * @param flinkRestHost flinbk rest hostname
      * @param flinkRestPort flink rest port number
      * @param mongoClient     repo handler
      * @param mongoCOLLECTION collection to keep data
      * @param jobID           The job ID to cancel for flink job
      */
-    public static void forwardDeleteAsCancelJob(RoutingContext routingContext, WebClient client,
+    public static void forwardDeleteAsCancelJob(RoutingContext routingContext, WebClient webClient,
                                                 MongoClient mongoClient, String mongoCOLLECTION,
                                                 String flinkRestHost, int flinkRestPort, String jobID) {
         String id = routingContext.request().getParam("id");
         if (jobID == null || jobID.trim().isEmpty()) {
             LOG.error(DFAPIMessage.logResponseMessage(9000, id));
         } else {
-            client.delete(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL + "/" + jobID + "/cancel")
+            webClient.delete(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL + "/" + jobID + "/cancel")
                     .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
                     .sendJsonObject(DFAPIMessage.getResponseJsonObj(1002),
                             ar -> {
@@ -125,14 +125,14 @@ public class FlinkTransformProcessor {
      * Wen restart job, we do not remove tasks from repo.
      *
      * @param routingContext  response for rest client
-     * @param client vertx web client for rest
+     * @param webClient vertx web client for rest
      * @param flinkRestHost flinbk rest hostname
      * @param flinkRestPort flink rest port number
      * @param mongoClient     repo handler
      * @param taskCollection collection to keep data
      * @param jobID           The job ID to cancel for flink job
      */
-    public static void forwardPutAsRestartJob(RoutingContext routingContext, WebClient client,
+    public static void forwardPutAsRestartJob(RoutingContext routingContext, WebClient webClient,
                                               MongoClient mongoClient, String jarVersionCollection, String taskCollection,
                                               String flinkRestHost, int flinkRestPort, String jarId,
                                               String jobID, DFJobPOPJ dfJob,
@@ -142,7 +142,7 @@ public class FlinkTransformProcessor {
         if (jobID == null || jobID.trim().isEmpty()) {
             LOG.error(DFAPIMessage.logResponseMessage(9000, id));
         } else {
-            client.delete(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL + "/" + jobID + "/cancel")
+            webClient.delete(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL + "/" + jobID + "/cancel")
                     .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
                     .sendJsonObject(DFAPIMessage.getResponseJsonObj(1002),
                             ar -> {
@@ -150,7 +150,7 @@ public class FlinkTransformProcessor {
                                     // If cancel response is succeeded, we'll submit the job
                                     int response = (ar.result().statusCode() == ConstantApp.STATUS_CODE_OK) ? 1002:9012;
                                     LOG.info(DFAPIMessage.logResponseMessage(response, id));
-                                    forwardPostAsSubmitJar(client,
+                                    forwardPostAsSubmitJar(webClient,
                                             dfJob,
                                             mongoClient,
                                             taskCollection,
@@ -180,13 +180,13 @@ public class FlinkTransformProcessor {
      * Once REST API forward is successful, response.
      *
      * @param routingContext This is the contect from REST API
-     * @param client This is vertx non-blocking web client used for forwarding
+     * @param webClient This is vertx non-blocking web client used for forwarding
      * @param flinkRestHost rest server host name
      * @param flinkRestPort rest server port number
      * @param taskId This is the id used to look up status
      * @param jobId transform job id
      */
-    public static void forwardGetAsJobStatus(RoutingContext routingContext, WebClient client,
+    public static void forwardGetAsJobStatus(RoutingContext routingContext, WebClient webClient,
                                              String flinkRestHost, int flinkRestPort,
                                              String taskId, String jobId) {
 
@@ -195,13 +195,13 @@ public class FlinkTransformProcessor {
             HelpFunc.responseCorsHandleAddOn(routingContext.response())
                     .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
                     .end(DFAPIMessage.getResponseMessage(9000, taskId,
-                            "Cannot get state without transform job id."));
+                            "Cannot Get State Without JobId."));
         } else {
-            client.get(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL + "/" + jobId)
+            webClient.get(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL + "/" + jobId)
                     .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
                     .sendJsonObject(DFAPIMessage.getResponseJsonObj(1003),
                             ar -> {
-                                if (ar.succeeded()) {
+                                if (ar.succeeded() && ar.result().statusCode() == ConstantApp.STATUS_CODE_OK) {
                                     JsonObject jo = ar.result().bodyAsJsonObject();
                                     JsonArray subTaskArray = jo.getJsonArray("vertices");
                                     for (int i = 0; i < subTaskArray.size(); i++) {
@@ -223,7 +223,8 @@ public class FlinkTransformProcessor {
                                     // If response is failed, repose df ui and still keep the task
                                     HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                             .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
-                                            .end(DFAPIMessage.getResponseMessage(9029));
+                                            .end(DFAPIMessage.getResponseMessage(9029, taskId,
+                                                     "Cannot Found State for job " + jobId));
                                     LOG.info(DFAPIMessage.logResponseMessage(9029, taskId));
                                 }
                             }

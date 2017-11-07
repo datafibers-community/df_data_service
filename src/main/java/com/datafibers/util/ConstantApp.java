@@ -97,6 +97,9 @@ public final class ConstantApp {
     public static final String FLINK_TABLEAPI_CLIENT_CLASS_NAME = "com.datafibers.util.FlinkAvroTableAPIClient";
     public static final String FLINK_DUMMY_JOB_ID = "00000000000000000000000000000000";
 
+    // Schema registry rest api setting
+    public static final String SR_REST_URL_SUBJECTS = "/subjects";
+
     // HTTP req/res constants
     public static final String HTTP_HEADER_CONTENT_TYPE = "content-type";
     public static final String HTTP_HEADER_APPLICATION_JSON_CHARSET = "application/json; charset=utf-8";

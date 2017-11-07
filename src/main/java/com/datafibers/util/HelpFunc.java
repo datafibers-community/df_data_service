@@ -115,9 +115,7 @@ public class HelpFunc {
      */
     public static String cleanJsonConfig(String JSON_STRING) {
         String cleanedJsonString;
-        cleanedJsonString = cleanJsonConfigIgnored(JSON_STRING, "connectorConfig_", "config_ignored");
-        cleanedJsonString = convertTopicsFromArrayToString(cleanedJsonString, ConstantApp.PK_DF_TOPICS_ALIAS);
-        System.out.println("cleanedJsonString = " + cleanedJsonString);
+        cleanedJsonString = convertTopicsFromArrayToString(JSON_STRING, ConstantApp.PK_DF_TOPICS_ALIAS);
         return cleanedJsonString;
     }
 

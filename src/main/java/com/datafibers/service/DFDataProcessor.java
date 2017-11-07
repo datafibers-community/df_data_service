@@ -10,13 +10,11 @@ import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.MongoClient;
-import io.vertx.ext.mongo.UpdateOptions;
 import io.vertx.ext.web.FileUpload;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.handler.BodyHandler;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -38,10 +36,8 @@ import com.datafibers.processor.KafkaConnectProcessor;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
-import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.RestClient;
 import com.hubrick.vertx.rest.RestClientOptions;
-import com.hubrick.vertx.rest.RestClientRequest;
 import com.hubrick.vertx.rest.converter.FormHttpMessageConverter;
 import com.hubrick.vertx.rest.converter.HttpMessageConverter;
 import com.hubrick.vertx.rest.converter.JacksonJsonHttpMessageConverter;
@@ -70,8 +66,8 @@ public class DFDataProcessor extends AbstractVerticle {
     private static String repo_db;
     private MongoClient mongo;
     private MongoAdminClient mongoDFInstalled;
-    private RestClient rc;
     private RestClient rc_schema;
+    private WebClient wc_connect;
     private WebClient wc_flink;
     private static String df_jar_path;
     private static String df_jar_name;
@@ -184,10 +180,7 @@ public class DFDataProcessor extends AbstractVerticle {
 
         // Non-blocking Vertx Rest API Client to talk to Kafka Connect when needed
         if (this.kafka_connect_enabled) {
-
-            this.rc = RestClient.create(vertx, restClientOptions.setDefaultHost(this.kafka_connect_rest_host)
-                    .setDefaultPort(this.kafka_connect_rest_port), httpMessageConverters);
-
+            this.wc_connect = WebClient.create(vertx);
             this.rc_schema = RestClient.create(vertx, restClientOptions.setDefaultHost(this.kafka_connect_rest_host)
                     .setDefaultPort(this.schema_registry_rest_port), httpMessageConverters);
 
@@ -239,6 +232,7 @@ public class DFDataProcessor extends AbstractVerticle {
         }
 
         // Regular update Kafka connects/Flink transform status
+        // TODO this is now blocking somehow for kafka sometimes. We need to triage it.
         vertx.setPeriodic(ConstantApp.REGULAR_REFRESH_STATUS_TO_REPO, id -> {
             if(this.kafka_connect_enabled) updateKafkaConnectorStatus();
             if(this.transform_engine_flink_enabled) updateFlinkJobStatus();
@@ -278,7 +272,7 @@ public class DFDataProcessor extends AbstractVerticle {
         router.options(ConstantApp.DF_TRANSFORMS_UPLOAD_FILE_REST_URL).handler(this::corsHandle);
         router.get(ConstantApp.DF_TRANSFORMS_REST_URL).handler(this::getAllTransforms);
         router.get(ConstantApp.DF_TRANSFORMS_REST_URL_WITH_ID).handler(this::getOne);
-        router.route(ConstantApp.DF_TRANSFORMS_UPLOAD_FILE_REST_URL_WILD).handler(BodyHandler.create()); //TODO - can we delete this line?
+        router.route(ConstantApp.DF_TRANSFORMS_UPLOAD_FILE_REST_URL_WILD).handler(BodyHandler.create());
         router.post(ConstantApp.DF_TRANSFORMS_UPLOAD_FILE_REST_URL).handler(this::uploadFiles);
         router.route(ConstantApp.DF_TRANSFORMS_REST_URL_WILD).handler(BodyHandler.create());
 
@@ -357,7 +351,7 @@ public class DFDataProcessor extends AbstractVerticle {
     public void stop() throws Exception {
         this.mongo.close();
         this.mongoDFInstalled.close();
-        this.rc.close();
+        this.wc_connect.close();
         this.rc_schema.close();
         this.wc_flink.close();
     }
@@ -604,49 +598,8 @@ public class DFDataProcessor extends AbstractVerticle {
      * @apiSampleRequest http://localhost:8080/api/df/config
      */
     private void getAllProcessorConfigs(RoutingContext routingContext) {
-
-        // TODO get all installed transforms as well
-        final RestClientRequest postRestClientRequest =
-                rc.get(
-                        ConstantApp.KAFKA_CONNECT_PLUGIN_REST_URL, List.class, portRestResponse -> {
-                            String search = portRestResponse.getBody().toString().replace("{", "\"").
-                                    replace("}", "\"").replace("class=", "");
-
-
-                            JsonObject query = new JsonObject().put("$and", new JsonArray()
-                                    .add(new JsonObject().put("class",
-                                            new JsonObject().put("$in", new JsonArray(search))))
-                                    .add(new JsonObject().put("meta_type", "installed_connect"))
-                            );
-
-                            mongo.findWithOptions(COLLECTION_INSTALLED, query,
-                                    HelpFunc.getMongoSortFindOption(routingContext), res -> {
-                                if(res.result().toString().equalsIgnoreCase("[]")) {
-                                    LOG.warn("RUN_BELOW_CMD_TO_SEE_FULL_METADATA");
-                                    LOG.warn("mongoimport -c df_installed -d DEFAULT_DB --file df_installed.json");
-                                }
-
-                                if (res.succeeded()) {
-                                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                                            .setStatusCode(ConstantApp.STATUS_CODE_OK)
-                                            .end(Json.encodePrettily(
-                                                    res.result().toString()=="[]"?
-                                                            portRestResponse.getBody():res.result()
-                                                    )
-                                            );
-                                }
-                            });
-                        });
-
-        postRestClientRequest.exceptionHandler(exception -> {
-            HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                    .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                    .end(DFAPIMessage.getResponseMessage(9006));
-        });
-
-        postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
-        postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
-        postRestClientRequest.end();
+        KafkaConnectProcessor.forwardGetAsGetConfig(routingContext, wc_connect, mongo, COLLECTION_INSTALLED,
+                kafka_connect_rest_host, kafka_connect_rest_port);
     }
 
     /**
@@ -1151,7 +1104,8 @@ public class DFDataProcessor extends AbstractVerticle {
                     DFJobPOPJ dfJob = new DFJobPOPJ(ar.result());
                     if(dfJob.getConnectorCategory().equalsIgnoreCase("CONNECT")) {
                         // Find status from Kafka Connect
-                        KafkaConnectProcessor.forwardGetAsGetOne(routingContext, rc, id);
+                        KafkaConnectProcessor.forwardGetAsGetOne(routingContext, wc_connect,
+                                kafka_connect_rest_host, kafka_connect_rest_port, id);
                     }
                     if(dfJob.getConnectorCategory().equalsIgnoreCase("TRANSFORM")) {
                         // Find status from Flink API
@@ -1197,7 +1151,6 @@ public class DFDataProcessor extends AbstractVerticle {
                 HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()), DFJobPOPJ.class);
         // Set initial status for the job
         dfJob.setStatus(ConstantApp.DF_STATUS.UNASSIGNED.name());
-        // TODO Set default registry url for DF Generic connect for Avro
         // Set MongoId to _id, connect, cid in connectConfig
         String mongoId = new ObjectId().toString();
         dfJob.setConnectUid(mongoId).setId(mongoId).getConnectorConfig().put("cuid", mongoId);
@@ -1223,7 +1176,8 @@ public class DFDataProcessor extends AbstractVerticle {
                 dfJob.getConnectorConfig().put("name", dfJob.getConnectUid());
                 LOG.info(DFAPIMessage.logResponseMessage(1004, dfJob.getId()));
             }
-            KafkaConnectProcessor.forwardPOSTAsAddOne(routingContext, rc, mongo, COLLECTION, dfJob);
+            KafkaConnectProcessor.forwardPOSTAsAddOne(routingContext, wc_connect, mongo, COLLECTION,
+                    kafka_connect_rest_host, kafka_connect_rest_port, dfJob);
         } else {
             mongo.insert(COLLECTION, dfJob.toJson(), r ->
                     HelpFunc.responseCorsHandleAddOn(routingContext.response())
@@ -1339,7 +1293,8 @@ public class DFDataProcessor extends AbstractVerticle {
         String status = dfJob.getStatus();
         if(status.equalsIgnoreCase(ConstantApp.KAFKA_CONNECT_ACTION_PAUSE) ||
                 status.equalsIgnoreCase(ConstantApp.KAFKA_CONNECT_ACTION_RESUME)) {
-            KafkaConnectProcessor.forwardPUTAsPauseOrResumeOne(routingContext, rc, mongo, COLLECTION, dfJob, status);
+            KafkaConnectProcessor.forwardPUTAsPauseOrResumeOne(routingContext, wc_connect, mongo, COLLECTION,
+                    kafka_connect_rest_host, kafka_connect_rest_port, dfJob, status);
         } else {
             updateOneConnects(routingContext, status.equalsIgnoreCase("restart") ? true : false);
         }
@@ -1366,7 +1321,8 @@ public class DFDataProcessor extends AbstractVerticle {
                     // Detect changes in connectConfig
                     if (enforceSubmit || (this.kafka_connect_enabled && dfJob.getConnectorType().contains("CONNECT") &&
                             connectorConfigString.compareTo(before_update_connectorConfigString) != 0)) {
-                       KafkaConnectProcessor.forwardPUTAsUpdateOne(routingContext, rc, mongo, COLLECTION, dfJob);
+                       KafkaConnectProcessor.forwardPUTAsUpdateOne(routingContext, wc_connect,
+                               mongo, COLLECTION, kafka_connect_rest_host, kafka_connect_rest_port ,dfJob);
                     } else { // Where there is no change detected
                         LOG.info(DFAPIMessage.logResponseMessage(1007, id));
                         mongo.updateCollection(COLLECTION, new JsonObject().put("_id", id), // Select a unique document
@@ -1561,7 +1517,8 @@ public class DFDataProcessor extends AbstractVerticle {
                     DFJobPOPJ dfJob = new DFJobPOPJ(ar.result());
                     if (this.kafka_connect_enabled &&
                             (dfJob.getConnectorType().contains("CONNECT"))){
-                        KafkaConnectProcessor.forwardDELETEAsDeleteOne(routingContext, rc, mongo, COLLECTION, dfJob);
+                        KafkaConnectProcessor.forwardDELETEAsDeleteOne(routingContext, wc_connect, mongo, COLLECTION,
+                                kafka_connect_rest_host, kafka_connect_rest_port, dfJob);
                     } else {
                         mongo.removeDocument(COLLECTION, new JsonObject().put("_id", id),
                                 remove -> routingContext.response()

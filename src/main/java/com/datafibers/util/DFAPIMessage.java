@@ -82,6 +82,9 @@ public final class DFAPIMessage {
         messageMap.put(9033, "TASK_PAUSE_OR_RESUME_FAILED_REVERTED_PRE-STATUS");
         messageMap.put(9034, "FAILED_TO_REVERT_PRE-STATUS");
         messageMap.put(9035, "DF_JAR_UPLOAD_FAILED_FOR_FLINK");
+        messageMap.put(9036, "GET_CONNECT_STATUS_REQUEST_FAILED");
+        messageMap.put(9037, "POST_TO_ADD_CONNECT_REQUEST_FAILED");
+        messageMap.put(9038, "PUT_TO_UPDATE_CONNECT_REQUEST_FAILED");
     }
 
     public static JsonObject getResponseJsonObj(int responseCode, String comments, String message) {
