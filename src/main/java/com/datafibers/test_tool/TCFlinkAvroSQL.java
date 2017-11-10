@@ -47,7 +47,7 @@ public class TCFlinkAvroSQL {
             properties.setProperty(ConstantApp.PK_SCHEMA_SUB_INPUT, srcTopicList[i]);
             properties.setProperty(ConstantApp.PK_SCHEMA_ID_INPUT, SchemaRegistryClient.getLatestSchemaIDFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_INPUT) + "");
             properties.setProperty(ConstantApp.PK_SCHEMA_STR_INPUT, SchemaRegistryClient.getLatestSchemaFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_INPUT).toString());
-            tableEnv.registerTableSource(srcTopic, new Kafka010AvroTableSource(srcTopicList[i], properties));
+            tableEnv.registerTableSource(srcTopicList[i], new Kafka010AvroTableSource(srcTopicList[i], properties));
         }
 
         try {
@@ -109,9 +109,13 @@ public class TCFlinkAvroSQL {
         final String SQLSTATE_UNION_01 =
                 "SELECT symbol, bid_size FROM test_stock where symbol = 'FB' union all SELECT symbol, bid_size FROM test_stock where symbol = 'SAP'";
 
+        final String SQLSTATE_UNION_HAVING_GROUPBY_01 =
+                "SELECT symbol, sum(bid_size) as total_bids FROM (SELECT symbol, bid_size FROM test_stock where symbol = 'FB' union all SELECT symbol, bid_size FROM test_stock2 where symbol = 'SAP') group by symbol having sum(bid_size) > 1000";
+
 
         tcFlinkAvroSQL("localhost:8002", "test_stock", "SQLSTATE_UNION_01", SQLSTATE_UNION_01);
         // Test: kafka-avro-console-consumer --zookeeper localhost:2181 --topic stock_int_test --from-beginning
+        // To test it locally, remove the jar from Flink Rest API.
     }
 
 }

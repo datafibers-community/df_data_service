@@ -50,17 +50,23 @@ public class FlinkTransformProcessor {
                     .addQueryParam("program-args", programArgs)
                     .send(ar -> {
                         if (ar.succeeded()) {
-                            String flinkJobId = ar.result().bodyAsJsonObject()
-                                    .getString(ConstantApp.FLINK_JOB_SUBMIT_RESPONSE_KEY);
+                            String flinkJobId =  ar.result().bodyAsJsonObject()
+                                            .getString(ConstantApp.FLINK_JOB_SUBMIT_RESPONSE_KEY);
+                            String flinkError = ar.result().bodyAsJsonObject()
+                                    .getString(ConstantApp.FLINK_JOB_ERROR_RESPONSE_KEY);
 
-                            dfJob.setFlinkIDToJobConfig(flinkJobId)
-                                    .setStatus(ConstantApp.DF_STATUS.RUNNING.name());
+                            if(flinkJobId != null) {
+                                dfJob.setFlinkIDToJobConfig(flinkJobId)
+                                        .setStatus(ConstantApp.DF_STATUS.RUNNING.name());
+                            }
+
                             LOG.debug("dfJob to Json = " + dfJob.toJson());
 
                             mongo.updateCollection(taskCollection, new JsonObject().put("_id", taskId),
                                     new JsonObject().put("$set", dfJob.toJson()), v -> {
-                                        if (v.failed()) {
-                                            LOG.error(DFAPIMessage.logResponseMessage(1001, taskId));
+                                        if (v.failed() || flinkJobId == null ) {
+                                            LOG.error(DFAPIMessage.logResponseMessage(1001,
+                                                    taskId + " has error " + flinkError));
                                         } else {
                                             LOG.info(DFAPIMessage.logResponseMessage(1005,
                                                     taskId + " flinkJobId = " + flinkJobId));
