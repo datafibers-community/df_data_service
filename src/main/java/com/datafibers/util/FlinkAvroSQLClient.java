@@ -40,6 +40,9 @@ public class FlinkAvroSQLClient {
         try {
             Table result = tableEnv.sql(sqlState);
             SchemaRegistryClient.addSchemaFromTableResult(SchemaRegistryHostPort, targetTopic, result);
+            // For old producer, we need to create topic-value subject as well
+            SchemaRegistryClient.addSchemaFromTableResult(SchemaRegistryHostPort, targetTopic + "-value", result);
+
             // delivered properties for sink
             properties.setProperty(ConstantApp.PK_SCHEMA_SUB_OUTPUT, targetTopic);
             properties.setProperty(ConstantApp.PK_SCHEMA_ID_OUTPUT, SchemaRegistryClient.getLatestSchemaIDFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT) + "");
