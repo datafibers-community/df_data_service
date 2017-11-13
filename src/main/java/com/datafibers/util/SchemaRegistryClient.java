@@ -551,7 +551,7 @@ public class SchemaRegistryClient {
                 schemaRes = Unirest.post(schemaRegistryRestURL)
                         .header("accept", HTTP_HEADER_APPLICATION_JSON_CHARSET)
                         .header("Content-Type", AVRO_REGISTRY_CONTENT_TYPE)
-                        .body(tableAPIToAvroSchema(result, subject))
+                        .body(tableAPIToAvroSchema(result, subject.replaceAll("-value", ""))) //name in body cannot use -value
                         .asString();
 
                 LOG.info("Subject - " + subject + " Not Found, so create it." + schemaRes.getStatus());
