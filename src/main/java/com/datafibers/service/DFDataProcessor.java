@@ -100,8 +100,9 @@ public class DFDataProcessor extends AbstractVerticle {
 
     @Override
     public void start(Future<Void> fut) {
-        // Turn off
-        Logger.getLogger("io.vertx.core.impl.BlockedThreadChecker").setLevel(Level.OFF);
+
+//        VertxOptions options = new VertxOptions();
+//        options.setBlockedThreadCheckInterval(1000*60*60);
 
         this.df_jar_path = getClass().getProtectionDomain().getCodeSource().getLocation().getPath();
         this.df_jar_name = new File(df_jar_path).getName();
@@ -216,17 +217,22 @@ public class DFDataProcessor extends AbstractVerticle {
                                     }
                                 }
 
-                                // Web Client does not support muti file yet, blocking inside
-                                this.flink_jar_id = HelpFunc.uploadJar(
-                                        flink_rest_server_host_port + ConstantApp.FLINK_REST_URL_JARS_UPLOAD,
-                                        this.df_jar_path
-                                );
-                                if (flink_jar_id.isEmpty()) {
-                                    LOG.error(DFAPIMessage.logResponseMessage(9035, flink_jar_id));
-                                } else {
-                                    LOG.info(DFAPIMessage.logResponseMessage(1028, flink_jar_id));
-                                    LOG.info("********* DataFibers Services is started :) *********");
-                                }
+                                // The outer layer executeBlocking does not work when inside a web client api
+                                // TODO Add another executeBlocking for now until Web Client does not support muti file
+                                vertx.executeBlocking(jarfuture -> {
+                                    // Web Client does not support muti file yet, blocking inside
+                                    this.flink_jar_id = HelpFunc.uploadJar(
+                                            flink_rest_server_host_port + ConstantApp.FLINK_REST_URL_JARS_UPLOAD,
+                                            this.df_jar_path
+                                    );
+                                    if (flink_jar_id.isEmpty()) {
+                                        LOG.error(DFAPIMessage.logResponseMessage(9035, flink_jar_id));
+                                    } else {
+                                        LOG.info(DFAPIMessage.logResponseMessage(1028, flink_jar_id));
+                                        LOG.info("********* DataFibers Services is started :) *********");
+                                    }
+                                }, res -> {});
+
                             } else {
                                 LOG.error(DFAPIMessage.logResponseMessage(9035, flink_jar_id));
                             }
@@ -1696,7 +1702,7 @@ public class DFDataProcessor extends AbstractVerticle {
                         .body(metaSinkConnect).asString();
             }
 
-            // Add the avro schema for metadata as well
+            // Add the avro schema for metadata as well since df_meta-value maybe added only
             String dfMetaSchemaSubject = config().getString("kafka.topic.df.metadata", "df_meta");
             String schemaRegistryRestURL = "http://" + this.schema_registry_host_and_port + "/subjects/" +
                     dfMetaSchemaSubject + "/versions";
