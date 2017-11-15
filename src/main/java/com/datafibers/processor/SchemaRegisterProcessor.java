@@ -1,18 +1,11 @@
 package com.datafibers.processor;
 
-import com.datafibers.model.DFJobPOPJ;
 import com.datafibers.util.DFAPIMessage;
-import com.datafibers.util.DFMediaType;
-import com.hubrick.vertx.rest.MediaType;
-import com.hubrick.vertx.rest.RestClientRequest;
 import io.vertx.core.Vertx;
 import io.vertx.core.WorkerExecutor;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.RoutingContext;
 import java.net.ConnectException;
-import java.util.Arrays;
-
 import io.vertx.ext.web.client.WebClient;
 import org.bson.types.ObjectId;
 import org.json.JSONException;
@@ -21,13 +14,12 @@ import org.json.JSONObject;
 import org.apache.log4j.Logger;
 import com.datafibers.util.ConstantApp;
 import com.datafibers.util.HelpFunc;
-import com.hubrick.vertx.rest.RestClient;
 import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
 
-public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or error with proper format and error code
+public class SchemaRegisterProcessor {
     private static final Logger LOG = Logger.getLogger(SchemaRegisterProcessor.class);
 
     /**
@@ -83,7 +75,7 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
                                         getCompatibilityOfSubject(schema_registry_host_and_port, subject);
                                 if (compatibility == null || compatibility.isEmpty())
                                     compatibility = "NONE";
-                                jsonSchema.put(ConstantApp.COMPATIBILITY, compatibility);
+                                jsonSchema.put(ConstantApp.SCHEMA_REGISTRY_KEY_COMPATIBILITY, compatibility);
                                 // Repack subject to id, id to schema id
                                 jsonSchema.put("schemaId", jsonSchema.get("id"));
                                 jsonSchema.put("id", subject);
@@ -157,7 +149,7 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
                         // Get the subject's compatibility
                         String compatibility = getCompatibilityOfSubject(schema_registry_host_and_port, subject);
                         if (compatibility != null && !compatibility.isEmpty()) {
-                            json.put(ConstantApp.COMPATIBILITY, compatibility);
+                            json.put(ConstantApp.SCHEMA_REGISTRY_KEY_COMPATIBILITY, compatibility);
                         }
 
                         returnString.append(json.toString());
@@ -179,105 +171,22 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
     }
 
     /**
-     * Add one schema to schema registry with non-blocking rest client
-     * @param routingContext
-     * @param schema_registry_host_and_port
+     * Add one schema to schema registry with non-blocking rest client. Add schema and update schema have the same API
+     * specification only difference is to packing subject and compatibility from different field.
+     *
+     * @param routingContext This is the connect from REST API
+     * @param webClient This is non-blocking rest client used for forwarding
+     * @param schemaRegistryRestHost Schema Registry Rest Host
+     * @param schemaRegistryRestPort Schema Registry Rest Port
      */
-    public static void forwardAddOneSchema(RoutingContext routingContext, RestClient rc_schema,
-                                           String schema_registry_host_and_port) {
+    public static void forwardAddOneSchema(RoutingContext routingContext, WebClient webClient,
+                                           String schemaRegistryRestHost, int schemaRegistryRestPort) {
 
-        JSONObject schema;
-        String subject;
-        String compatibility;
-        String restURI;
-
-        JSONObject jsonObj = new JSONObject(routingContext.getBodyAsString());
-        schema = jsonObj.getJSONObject(ConstantApp.SCHEMA);
-        // get subject from id and assign it to subject
-        subject = jsonObj.getString("id");
-        jsonObj.put(ConstantApp.SUBJECT, subject);
-        // Set schema name from subject if it does not has name or empty
-        if(!schema.has("name")) {
-            schema.put("name", subject);
-        } else if (schema.getString("name").isEmpty()) {
-            schema.put("name", subject);
-        }
-        compatibility = jsonObj.optString(ConstantApp.COMPATIBILITY);
-        LOG.debug("Schema|subject|compatibility: " + schema.toString() + "|" + subject + "|" + compatibility);
-
-        restURI = "http://" + schema_registry_host_and_port + "/subjects/" + subject + "/versions";
-
-        // Add the new schema
-        final RestClientRequest postRestClientRequest = rc_schema.post(restURI, String.class,
-                portRestResponse -> {
-                    String rs = portRestResponse.getBody();
-                    if (rs != null) {
-                        LOG.info("Add schema status code " + portRestResponse.statusCode());
-
-                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                                .setStatusCode(ConstantApp.STATUS_CODE_OK)
-                                .end(DFAPIMessage.logResponseMessage(1025, "schema - " + subject + " is created"));
-                    }
-                }
+        addOneSchemaCommon(routingContext, webClient,
+                schemaRegistryRestHost, schemaRegistryRestPort,
+                "Schema is created.", 1025,
+                "Schema creation is failed", 9039
         );
-
-        postRestClientRequest.exceptionHandler(exception -> {
-            HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                    .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                    .end(DFAPIMessage.getResponseMessage(9006));
-            LOG.error(DFAPIMessage.logResponseMessage(9006, exception.toString()));
-
-        });
-
-        rc_schema.exceptionHandler(exception -> {
-            HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
-                    .end(DFAPIMessage.getResponseMessage(9028));
-            LOG.error(DFAPIMessage.logResponseMessage(9028, exception.getMessage()));
-        });
-
-        postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
-        postRestClientRequest.setAcceptHeader(Arrays.asList(DFMediaType.APPLICATION_SCHEMA_REGISTRY_JSON));
-        JSONObject object = new JSONObject().put("schema", schema.toString());
-        LOG.debug("Schema object.toString(): " + object.toString());
-        postRestClientRequest.end(object.toString());
-
-        // Set compatibility to the subject
-        if (compatibility != null && compatibility.trim().length() > 0) {
-            restURI = "http://" + schema_registry_host_and_port + "/config/" + subject;
-            final RestClientRequest postRestClientRequest2 = rc_schema.put(restURI, portRestResponse -> {
-                LOG.info("Update Config Compatibility status code " + portRestResponse.statusCode());
-                if (routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_OK) {
-                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                            .setStatusCode(ConstantApp.STATUS_CODE_OK)
-                            .end(DFAPIMessage.logResponseMessage(1025,
-                                    "schema is created with proper compatibility "));
-                }
-            });
-
-            postRestClientRequest2.exceptionHandler(exception -> {
-                if (routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_CONFLICT
-                        && routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_OK) {
-                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                            .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                            .end(DFAPIMessage.getResponseMessage(9006));
-                    LOG.error(DFAPIMessage.logResponseMessage(9006, exception.toString()));
-                }
-            });
-
-            rc_schema.exceptionHandler(exception -> {
-                HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                        .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
-                        .end(DFAPIMessage.getResponseMessage(9028));
-                LOG.error(DFAPIMessage.logResponseMessage(9028, exception.getMessage()));
-            });
-
-            postRestClientRequest2.setContentType(MediaType.APPLICATION_JSON);
-            postRestClientRequest2.setAcceptHeader(Arrays.asList(DFMediaType.APPLICATION_SCHEMA_REGISTRY_JSON));
-            JSONObject jsonToBeSubmitted = new JSONObject().put(ConstantApp.COMPATIBILITY, compatibility);
-            LOG.debug("Compatibility object2.toString(): " + jsonToBeSubmitted.toString());
-            postRestClientRequest2.end(jsonToBeSubmitted.toString());
-        }
 
     }
 
@@ -292,25 +201,51 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
     public static void forwardUpdateOneSchema(RoutingContext routingContext, WebClient webClient,
                                               String schemaRegistryRestHost, int schemaRegistryRestPort) {
 
-        JsonObject schemaObj = routingContext.getBodyAsJson();
-        String subject = schemaObj.getString(ConstantApp.SCHEMA_REGISTRY_KEY_SUBJECT);
-        String compatibility = schemaObj.containsKey(ConstantApp.SCHEMA_REGISTRY_KEY_COMPATIBILITY) ?
-                schemaObj.getString(ConstantApp.SCHEMA_REGISTRY_KEY_COMPATIBILITY) : "NONE";
+        addOneSchemaCommon(routingContext, webClient,
+                schemaRegistryRestHost, schemaRegistryRestPort,
+                "Schema is updated.", 1017,
+                "Schema update is failed", 9023
+        );
+    }
+
+    public static void addOneSchemaCommon(RoutingContext routingContext, WebClient webClient,
+                                          String schemaRegistryRestHost, int schemaRegistryRestPort,
+                                          String successMsg, int successCode, String errorMsg, int errorCode) {
+
+        JsonObject jsonObj = routingContext.getBodyAsJson();
+        JsonObject schemaObj = jsonObj.getJsonObject(ConstantApp.SCHEMA_REGISTRY_KEY_SCHEMA);
+
+        if(!jsonObj.containsKey("id") && !jsonObj.containsKey(ConstantApp.SCHEMA_REGISTRY_KEY_SUBJECT))
+            LOG.error(DFAPIMessage.logResponseMessage(9040, "Subject of Schema is missing."));
+
+        // get subject from id (web ui assigned) and assign it to subject
+        String subject = jsonObj.containsKey("id")? jsonObj.getString("id"):
+                jsonObj.getString(ConstantApp.SCHEMA_REGISTRY_KEY_SUBJECT);
+
+        if(!jsonObj.containsKey(ConstantApp.SCHEMA_REGISTRY_KEY_SUBJECT))
+            jsonObj.put(ConstantApp.SCHEMA_REGISTRY_KEY_SUBJECT, subject);
+
+        // Set schema name from subject if it does not has name or empty
+        if(!schemaObj.containsKey("name") || schemaObj.getString("name").isEmpty())
+            schemaObj.put("name", subject);
+
+        String compatibility = jsonObj.containsKey(ConstantApp.SCHEMA_REGISTRY_KEY_COMPATIBILITY) ?
+                jsonObj.getString(ConstantApp.SCHEMA_REGISTRY_KEY_COMPATIBILITY) : "NONE";
 
         webClient.post(schemaRegistryRestPort, schemaRegistryRestHost,
                 ConstantApp.SR_REST_URL_SUBJECTS + "/" + subject + ConstantApp.SR_REST_URL_VERSIONS)
                 .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
                 .sendJsonObject( new JsonObject()
-                                .put(ConstantApp.SCHEMA_REGISTRY_KEY_SCHEMA,
-                                        schemaObj.getJsonObject(ConstantApp.SCHEMA_REGISTRY_KEY_SCHEMA).toString()),
+                                .put(ConstantApp.SCHEMA_REGISTRY_KEY_SCHEMA, schemaObj.toString()),
                         // Must toString above according SR API spec.
                         ar -> {
                             if (ar.succeeded()) {
-                                HelpFunc.responseCorsHandleAddOn(routingContext.response())
+/*                                HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                         .setStatusCode(ConstantApp.STATUS_CODE_OK)
-                                        .end(DFAPIMessage.getResponseMessage(1017, subject,
-                                                subject + " is updated."));
-                                LOG.info(DFAPIMessage.logResponseMessage(1017, subject));
+                                        .end(DFAPIMessage.getResponseMessage(successCode, subject,
+                                                successMsg + "-SCHEMA"));*/
+                                LOG.info(DFAPIMessage.logResponseMessage(successCode, subject
+                                        + "-SCHEMA"));
                                 // Once successful, we will update schema compatibility
                                 webClient.put(schemaRegistryRestPort, schemaRegistryRestHost,
                                         ConstantApp.SR_REST_URL_CONFIG + "/" + subject)
@@ -322,18 +257,18 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
                                                     if (arc.succeeded()) {
                                                         HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                                                 .setStatusCode(ConstantApp.STATUS_CODE_OK)
-                                                                .end(DFAPIMessage.logResponseMessage(1017,
-                                                                        "SCHEMA_UPDATE"));
+                                                                .end(DFAPIMessage.logResponseMessage(successCode,
+                                                                        successMsg + "-COMPATIBILITY"));
                                                         LOG.info(DFAPIMessage.logResponseMessage(1017,
-                                                                "SCHEMA_UPDATE"));
+                                                                successMsg + "-COMPATIBILITY"));
                                                     } else {
                                                         // If response is failed, repose df ui and still keep the task
                                                         HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                                                 .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
-                                                                .end(DFAPIMessage.getResponseMessage(9023,
-                                                                        subject,
-                                                                        "Schema Compatibility Update is failed."));
-                                                        LOG.info(DFAPIMessage.logResponseMessage(9023, subject));
+                                                                .end(DFAPIMessage.getResponseMessage(errorCode,
+                                                                        subject, errorMsg + "-COMPATIBILITY"));
+                                                        LOG.info(DFAPIMessage.logResponseMessage(errorCode,
+                                                                subject + "-COMPATIBILITY"));
                                                     }
                                                 }
                                         );
@@ -341,8 +276,9 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
                                 // If response is failed, repose df ui and still keep the task
                                 HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                         .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
-                                        .end(DFAPIMessage.getResponseMessage(9038));
-                                LOG.info(DFAPIMessage.logResponseMessage(9038, subject));
+                                        .end(DFAPIMessage.getResponseMessage(errorCode, subject,
+                                                errorMsg + "-SCHEMA"));
+                                LOG.info(DFAPIMessage.logResponseMessage(errorCode, subject  + "-SCHEMA"));
                             }
                         }
                 );
@@ -409,7 +345,7 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
                 if (res.getBody().indexOf("40401") > 0) {
                 } else {
                     JSONObject jason = new JSONObject(res.getBody().toString());
-                    compatibility = jason.getString(ConstantApp.COMPATIBILITY_LEVEL);
+                    compatibility = jason.getString(ConstantApp.SCHEMA_REGISTRY_KEY_COMPATIBILITY_LEVEL);
                 }
             }
         } catch (UnirestException e) {

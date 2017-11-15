@@ -34,13 +34,6 @@ import com.datafibers.processor.FlinkTransformProcessor;
 import com.datafibers.processor.KafkaConnectProcessor;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.ImmutableList;
-import com.hubrick.vertx.rest.RestClient;
-import com.hubrick.vertx.rest.RestClientOptions;
-import com.hubrick.vertx.rest.converter.FormHttpMessageConverter;
-import com.hubrick.vertx.rest.converter.HttpMessageConverter;
-import com.hubrick.vertx.rest.converter.JacksonJsonHttpMessageConverter;
-import com.hubrick.vertx.rest.converter.StringHttpMessageConverter;
 import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
@@ -65,7 +58,6 @@ public class DFDataProcessor extends AbstractVerticle {
     private static String repo_db;
     private MongoClient mongo;
     private MongoAdminClient mongoDFInstalled;
-    private RestClient rc_schema;
     private WebClient wc_schema;
     private WebClient wc_connect;
     private WebClient wc_flink;
@@ -171,25 +163,10 @@ public class DFDataProcessor extends AbstractVerticle {
 
             LOG.info(DFAPIMessage.logResponseMessage(1029, "Mongo Client & Log Shipping Setup Complete"));
 
-            // Common rest client properties
-            final List<HttpMessageConverter> httpMessageConverters = ImmutableList.of(
-                    new FormHttpMessageConverter(),
-                    new StringHttpMessageConverter(),
-                    new JacksonJsonHttpMessageConverter(new ObjectMapper())
-            );
-
-            final RestClientOptions restClientOptions = new RestClientOptions()
-                    .setConnectTimeout(ConstantApp.REST_CLIENT_CONNECT_TIMEOUT)
-                    .setGlobalRequestTimeout(ConstantApp.REST_CLIENT_GLOBAL_REQUEST_TIMEOUT)
-                    .setKeepAlive(ConstantApp.REST_CLIENT_KEEP_LIVE)
-                    .setMaxPoolSize(ConstantApp.REST_CLIENT_MAX_POOL_SIZE);
-
             // Non-blocking Rest API Client to talk to Kafka Connect when needed
             if (this.kafka_connect_enabled) {
                 this.wc_connect = WebClient.create(vertx);
                 this.wc_schema = WebClient.create(vertx);
-                this.rc_schema = RestClient.create(vertx, restClientOptions.setDefaultHost(this.kafka_connect_rest_host)
-                        .setDefaultPort(this.schema_registry_rest_port), httpMessageConverters);
             }
 
             // Import from remote server. It is blocking at this point.
@@ -366,7 +343,7 @@ public class DFDataProcessor extends AbstractVerticle {
         this.mongo.close();
         this.mongoDFInstalled.close();
         this.wc_connect.close();
-        this.rc_schema.close();
+        this.wc_schema.close();
         this.wc_flink.close();
     }
 
@@ -1269,16 +1246,18 @@ public class DFDataProcessor extends AbstractVerticle {
      *     }
      */
     private void addOneSchema(RoutingContext routingContext) {
-        SchemaRegisterProcessor.forwardAddOneSchema(routingContext, rc_schema, schema_registry_host_and_port);
+        SchemaRegisterProcessor.forwardAddOneSchema(routingContext, wc_schema,
+                kafka_server_host, schema_registry_rest_port);
 
-        JSONObject jsonObj = new JSONObject(routingContext.getBodyAsString());
-        String topic = jsonObj.getString("id");
-        int partitions = 1;
-        int replicaFactor = 1;
-        if(jsonObj.has(ConstantApp.PARTITIONS)) partitions = jsonObj.getInt(ConstantApp.PARTITIONS);
-        if(jsonObj.has(ConstantApp.REPLICATION_FACTOR)) replicaFactor = jsonObj.getInt(ConstantApp.REPLICATION_FACTOR);
-        // Since vertx kafka admin still need zookeeper, we now use kafka native admin api until vertx version get updated
-        KafkaAdminClient.createTopic(kafka_server_host_and_port, topic, partitions, replicaFactor);
+        JsonObject jsonObj = routingContext.getBodyAsJson();
+        // Since Vertx kafka admin still need zookeeper, we now use kafka native admin api until vertx version get updated
+        KafkaAdminClient.createTopic(kafka_server_host_and_port,
+                jsonObj.getString("id"),
+                jsonObj.containsKey(ConstantApp.TOPIC_KEY_PARTITIONS)?
+                        jsonObj.getInteger(ConstantApp.TOPIC_KEY_PARTITIONS) : 1,
+                jsonObj.containsKey(ConstantApp.TOPIC_KEY_REPLICATION_FACTOR)?
+                        jsonObj.getInteger(ConstantApp.TOPIC_KEY_REPLICATION_FACTOR) : 1
+        );
     }
 
     /**
@@ -1767,8 +1746,7 @@ public class DFDataProcessor extends AbstractVerticle {
             HttpResponse<String> res = Unirest.get(restURI)
                     .header("accept", "application/json").asString();
             String resStr = res.getBody();
-            LOG.debug(DFAPIMessage.logResponseMessage(1011, resStr));
-
+            //LOG.debug(DFAPIMessage.logResponseMessage(1011, resStr));
             if (resStr.compareToIgnoreCase("[]") != 0 && !resStr.equalsIgnoreCase("[null]")) { //Has active connectors
                 for (String connectName: resStr.substring(2,resStr.length()-2).split("\",\"")) {
                     if (connectName.equalsIgnoreCase("null")) continue;

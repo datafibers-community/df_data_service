@@ -100,6 +100,8 @@ public final class ConstantApp {
 
     // Schema registry rest api setting
     public static final String SR_REST_URL_SUBJECTS = "/subjects";
+    public static final String SR_REST_URL_CONFIG = "/config";
+    public static final String SR_REST_URL_VERSIONS = "/versions";
 
     // HTTP req/res constants
     public static final String HTTP_HEADER_CONTENT_TYPE = "content-type";
@@ -160,18 +162,18 @@ public final class ConstantApp {
         NONE
     }
 
-    // Kafka properties
-
-    // Schema registry properties
-    public static final String SCHEMA = "schema";
-    public static final String COMPATIBILITY = "compatibility";
-    public static final String SUBJECT = "subject";
-    public static final String COMPATIBILITY_LEVEL = "compatibilityLevel";
-    public static final String PARTITIONS = "partitions";
-    public static final String REPLICATION_FACTOR = "replicationFactor";
+    // Schema Registry Properties Keys
+    public static final String SCHEMA_REGISTRY_KEY_SCHEMA = "schema";
+    public static final String SCHEMA_REGISTRY_KEY_SUBJECT = "subject";
+    public static final String SCHEMA_REGISTRY_KEY_COMPATIBILITY = "compatibility";
+    public static final String SCHEMA_REGISTRY_KEY_COMPATIBILITY_LEVEL = "compatibilityLevel";
     public static final int WORKER_POOL_SIZE = 20; // VERT.X Worker pool size
     public static final int MAX_RUNTIME = 120000;  // VERT.X Worker timeout in 6 sec
     public static final String SCHEMA_URI_KEY = "schema.registry.url";
+
+    // Topic property keys in web ui
+    public static final String TOPIC_KEY_PARTITIONS = "partitions";
+    public static final String TOPIC_KEY_REPLICATION_FACTOR = "replicationFactor";
 
     // Properties keys for admin
     public static final String PK_DF_TOPICS_ALIAS = "topics,topic_in";

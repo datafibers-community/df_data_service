@@ -2,7 +2,6 @@ package com.datafibers.util;
 
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -86,6 +85,8 @@ public final class DFAPIMessage {
         messageMap.put(9036, "GET_CONNECT_STATUS_REQUEST_FAILED");
         messageMap.put(9037, "POST_TO_ADD_CONNECT_REQUEST_FAILED");
         messageMap.put(9038, "PUT_TO_UPDATE_CONNECT_REQUEST_FAILED");
+        messageMap.put(9039, "SCHEMA_CREATION_FAILED");
+        messageMap.put(9040, "SCHEMA_SUBJECT_MISSING");
     }
 
     public static JsonObject getResponseJsonObj(int responseCode, String comments, String message) {
