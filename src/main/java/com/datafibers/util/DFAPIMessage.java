@@ -46,6 +46,7 @@ public final class DFAPIMessage {
         messageMap.put(1026, "SCHEMA_IS_DELETED");
         messageMap.put(1027, "TOPIC_IS_SUBSCRIBED");
         messageMap.put(1028, "DF_JAR_IS_UPLOADED_FOR_FLINK");
+        messageMap.put(1029, "DF_MONGO_CLIENT_SETUP_COMPLETED");
         messageMap.put(9000, "ID_IS_NULL_IN_REQUEST");
         messageMap.put(9001, "ID_NOT_FOUND_IN_REPO");
         messageMap.put(9002, "ID_SEARCH_EXCEPTION_IN_REPO");

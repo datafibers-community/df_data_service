@@ -9,7 +9,6 @@ import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.client.WebClient;
 import org.apache.log4j.Logger;
 import com.datafibers.model.DFJobPOPJ;
-import org.json.JSONObject;
 
 public class FlinkTransformProcessor {
     private static final Logger LOG = Logger.getLogger(FlinkTransformProcessor.class);
@@ -216,7 +215,7 @@ public class FlinkTransformProcessor {
                                                 .put("id", taskId + "_" + subTaskArray.getJsonObject(i).getString("id"))
                                                 .put("jobId", jo.getString("jid"))
                                                 .put("dfTaskState",
-                                                        HelpFunc.getTaskStatusFlink(new JSONObject(jo.toString())))
+                                                        HelpFunc.getTaskStatusFlink(jo))
                                                 .put("taskState", jo.getString("state"));
                                     }
                                     HelpFunc.responseCorsHandleAddOn(routingContext.response())

@@ -69,6 +69,7 @@ public class DFDataProcessor extends AbstractVerticle {
     private RestClient rc_schema;
     private WebClient wc_connect;
     private WebClient wc_flink;
+    private WebClient wc_refresh;
     private static String df_jar_path;
     private static String df_jar_name;
     private static String flink_jar_id;
@@ -141,98 +142,105 @@ public class DFDataProcessor extends AbstractVerticle {
         this.schema_registry_rest_port = config().getInteger("kafka.schema.registry.rest.port", 8081);
         this.schema_registry_host_and_port = this.kafka_server_host + ":" + this.schema_registry_rest_port;
 
+        // Application init in separate thread and report complete once done
+        vertx.executeBlocking(future -> {
 
-        /**
-         * Create all application client
-         **/
-        // MongoDB client for metadata repository
-        JsonObject mongoConfig = new JsonObject().put("connection_string", repo_conn_str).put("db_name", repo_db);
-        mongo = MongoClient.createShared(vertx, mongoConfig);
+            /**
+             * Create all application client
+             **/
+            // MongoDB client for metadata repository
+            JsonObject mongoConfig = new JsonObject().put("connection_string", repo_conn_str).put("db_name", repo_db);
+            mongo = MongoClient.createShared(vertx, mongoConfig);
 
-        // df_meta mongo client to find default connector.class
-        mongoDFInstalled = new MongoAdminClient(repo_hostname, repo_port, repo_db, COLLECTION_INSTALLED);
+            // df_meta mongo client to find default connector.class
+            mongoDFInstalled = new MongoAdminClient(repo_hostname, repo_port, repo_db, COLLECTION_INSTALLED);
 
-        // Cleanup Log in mongodb
-        if (config().getBoolean("db.log.cleanup.on.start", Boolean.TRUE))
-            new MongoAdminClient(repo_hostname, repo_port, repo_db).truncateCollection(COLLECTION_LOG).close();
+            // Cleanup Log in mongodb
+            if (config().getBoolean("db.log.cleanup.on.start", Boolean.TRUE))
+                new MongoAdminClient(repo_hostname, repo_port, repo_db).truncateCollection(COLLECTION_LOG).close();
 
-        // Set dynamic logging to MongoDB
-        MongoDbAppender mongoAppender = new MongoDbAppender();
-        mongoAppender.setDatabaseName(repo_db);
-        mongoAppender.setCollectionName(COLLECTION_LOG);
-        mongoAppender.setHostname(repo_hostname);
-        mongoAppender.setPort(repo_port);
-        mongoAppender.activateOptions();
-        Logger.getRootLogger().addAppender(mongoAppender);
+            // Set dynamic logging to MongoDB
+            MongoDbAppender mongoAppender = new MongoDbAppender();
+            mongoAppender.setDatabaseName(repo_db);
+            mongoAppender.setCollectionName(COLLECTION_LOG);
+            mongoAppender.setHostname(repo_hostname);
+            mongoAppender.setPort(repo_port);
+            mongoAppender.activateOptions();
+            Logger.getRootLogger().addAppender(mongoAppender);
 
-        // Common rest client properties
-        final List<HttpMessageConverter> httpMessageConverters = ImmutableList.of(
-                new FormHttpMessageConverter(),
-                new StringHttpMessageConverter(),
-                new JacksonJsonHttpMessageConverter(new ObjectMapper())
-        );
+            LOG.info(DFAPIMessage.logResponseMessage(1029, "Mongo Client & Log Shipping Setup Complete"));
 
-        final RestClientOptions restClientOptions = new RestClientOptions()
-                .setConnectTimeout(ConstantApp.REST_CLIENT_CONNECT_TIMEOUT)
-                .setGlobalRequestTimeout(ConstantApp.REST_CLIENT_GLOBAL_REQUEST_TIMEOUT)
-                .setKeepAlive(ConstantApp.REST_CLIENT_KEEP_LIVE)
-                .setMaxPoolSize(ConstantApp.REST_CLIENT_MAX_POOL_SIZE);
+            // Common rest client properties
+            final List<HttpMessageConverter> httpMessageConverters = ImmutableList.of(
+                    new FormHttpMessageConverter(),
+                    new StringHttpMessageConverter(),
+                    new JacksonJsonHttpMessageConverter(new ObjectMapper())
+            );
 
-        // Non-blocking Vertx Rest API Client to talk to Kafka Connect when needed
-        if (this.kafka_connect_enabled) {
-            this.wc_connect = WebClient.create(vertx);
-            this.rc_schema = RestClient.create(vertx, restClientOptions.setDefaultHost(this.kafka_connect_rest_host)
-                    .setDefaultPort(this.schema_registry_rest_port), httpMessageConverters);
+            final RestClientOptions restClientOptions = new RestClientOptions()
+                    .setConnectTimeout(ConstantApp.REST_CLIENT_CONNECT_TIMEOUT)
+                    .setGlobalRequestTimeout(ConstantApp.REST_CLIENT_GLOBAL_REQUEST_TIMEOUT)
+                    .setKeepAlive(ConstantApp.REST_CLIENT_KEEP_LIVE)
+                    .setMaxPoolSize(ConstantApp.REST_CLIENT_MAX_POOL_SIZE);
 
-        }
-        
-        // Non-blocking Vertx Rest API Client to talk to Flink Rest when needed
-        if (this.transform_engine_flink_enabled) {
-            this.wc_flink = WebClient.create(vertx);
-            // Delete all df jars already uploaded
-            wc_flink.get(flink_rest_server_port, flink_server_host, ConstantApp.FLINK_REST_URL_JARS)
-                    .send(ar -> {
-                        if (ar.succeeded()) {
-                            // Obtain response
-                            JsonArray jarArray = ar.result().bodyAsJsonObject().getJsonArray("files");
-                            for (int i = 0; i < jarArray.size(); i++) {
-                                if(jarArray.getJsonObject(i).getString("name").equalsIgnoreCase(df_jar_name)) {
-                                    // delete it
-                                    wc_flink.delete(flink_rest_server_port, flink_server_host,
-                                            ConstantApp.FLINK_REST_URL_JARS + "/" +
-                                                    jarArray.getJsonObject(i).getString("id"))
-                                            .send(dar -> {});
+            // Non-blocking Rest API Client to talk to Kafka Connect when needed
+            if (this.kafka_connect_enabled) {
+                this.wc_connect = WebClient.create(vertx);
+                this.rc_schema = RestClient.create(vertx, restClientOptions.setDefaultHost(this.kafka_connect_rest_host)
+                        .setDefaultPort(this.schema_registry_rest_port), httpMessageConverters);
+            }
+
+            // Import from remote server. It is blocking at this point.
+            if (this.kafka_connect_enabled && this.kafka_connect_import_start) {
+                importAllFromKafkaConnect();
+                // importAllFromFlinkTransform();
+                startMetadataSink();
+            }
+
+            // Non-blocking Rest API Client to talk to Flink Rest when needed
+            if (this.transform_engine_flink_enabled) {
+                this.wc_flink = WebClient.create(vertx);
+                // Delete all df jars already uploaded
+                wc_flink.get(flink_rest_server_port, flink_server_host, ConstantApp.FLINK_REST_URL_JARS)
+                        .send(ar -> {
+                            if (ar.succeeded()) {
+                                // Obtain response
+                                JsonArray jarArray = ar.result().bodyAsJsonObject().getJsonArray("files");
+                                for (int i = 0; i < jarArray.size(); i++) {
+                                    if(jarArray.getJsonObject(i).getString("name").equalsIgnoreCase(df_jar_name)) {
+                                        // delete it
+                                        wc_flink.delete(flink_rest_server_port, flink_server_host,
+                                                ConstantApp.FLINK_REST_URL_JARS + "/" +
+                                                        jarArray.getJsonObject(i).getString("id"))
+                                                .send(dar -> {});
+                                    }
                                 }
-                            };
 
-                            // upload df jar to flink rest server and keep the latest jar_id in mongo
-                            vertx.executeBlocking(future -> {
-                                // Web Client does not support muti file yet
+                                // Web Client does not support muti file yet, blocking inside
                                 this.flink_jar_id = HelpFunc.uploadJar(
                                         flink_rest_server_host_port + ConstantApp.FLINK_REST_URL_JARS_UPLOAD,
                                         this.df_jar_path
                                 );
-                                if(flink_jar_id.isEmpty()) {
+                                if (flink_jar_id.isEmpty()) {
                                     LOG.error(DFAPIMessage.logResponseMessage(9035, flink_jar_id));
                                 } else {
                                     LOG.info(DFAPIMessage.logResponseMessage(1028, flink_jar_id));
+                                    LOG.info("********* DataFibers Services is started :) *********");
                                 }
-                            }, res -> {});
-                        } else {
-                            LOG.error(DFAPIMessage.logResponseMessage(9035, flink_jar_id));
-                        }
-                    });
-        }
+                            } else {
+                                LOG.error(DFAPIMessage.logResponseMessage(9035, flink_jar_id));
+                            }
+                        });
+            }
 
-        // Import from remote server. It is blocking at this point.
-        if (this.kafka_connect_enabled && this.kafka_connect_import_start) {
-            importAllFromKafkaConnect();
-            // importAllFromFlinkTransform();
-            startMetadataSink();
-        }
+            if (!this.transform_engine_flink_enabled)
+                LOG.info("********* DataFibers Services is started :) *********");
 
-        // Regular update Kafka connects/Flink transform status
-        // TODO this is now blocking somehow for kafka sometimes. We need to triage it.
+        }, res -> {});
+
+        // Regular update Kafka connects/Flink transform status through unblocking api
+        this.wc_refresh = WebClient.create(vertx);
+
         vertx.setPeriodic(ConstantApp.REGULAR_REFRESH_STATUS_TO_REPO, id -> {
             if(this.kafka_connect_enabled) updateKafkaConnectorStatus();
             if(this.transform_engine_flink_enabled) updateFlinkJobStatus();
@@ -240,7 +248,6 @@ public class DFDataProcessor extends AbstractVerticle {
 
         // Start Core application
         startWebApp((http) -> completeStartup(http, fut));
-        LOG.info("********* DataFibers Services is started :) *********");
     }
 
     private void startWebApp(Handler<AsyncResult<HttpServer>> next) {
@@ -1268,15 +1275,15 @@ public class DFDataProcessor extends AbstractVerticle {
     }
 
     /**
-     * Connects specific updateOne End Point for Rest API
+     * Connects specific pause or resume End Point for Rest API
      * @param routingContext
      *
-     * @api {put} /ps/:id   5.Update a connect task
+     * @api {put} /ps/:id   5.Pause or resume a connect task
      * @apiVersion 0.1.1
      * @apiName updateOneConnects
      * @apiGroup Connect
      * @apiPermission none
-     * @apiDescription This is how we update the connect configuration to DataFibers.
+     * @apiDescription This is how we pause or resume a connect task.
      * @apiParam    {String}    id  task Id (_id in mongodb).
      * @apiSuccess  {String}    message     OK.
      * @apiError    code        The error code.
@@ -1300,6 +1307,27 @@ public class DFDataProcessor extends AbstractVerticle {
         }
     }
 
+    /**
+     * Connects specific updateOne End Point for Rest API
+     * @param routingContext
+     *
+     * @api {put} /ps/:id   5.Update a connect task
+     * @apiVersion 0.1.1
+     * @apiName updateOneConnects
+     * @apiGroup Connect
+     * @apiPermission none
+     * @apiDescription This is how we update the connect configuration to DataFibers.
+     * @apiParam    {String}    id  task Id (_id in mongodb).
+     * @apiSuccess  {String}    message     OK.
+     * @apiError    code        The error code.
+     * @apiError    message     The error message.
+     * @apiErrorExample {json} Error-Response:
+     *     HTTP/1.1 404 Not Found
+     *     {
+     *       "code" : "409",
+     *       "message" : "PUT Request exception - Not Found."
+     *     }
+     */
     private void updateOneConnects(RoutingContext routingContext, Boolean enforceSubmit) {
         final String id = routingContext.request().getParam("id");
         final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(),DFJobPOPJ.class);
@@ -1811,7 +1839,7 @@ public class DFDataProcessor extends AbstractVerticle {
                                                                 "CONNECT_IMPORT - " + updateJob.getId()
                                                                         + "-" + v.cause()));
                                                     } else {
-                                                        LOG.info(DFAPIMessage.logResponseMessage(1001,
+                                                        LOG.debug(DFAPIMessage.logResponseMessage(1001,
                                                                 "CONNECT_IMPORT - " + updateJob.getId()));
                                                     }
                                                 }
@@ -1850,46 +1878,47 @@ public class DFDataProcessor extends AbstractVerticle {
         HelpFunc.addSpecifiedConnectTypetoList(list, "(?i:.*connect.*)"); // case insensitive matching
         list.add(ConstantApp.DF_CONNECT_TYPE.INTERNAL_METADATA_COLLECT.name()); // update metadata sink as well
 
-        String restURI = "http://" + this.kafka_connect_rest_host+ ":" + this.kafka_connect_rest_port +
-                ConstantApp.KAFKA_CONNECT_REST_URL;
-
         mongo.find(COLLECTION, new JsonObject().put("connectorType", new JsonObject().put("$in", list)), result -> {
             if (result.succeeded()) {
                 for (JsonObject json : result.result()) {
                     String connectName = json.getString("connectUid");
                     String statusRepo = json.getString("status");
                     String taskId = json.getString("_id");
-                    // Get task status
-                    try {
-                        String resStatus;
-                        HttpResponse<JsonNode> resConnectorStatus =
-                                Unirest.get(restURI + "/" + connectName + "/status")
-                                        .header("accept", "application/json").asJson();
-                        resStatus = resConnectorStatus.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND ?
-                                ConstantApp.DF_STATUS.LOST.name():// Not find - Mark status as LOST
-                                HelpFunc.getTaskStatusKafka(resConnectorStatus.getBody().getObject());
 
-                        // Do change detection on status
-                        if (statusRepo.compareToIgnoreCase(resStatus) != 0) { //status changes
-                            DFJobPOPJ updateJob = new DFJobPOPJ(json);
-                            updateJob.setStatus(resStatus);
+                    wc_refresh.get(kafka_connect_rest_port, kafka_connect_rest_host,
+                            ConstantApp.KAFKA_CONNECT_REST_URL + "/" + connectName + "/status")
+                            .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                            .send(ar -> {
+                                        if (ar.succeeded()) {
+                                            String resStatus =
+                                                    (ar.result().statusCode() == ConstantApp.STATUS_CODE_NOT_FOUND) ?
+                                                    ConstantApp.DF_STATUS.LOST.name():// Not find - Mark status as LOST
+                                                    HelpFunc.getTaskStatusKafka(ar.result().bodyAsJsonObject());
 
-                            mongo.updateCollection(COLLECTION, new JsonObject().put("_id", taskId),
-                                    // The update syntax: {$set, the json object containing the fields to update}
-                                    new JsonObject().put("$set", updateJob.toJson()), v -> {
-                                        if (v.failed()) {
-                                            LOG.error(DFAPIMessage.logResponseMessage(9003, taskId+ "cause:" + v.cause()));
+                                            // Do change detection on status
+                                            if (statusRepo.compareToIgnoreCase(resStatus) != 0) { //status changes
+                                                DFJobPOPJ updateJob = new DFJobPOPJ(json);
+                                                updateJob.setStatus(resStatus);
+                                                mongo.updateCollection(COLLECTION, new JsonObject().put("_id", taskId),
+                                                        new JsonObject().put("$set", updateJob.toJson()), v -> {
+                                                            if (v.failed()) {
+                                                                LOG.error(DFAPIMessage.
+                                                                        logResponseMessage(9003,
+                                                                                taskId+ "cause:" + v.cause()));
+                                                            } else {
+                                                                LOG.info(DFAPIMessage.logResponseMessage(1019, taskId));
+                                                            }
+                                                        }
+                                                );
+                                            } else {
+                                                LOG.debug(DFAPIMessage.logResponseMessage(1020, taskId));
+                                            }
+
                                         } else {
-                                            LOG.info(DFAPIMessage.logResponseMessage(1019, taskId));
+                                            LOG.error(DFAPIMessage.logResponseMessage(9006, ar.cause().getMessage()));
                                         }
                                     }
                             );
-                        } else {
-                            LOG.debug(DFAPIMessage.logResponseMessage(1020, taskId));
-                        }
-                    } catch (UnirestException ue) {
-                        LOG.error(DFAPIMessage.logResponseMessage(9006, ue.getCause().getMessage()));
-                    }
                 }
             } else {
                 LOG.error(DFAPIMessage.logResponseMessage(9002, result.cause().getMessage()));
@@ -1902,10 +1931,8 @@ public class DFDataProcessor extends AbstractVerticle {
      */
     private void updateFlinkJobStatus() {
         List<String> list = new ArrayList<>();
-        // Add all Kafka connect
+        // Add all transform
         HelpFunc.addSpecifiedConnectTypetoList(list, "(?i:.*transform.*)") ;
-        String restURI = "http://" + this.flink_server_host + ":" + this.flink_rest_server_port +
-                ConstantApp.FLINK_REST_URL;
 
         mongo.find(COLLECTION, new JsonObject().put("connectorType", new JsonObject().put("$in", list)), result -> {
             if (result.succeeded()) {
@@ -1913,35 +1940,11 @@ public class DFDataProcessor extends AbstractVerticle {
                     String statusRepo = json.getString("status");
                     String taskId = json.getString("_id");
                     String jobId = ConstantApp.FLINK_DUMMY_JOB_ID;
-                    String resStatus;
-                    if(json.getValue("jobConfig") == null) {
-                        resStatus = ConstantApp.DF_STATUS.LOST.name();
-                    } else if (json.getJsonObject("jobConfig").containsKey(ConstantApp.PK_FLINK_SUBMIT_JOB_ID)) {
-                        jobId = json.getJsonObject("jobConfig").getString(ConstantApp.PK_FLINK_SUBMIT_JOB_ID);
+                    DFJobPOPJ updateJob = new DFJobPOPJ(json);
 
-                        // Get task status when flink job id is available
-                        try {
-                            HttpResponse<JsonNode> resConnectorStatus =
-                                    Unirest.get(restURI + "/" + jobId).header("accept", "application/json").asJson();
-                            resStatus = resConnectorStatus.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND ?
-                                    ConstantApp.DF_STATUS.LOST.name():// Not find - Mark status as LOST
-                                    HelpFunc.getTaskStatusFlink(resConnectorStatus.getBody().getObject());
-                        } catch (UnirestException ue) {
-                            // When jobId not found, set status LOST with error message.
-                            LOG.info(DFAPIMessage.logResponseMessage(9006,
-                                    "TRANSFORM_STATUS_REFRESH_FOUND " + taskId + " LOST"));
-                            resStatus = ConstantApp.DF_STATUS.LOST.name();
-                        }
-
-                    } else {
-                        resStatus = ConstantApp.DF_STATUS.LOST.name();
-                    }
-
-                    // Do change detection on status
-                    if (statusRepo.compareToIgnoreCase(resStatus) != 0) { //status changes
-                        DFJobPOPJ updateJob = new DFJobPOPJ(json);
-                        updateJob.setStatus(resStatus);
-
+                    if (json.getValue("jobConfig") == null ||
+                            !json.getJsonObject("jobConfig").containsKey(ConstantApp.PK_FLINK_SUBMIT_JOB_ID)) {
+                        updateJob.setStatus(ConstantApp.DF_STATUS.LOST.name());
                         mongo.updateCollection(COLLECTION, new JsonObject().put("_id", updateJob.getId()),
                                 // The update syntax: {$set, the json object containing the fields to update}
                                 new JsonObject().put("$set", updateJob.toJson()), v -> {
@@ -1952,13 +1955,47 @@ public class DFDataProcessor extends AbstractVerticle {
                                     }
                                 }
                         );
+
                     } else {
-                        LOG.debug(DFAPIMessage.logResponseMessage(1022, taskId));
+                        jobId = json.getJsonObject("jobConfig").getString(ConstantApp.PK_FLINK_SUBMIT_JOB_ID);
+                        wc_refresh.get(flink_rest_server_port, flink_server_host,
+                                ConstantApp.FLINK_REST_URL + "/" + jobId)
+                                .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                                .send(ar -> {
+                                    if (ar.succeeded()) {
+                                        String resStatus = ar.result().statusCode() == ConstantApp.STATUS_CODE_NOT_FOUND ?
+                                                ConstantApp.DF_STATUS.LOST.name() :// Not find - Mark status as LOST
+                                                HelpFunc.getTaskStatusFlink(ar.result().bodyAsJsonObject());
+
+                                        // Do change detection on status
+                                        if (statusRepo.compareToIgnoreCase(resStatus) != 0) { //status changes
+                                            updateJob.setStatus(resStatus);
+                                        } else {
+                                            LOG.debug(DFAPIMessage.logResponseMessage(1022, taskId));
+                                        }
+                                    } else {
+                                        // When jobId not found, set status LOST with error message.
+                                        LOG.info(DFAPIMessage.logResponseMessage(9006,
+                                                "TRANSFORM_STATUS_REFRESH_FOUND " + taskId + " LOST"));
+                                        updateJob.setStatus(ConstantApp.DF_STATUS.LOST.name());
+                                    }
+
+                                    // update status finally
+                                    mongo.updateCollection(COLLECTION, new JsonObject().put("_id", updateJob.getId()),
+                                            // The update syntax: {$set, the json object containing the fields to update}
+                                            new JsonObject().put("$set", updateJob.toJson()), v -> {
+                                                if (v.failed()) {
+                                                    LOG.error(DFAPIMessage.logResponseMessage(9003, taskId + "cause:" + v.cause()));
+                                                } else {
+                                                    LOG.info(DFAPIMessage.logResponseMessage(1021, taskId));
+                                                }
+                                            }
+                                    );
+                                });
                     }
                 }
             } else {
-                LOG.error(DFAPIMessage.logResponseMessage(9002, "TRANSFORM_STATUS_REFRESH:" +
-                        result.cause()));
+                LOG.error(DFAPIMessage.logResponseMessage(9002, "TRANSFORM_STATUS_REFRESH:" + result.cause()));
             }
         });
     }

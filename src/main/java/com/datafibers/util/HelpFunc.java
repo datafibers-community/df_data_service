@@ -226,15 +226,40 @@ public class HelpFunc {
         }
     }
 
-    public static String getTaskStatusFlink(JSONObject taskStatus) {
-        if(taskStatus.has("state")) {
+    public static String getTaskStatusKafka(JsonObject taskStatus) {
+
+        if(taskStatus.containsKey("connector")) {
+            // Check sub-task status ony if the high level task is RUNNING
+            if(taskStatus.getJsonObject("connector").getString("state")
+                    .equalsIgnoreCase(ConstantApp.DF_STATUS.RUNNING.name()) &&
+                    taskStatus.containsKey("tasks")) {
+                JsonArray subTask = taskStatus.getJsonArray("tasks");
+                String status = ConstantApp.DF_STATUS.RUNNING.name();
+                for (int i = 0; i < subTask.size(); i++) {
+                    if (!subTask.getJsonObject(i).getString("state")
+                            .equalsIgnoreCase(ConstantApp.DF_STATUS.RUNNING.name())) {
+                        status = ConstantApp.DF_STATUS.RWE.name();
+                        break;
+                    }
+                }
+                return status;
+            } else {
+                return taskStatus.getJsonObject("connector").getString("state");
+            }
+        } else {
+            return ConstantApp.DF_STATUS.NONE.name();
+        }
+    }
+
+    public static String getTaskStatusFlink(JsonObject taskStatus) {
+        if(taskStatus.containsKey("state")) {
             // Check sub-task status ony if the high level task is RUNNING
             if(taskStatus.getString("state").equalsIgnoreCase(ConstantApp.DF_STATUS.RUNNING.name()) &&
-                    taskStatus.has("vertices")) {
-                JSONArray subTask = taskStatus.getJSONArray("vertices");
+                    taskStatus.containsKey("vertices")) {
+                JsonArray subTask = taskStatus.getJsonArray("vertices");
                 String status = ConstantApp.DF_STATUS.RUNNING.name();
-                for (int i = 0; i < subTask.length(); i++) {
-                    if (!subTask.getJSONObject(i).getString("status")
+                for (int i = 0; i < subTask.size(); i++) {
+                    if (!subTask.getJsonObject(i).getString("status")
                             .equalsIgnoreCase(ConstantApp.DF_STATUS.RUNNING.name())) {
                         status = ConstantApp.DF_STATUS.RWE.name();
                         break;
@@ -251,7 +276,7 @@ public class HelpFunc {
 
     /**
      * Search the json object in the list of keys contains specified values
-     * @param jo
+     * @param keyRoot
      * @param keyString
      * @param containsValue
      * @return searchCondition

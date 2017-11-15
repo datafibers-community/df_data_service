@@ -11,7 +11,6 @@ import org.apache.log4j.Logger;
 import com.datafibers.model.DFJobPOPJ;
 import com.datafibers.util.ConstantApp;
 import com.datafibers.util.HelpFunc;
-import org.json.JSONObject;
 
 public class KafkaConnectProcessor {
 
@@ -46,7 +45,7 @@ public class KafkaConnectProcessor {
                                         .put("subTaskId", subTaskArray.getJsonObject(i).getInteger("id"))
                                         .put("id", taskId + "_" + subTaskArray.getJsonObject(i).getInteger("id"))
                                         .put("jobId", taskId)
-                                        .put("dfTaskState", HelpFunc.getTaskStatusKafka(new JSONObject(jo.toString())))
+                                        .put("dfTaskState", HelpFunc.getTaskStatusKafka(jo))
                                         .put("taskState", jo.getJsonObject("connector").getString("state"));
                             }
                         } else { // when tasks is empty, return an dummy row
@@ -54,7 +53,7 @@ public class KafkaConnectProcessor {
                                     .put("subTaskId", "e")
                                     .put("id", taskId + "_e")
                                     .put("jobId", taskId)
-                                    .put("dfTaskState", HelpFunc.getTaskStatusKafka(new JSONObject(jo.toString())))
+                                    .put("dfTaskState", HelpFunc.getTaskStatusKafka(jo))
                                     .put("taskState", jo.getJsonObject("connector").getString("state"))
                                     .put("taskTrace", jo.getJsonObject("connector").getString("trace")));
                         }
