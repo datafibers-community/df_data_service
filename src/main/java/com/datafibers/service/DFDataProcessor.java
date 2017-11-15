@@ -26,7 +26,6 @@ import io.vertx.kafka.client.common.PartitionInfo;
 import io.vertx.kafka.client.consumer.KafkaConsumer;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.log4j.Level;
 import org.bson.types.ObjectId;
 import org.json.JSONObject;
 import org.apache.log4j.Logger;
@@ -67,6 +66,7 @@ public class DFDataProcessor extends AbstractVerticle {
     private MongoClient mongo;
     private MongoAdminClient mongoDFInstalled;
     private RestClient rc_schema;
+    private WebClient wc_schema;
     private WebClient wc_connect;
     private WebClient wc_flink;
     private WebClient wc_refresh;
@@ -187,6 +187,7 @@ public class DFDataProcessor extends AbstractVerticle {
             // Non-blocking Rest API Client to talk to Kafka Connect when needed
             if (this.kafka_connect_enabled) {
                 this.wc_connect = WebClient.create(vertx);
+                this.wc_schema = WebClient.create(vertx);
                 this.rc_schema = RestClient.create(vertx, restClientOptions.setDefaultHost(this.kafka_connect_rest_host)
                         .setDefaultPort(this.schema_registry_rest_port), httpMessageConverters);
             }
@@ -1508,7 +1509,8 @@ public class DFDataProcessor extends AbstractVerticle {
      *     }
      */
     private void updateOneSchema(RoutingContext routingContext) {
-        SchemaRegisterProcessor.forwardUpdateOneSchema(routingContext, rc_schema, schema_registry_host_and_port);
+        SchemaRegisterProcessor.forwardUpdateOneSchema(routingContext, wc_schema,
+                kafka_server_host, schema_registry_rest_port);
     }
 
     /**
@@ -1658,7 +1660,8 @@ public class DFDataProcessor extends AbstractVerticle {
      *     }
      */
     private void deleteOneSchema(RoutingContext routingContext) {
-        SchemaRegisterProcessor.forwardDELETEAsDeleteOne(routingContext, rc_schema, schema_registry_host_and_port);
+        SchemaRegisterProcessor.forwardDELETEAsDeleteOne(routingContext, wc_schema,
+                kafka_server_host, schema_registry_rest_port);
         KafkaAdminClient.deleteTopics(kafka_server_host_and_port, routingContext.request().getParam("id"));
     }
 

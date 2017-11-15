@@ -1,14 +1,19 @@
 package com.datafibers.processor;
 
+import com.datafibers.model.DFJobPOPJ;
 import com.datafibers.util.DFAPIMessage;
 import com.datafibers.util.DFMediaType;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.RestClientRequest;
 import io.vertx.core.Vertx;
 import io.vertx.core.WorkerExecutor;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.RoutingContext;
 import java.net.ConnectException;
 import java.util.Arrays;
+
+import io.vertx.ext.web.client.WebClient;
 import org.bson.types.ObjectId;
 import org.json.JSONException;
 import org.json.JSONArray;
@@ -277,164 +282,110 @@ public class SchemaRegisterProcessor { // TODO @Schubert add proper Log.info or 
     }
 
     /**
-     * Update one schema to schema registry with non-blocking rest client
-     * @param routingContext
-     * @param schema_registry_host_and_port
+     * Update one schema including compatibility to schema registry with non-blocking rest client
+     *
+     * @param routingContext This is the connect from REST API
+     * @param webClient This is vertx non-blocking rest client used for forwarding
+     * @param schemaRegistryRestHost Schema Registry Rest Host
+     * @param schemaRegistryRestPort Schema Registry Rest Port
      */
-    public static void forwardUpdateOneSchema(RoutingContext routingContext, RestClient rc_schema,
-                                           String schema_registry_host_and_port) {
-        JSONObject schema;
-        String subject;
-        String compatibility;
-        String restURI;
-        JSONObject schema1;
-        JSONObject jsonForSubmit;
+    public static void forwardUpdateOneSchema(RoutingContext routingContext, WebClient webClient,
+                                              String schemaRegistryRestHost, int schemaRegistryRestPort) {
 
-        String formInfo = routingContext.getBodyAsString();
-        LOG.debug("Received the body is: " + formInfo);
+        JsonObject schemaObj = routingContext.getBodyAsJson();
+        String subject = schemaObj.getString(ConstantApp.SCHEMA_REGISTRY_KEY_SUBJECT);
+        String compatibility = schemaObj.containsKey(ConstantApp.SCHEMA_REGISTRY_KEY_COMPATIBILITY) ?
+                schemaObj.getString(ConstantApp.SCHEMA_REGISTRY_KEY_COMPATIBILITY) : "NONE";
 
-        JSONObject jsonObj = new JSONObject(formInfo);
-
-        try {
-            schema = jsonObj.getJSONObject(ConstantApp.SCHEMA);
-            schema1 = new JSONObject(schema.toString()); // TODO this is redundant?
-            LOG.debug("=== schema is: " + schema1.toString());
-        } catch (Exception ex) {
-            schema1 = new JSONObject().put("type", jsonObj.getString(ConstantApp.SCHEMA));
-            LOG.debug("=== schema with no key is: " + schema1.toString());
-        }
-
-        subject = jsonObj.getString(ConstantApp.SUBJECT);
-        compatibility = jsonObj.optString(ConstantApp.COMPATIBILITY);
-        LOG.debug("subject|compatibility: " + subject + "|" + compatibility);
-
-        restURI = "http://" + schema_registry_host_and_port + "/subjects/" + subject + "/versions";
-
-        final RestClientRequest postRestClientRequest = rc_schema.post(restURI, String.class,
-                portRestResponse -> {
-                    String rs = portRestResponse.getBody();
-                    if (rs != null) {
-                        LOG.info("Update schema status code: " + portRestResponse.statusCode());
-                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                                .setStatusCode(ConstantApp.STATUS_CODE_OK)
-                                .end(DFAPIMessage.getResponseMessage(1017));
-                    }
-                }
-        );
-
-        postRestClientRequest.exceptionHandler(exception -> {
-            HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                    .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                    .end(DFAPIMessage.getResponseMessage(9023));
-            DFAPIMessage.logResponseMessage(9023, "UPDATE_SCHEMA_FAILED");
-        });
-
-        rc_schema.exceptionHandler(exception -> {
-            HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
-                    .end(DFAPIMessage.getResponseMessage(9028));
-            LOG.error(DFAPIMessage.logResponseMessage(9028, exception.getMessage()));
-        });
-
-        postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
-        postRestClientRequest.setAcceptHeader(Arrays.asList(DFMediaType.APPLICATION_SCHEMA_REGISTRY_JSON));
-        jsonForSubmit = new JSONObject().put("schema", schema1.toString());
-        LOG.debug("Schema send to update is: " + jsonForSubmit.toString());
-
-        postRestClientRequest.end(jsonForSubmit.toString());
-
-        // Set compatibility to the subject
-        if (compatibility != null && compatibility.trim().length() > 0) {
-            restURI = "http://" + schema_registry_host_and_port + "/config/" + subject;
-            final RestClientRequest postRestClientRequest2 = rc_schema.put(restURI, portRestResponse -> {
-                if (routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_OK) {
-                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                            .setStatusCode(ConstantApp.STATUS_CODE_OK)
-                            .end(DFAPIMessage.logResponseMessage(1017, "SCHEMA_UPDATE"));
-                    LOG.info(DFAPIMessage.logResponseMessage(1017, "SCHEMA_UPDATE"));
-                }
-            });
-
-            postRestClientRequest2.exceptionHandler(exception -> {
-                if (routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_CONFLICT
-                        && routingContext.response().getStatusCode() != ConstantApp.STATUS_CODE_OK) {
-                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                            .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                            .end(DFAPIMessage.getResponseMessage(9023));
-                    LOG.error(DFAPIMessage.logResponseMessage(9023, "SCHEMA_UPDATE"));
-                }
-            });
-
-            rc_schema.exceptionHandler(exception -> {
-                HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                        .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
-                        .end(DFAPIMessage.getResponseMessage(9028));
-                LOG.error(DFAPIMessage.logResponseMessage(9028, exception.getMessage()));
-            });
-
-            postRestClientRequest2.setContentType(MediaType.APPLICATION_JSON);
-            postRestClientRequest2.setAcceptHeader(Arrays.asList(DFMediaType.APPLICATION_SCHEMA_REGISTRY_JSON));
-
-            JSONObject jsonToBeSubmitted = new JSONObject().put(ConstantApp.COMPATIBILITY, compatibility);
-            postRestClientRequest2.end(jsonToBeSubmitted.toString());
-        }
+        webClient.post(schemaRegistryRestPort, schemaRegistryRestHost,
+                ConstantApp.SR_REST_URL_SUBJECTS + "/" + subject + ConstantApp.SR_REST_URL_VERSIONS)
+                .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
+                .sendJsonObject( new JsonObject()
+                                .put(ConstantApp.SCHEMA_REGISTRY_KEY_SCHEMA,
+                                        schemaObj.getJsonObject(ConstantApp.SCHEMA_REGISTRY_KEY_SCHEMA).toString()),
+                        // Must toString above according SR API spec.
+                        ar -> {
+                            if (ar.succeeded()) {
+                                HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                        .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                        .end(DFAPIMessage.getResponseMessage(1017, subject,
+                                                subject + " is updated."));
+                                LOG.info(DFAPIMessage.logResponseMessage(1017, subject));
+                                // Once successful, we will update schema compatibility
+                                webClient.put(schemaRegistryRestPort, schemaRegistryRestHost,
+                                        ConstantApp.SR_REST_URL_CONFIG + "/" + subject)
+                                        .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
+                                        .sendJsonObject( new JsonObject()
+                                                        .put(ConstantApp.SCHEMA_REGISTRY_KEY_COMPATIBILITY,
+                                                                compatibility),
+                                                arc -> {
+                                                    if (arc.succeeded()) {
+                                                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                                                .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                                                .end(DFAPIMessage.logResponseMessage(1017,
+                                                                        "SCHEMA_UPDATE"));
+                                                        LOG.info(DFAPIMessage.logResponseMessage(1017,
+                                                                "SCHEMA_UPDATE"));
+                                                    } else {
+                                                        // If response is failed, repose df ui and still keep the task
+                                                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                                                .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                                                                .end(DFAPIMessage.getResponseMessage(9023,
+                                                                        subject,
+                                                                        "Schema Compatibility Update is failed."));
+                                                        LOG.info(DFAPIMessage.logResponseMessage(9023, subject));
+                                                    }
+                                                }
+                                        );
+                            } else {
+                                // If response is failed, repose df ui and still keep the task
+                                HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                        .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                                        .end(DFAPIMessage.getResponseMessage(9038));
+                                LOG.info(DFAPIMessage.logResponseMessage(9038, subject));
+                            }
+                        }
+                );
     }
 
     /**
-     * This method first decode the REST DELETE request to DFJobPOPJ object. Then, it updates its job status and repack
-     * for SR REST DELETE. After that, it forward the new DELETE to Schema Registry.
+     * This method first decode the REST DELETE request to get schema subject. Then, it forward the DELETE to
+     * Schema Registry.
      *
-     * @param routingContext This is the contect from REST API
-     * @param rc_schema This is vertx non-blocking rest client used for forwarding
-     * @param schema_registry_host_and_port Schema Registry Rest
+     * @param routingContext This is the connect from REST API
+     * @param webClient This is vertx non-blocking rest client used for forwarding
+     * @param schemaRegistryRestHost Schema Registry Rest Host
+     * @param schemaRegistryRestPort Schema Registry Rest Port
      */
-    public static void forwardDELETEAsDeleteOne (RoutingContext routingContext, RestClient rc_schema,
-                                                 String schema_registry_host_and_port) {
-        final String subject = routingContext.request().getParam("id");
-        if(subject == null) {
-            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
-                    .end(DFAPIMessage.getResponseMessage(9000));
-            LOG.error(DFAPIMessage.logResponseMessage(9000, subject));
-        } else {
-            String restURI = "http://" + schema_registry_host_and_port + "/subjects/" + subject;
-            // Create REST Client for Kafka Connect REST Forward
-            final RestClientRequest postRestClientRequest =
-                    rc_schema.delete(restURI, String.class, portRestResponse -> {
-                        if(portRestResponse.statusCode() == ConstantApp.STATUS_CODE_OK) {
-                            HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                                    .setStatusCode(ConstantApp.STATUS_CODE_OK)
-                                    .end(DFAPIMessage.getResponseMessage(1026, subject));
-                            LOG.info(DFAPIMessage.logResponseMessage(1026, "subject = " + subject));
-                        } else {
-                            LOG.error(DFAPIMessage.logResponseMessage(9022, "subject = " + subject));
+    public static void forwardDELETEAsDeleteOne (RoutingContext routingContext, WebClient webClient,
+                                                 String schemaRegistryRestHost, int schemaRegistryRestPort) {
+
+        String subject = routingContext.request().getParam("id");
+        // Create REST Client for Kafka Connect REST Forward
+        webClient.delete(schemaRegistryRestPort, schemaRegistryRestHost,
+                ConstantApp.SR_REST_URL_SUBJECTS + "/" + subject)
+                .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
+                .sendJsonObject(DFAPIMessage.getResponseJsonObj(1026),
+                        ar -> {
+                            if (ar.succeeded() &&
+                                    ar.result().statusCode() == ConstantApp.STATUS_CODE_OK) {
+                                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                            .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                            .end(DFAPIMessage.getResponseMessage(1026, subject));
+                                    LOG.info(DFAPIMessage.logResponseMessage(1026,
+                                            "subject = " + subject));
+                            } else {
+                                // If response is failed, repose df ui and still keep the task
+                                HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                        .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                                        .end(DFAPIMessage.getResponseMessage(9029, subject,
+                                                "Schema Subject DELETE Failed"));
+                                LOG.info(DFAPIMessage.logResponseMessage(9029, subject + "-"
+                                        + ar.cause().getMessage()
+                                ));
+                            }
                         }
-
-                        portRestResponse.exceptionHandler(exception -> {
-                            HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
-                                    .end(DFAPIMessage.getResponseMessage(9029));
-                            LOG.error(DFAPIMessage.logResponseMessage(9029, "subject = " + subject));
-                        });
-                    });
-
-            postRestClientRequest.exceptionHandler(exception -> {
-                HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                        .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
-                        .end(DFAPIMessage.getResponseMessage(9029));
-                LOG.info(DFAPIMessage.logResponseMessage(9029, "subject = " + subject + exception.toString()));
-            });
-
-            rc_schema.exceptionHandler(exception -> {
-                HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                        .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
-                        .end(DFAPIMessage.getResponseMessage(9028));
-                LOG.error(DFAPIMessage.logResponseMessage(9028, exception.getMessage()));
-            });
-
-            postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
-            postRestClientRequest.setAcceptHeader(Arrays.asList(DFMediaType.APPLICATION_SCHEMA_REGISTRY_JSON));
-            postRestClientRequest.end(DFAPIMessage.getResponseMessage(1026));
-        }
+                );
     }
 
     /**
