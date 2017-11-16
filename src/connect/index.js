@@ -100,7 +100,7 @@ export const ConnectEdit = (props) => (
                     <DependentInput dependsOn="connectorConfig.portfolio" value="None">
                         <LongTextInput source="connectorConfig.symbols" label="List of Stock Symbols (separated by ,)" style={{ width: 500 }}/>
                     </DependentInput>
-                    <NumberInput source="connectorConfig.interval" label="API Refresh Interval (sec.)" defaultValue={10} step={10} validate={[ required, minValue(10) ]} />
+                    <NumberInput source="connectorConfig.interval" label="API Refresh Interval (sec.)" defaultValue={5} step={5} validate={[ required, minValue(5) ]} />
                     <SelectInput source="connectorConfig.spoof" label="Use Spoofing Data?" validate={[ required ]} choices={[
                                                 { id: 'NONE', name: 'No Spoofing' },
                                                 { id: 'PAST', name: 'Spoof from Past Market Data' },
