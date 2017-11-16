@@ -120,6 +120,7 @@ public class SchemaRegisterProcessor {
      * @param routingContext
      * @param schema_registry_host_and_port
      */
+    @Deprecated
     public static void forwardGetOneSchema(Vertx vertx, RoutingContext routingContext,
                                            String schema_registry_host_and_port) {
         LOG.debug("SchemaRegisterProcessor.forwardGetOneSchema is called.");
@@ -170,6 +171,56 @@ public class SchemaRegisterProcessor {
             executor.close();
         });
     }
+    /**
+     * Retrieve the specified subject's schema information. Use block rest client, but unblock using vertx worker.
+     *
+     * @param routingContext
+     * @param webClient
+     * @param schemaRegistryRestHost
+     * @param schemaRegistryRestPort
+     */
+    public static void forwardGetOneSchema(RoutingContext routingContext, WebClient webClient,
+                                           String schemaRegistryRestHost, int schemaRegistryRestPort) {
+        final String subject = routingContext.request().getParam("id");
+        webClient.get(schemaRegistryRestPort, schemaRegistryRestHost,
+                ConstantApp.SR_REST_URL_SUBJECTS + "/" + subject + ConstantApp.SR_REST_URL_VERSIONS + "/latest")
+                .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
+                .send(ar -> {
+                    if (ar.succeeded() && (ar.result().statusCode() == ConstantApp.STATUS_CODE_OK)) {
+                        // get compatibility of schema
+                        JsonObject schema = ar.result().bodyAsJsonObject();
+                        webClient.get(schemaRegistryRestPort, schemaRegistryRestHost,
+                                ConstantApp.SR_REST_URL_CONFIG + "/" + subject)
+                                .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
+                                .send(arc -> {
+                                    if (arc.succeeded() && (arc.result().statusCode() == ConstantApp.STATUS_CODE_OK)) {
+                                        JsonObject res = arc.result().bodyAsJsonObject();
+                                        String compatibility =
+                                                res.containsKey(ConstantApp.SCHEMA_REGISTRY_KEY_COMPATIBILITY_LEVEL)?
+                                                res.getString(ConstantApp.SCHEMA_REGISTRY_KEY_COMPATIBILITY_LEVEL):
+                                                "NONE";
+
+                                        schema.put(ConstantApp.SCHEMA_REGISTRY_KEY_COMPATIBILITY, compatibility);
+
+                                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                                .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                                .end(Json.encodePrettily(schema));
+                                        LOG.info(DFAPIMessage.logResponseMessage(1030, subject));
+                                    } else {
+                                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                                .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
+                                                .end(DFAPIMessage.getResponseMessage(9042, subject));
+                                        LOG.error(DFAPIMessage.logResponseMessage(9042, subject));
+                                    }
+                                });
+                    } else {
+                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
+                                .end(DFAPIMessage.getResponseMessage(9041, subject));
+                        LOG.error(DFAPIMessage.logResponseMessage(9041, subject));
+                    }
+                });
+    }
 
     /**
      * Add one schema to schema registry with non-blocking rest client. Add schema and update schema have the same API
@@ -212,14 +263,14 @@ public class SchemaRegisterProcessor {
     /**
      * This is commonly used utility
      *
-     * @param routingContext
-     * @param webClient
-     * @param schemaRegistryRestHost
-     * @param schemaRegistryRestPort
-     * @param successMsg
-     * @param successCode
-     * @param errorMsg
-     * @param errorCode
+     * @param routingContext This is the connect from REST API
+     * @param webClient This is vertx non-blocking rest client used for forwarding
+     * @param schemaRegistryRestHost Schema Registry Rest Host
+     * @param schemaRegistryRestPort Schema Registry Rest Port
+     * @param successMsg Message to response when succeeded
+     * @param successCode Status code to response when succeeded
+     * @param errorMsg Message to response when failed
+     * @param errorCode Status code to response when failed
      */
     public static void addOneSchemaCommon(RoutingContext routingContext, WebClient webClient,
                                           String schemaRegistryRestHost, int schemaRegistryRestPort,

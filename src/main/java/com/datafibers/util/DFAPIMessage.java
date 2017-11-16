@@ -46,6 +46,7 @@ public final class DFAPIMessage {
         messageMap.put(1027, "TOPIC_IS_SUBSCRIBED");
         messageMap.put(1028, "DF_JAR_IS_UPLOADED_FOR_FLINK");
         messageMap.put(1029, "DF_MONGO_CLIENT_SETUP_COMPLETED");
+        messageMap.put(1030, "SCHEMA_IS_RETURNED");
         messageMap.put(9000, "ID_IS_NULL_IN_REQUEST");
         messageMap.put(9001, "ID_NOT_FOUND_IN_REPO");
         messageMap.put(9002, "ID_SEARCH_EXCEPTION_IN_REPO");
@@ -73,7 +74,7 @@ public final class DFAPIMessage {
         messageMap.put(9024, "DF_INSTALLED_DATA_NOT_FOUND");
         messageMap.put(9025, "ID_UPDATE_EXCEPTION_IN_FLINK_REST");
         messageMap.put(9026, "ID_DELETE_EXCEPTION_IN_FLINK_REST");
-        messageMap.put(9027, "FORWARD_GET_ALL_SCHEMA");
+        messageMap.put(9027, "FORWARD_GET_ALL_SCHEMA_FAILED");
         messageMap.put(9028, "REST_CLIENT_EXCEPTION");
         messageMap.put(9029, "REST_CLIENT_RESPONSE_EXCEPTION");
         messageMap.put(9030, "AVRO_CONSUMER_TOPIC_SUBSCRIBE_ERROR");
@@ -87,6 +88,8 @@ public final class DFAPIMessage {
         messageMap.put(9038, "PUT_TO_UPDATE_CONNECT_REQUEST_FAILED");
         messageMap.put(9039, "SCHEMA_CREATION_FAILED");
         messageMap.put(9040, "SCHEMA_SUBJECT_MISSING");
+        messageMap.put(9041, "SCHEMA_NOT_FOUND");
+        messageMap.put(9042, "SCHEMA_COMPAT_REQUEST_FAILED");
     }
 
     public static JsonObject getResponseJsonObj(int responseCode, String comments, String message) {
