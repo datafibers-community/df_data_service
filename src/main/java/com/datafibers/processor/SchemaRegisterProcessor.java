@@ -3,6 +3,7 @@ package com.datafibers.processor;
 import com.datafibers.util.DFAPIMessage;
 import io.vertx.core.Vertx;
 import io.vertx.core.WorkerExecutor;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
 import java.net.ConnectException;
@@ -27,6 +28,7 @@ public class SchemaRegisterProcessor {
      * Here, we'll filter topic-value and topic-key subject since these are used by the kafka and CR.
      * These subject are not available until SourceRecord is available.
      * Use block rest client, but unblock using vertx worker.
+     *
      * @param routingContext
      * @param schema_registry_host_and_port
      */
@@ -56,10 +58,9 @@ public class SchemaRegisterProcessor {
                     int count = 0;
                     if (subjects.compareToIgnoreCase("[]") != 0) { // Has active subjects
                         for (String subject : subjects.substring(2, subjects.length() - 2).split("\",\"")) {
-                            // If the subject is internal one, such as topic-key or topic-value or df_meta
-                            if(subject.equalsIgnoreCase("df_meta") ||
-                                    subject.contains("-value") ||
-                                    subject.contains("-key")) continue;
+                            // If the subject is internal one, such as topic-key or topic-value
+                            if(subject.contains("df_meta") || subject.contains("-value") || subject.contains("-key"))
+                                continue;
 
                             HttpResponse<JsonNode> resSubject = Unirest
                                     .get(restURI + "/" + subject + "/versions/latest")
@@ -88,7 +89,7 @@ public class SchemaRegisterProcessor {
                         }
                         if (count > 0)
                             returnString.append(strBuff.toString().substring(0, strBuff.toString().length() - 1) + "]");
-                        LOG.debug("returnString: " + returnString.toString());
+                        //LOG.debug("returnString: " + returnString.toString());
                     }
                 }
             } catch (JSONException | UnirestException e) {
@@ -208,6 +209,18 @@ public class SchemaRegisterProcessor {
         );
     }
 
+    /**
+     * This is commonly used utility
+     *
+     * @param routingContext
+     * @param webClient
+     * @param schemaRegistryRestHost
+     * @param schemaRegistryRestPort
+     * @param successMsg
+     * @param successCode
+     * @param errorMsg
+     * @param errorCode
+     */
     public static void addOneSchemaCommon(RoutingContext routingContext, WebClient webClient,
                                           String schemaRegistryRestHost, int schemaRegistryRestPort,
                                           String successMsg, int successCode, String errorMsg, int errorCode) {
@@ -222,12 +235,11 @@ public class SchemaRegisterProcessor {
         String subject = jsonObj.containsKey("id")? jsonObj.getString("id"):
                 jsonObj.getString(ConstantApp.SCHEMA_REGISTRY_KEY_SUBJECT);
 
-        if(!jsonObj.containsKey(ConstantApp.SCHEMA_REGISTRY_KEY_SUBJECT))
-            jsonObj.put(ConstantApp.SCHEMA_REGISTRY_KEY_SUBJECT, subject);
-
         // Set schema name from subject if it does not has name or empty
-        if(!schemaObj.containsKey("name") || schemaObj.getString("name").isEmpty())
+        if(!schemaObj.containsKey("name") || schemaObj.getString("name").isEmpty()) {
             schemaObj.put("name", subject);
+            jsonObj.put(ConstantApp.SCHEMA_REGISTRY_KEY_SCHEMA, schemaObj);
+        }
 
         String compatibility = jsonObj.containsKey(ConstantApp.SCHEMA_REGISTRY_KEY_COMPATIBILITY) ?
                 jsonObj.getString(ConstantApp.SCHEMA_REGISTRY_KEY_COMPATIBILITY) : "NONE";
@@ -240,25 +252,19 @@ public class SchemaRegisterProcessor {
                         // Must toString above according SR API spec.
                         ar -> {
                             if (ar.succeeded()) {
-/*                                HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                                        .setStatusCode(ConstantApp.STATUS_CODE_OK)
-                                        .end(DFAPIMessage.getResponseMessage(successCode, subject,
-                                                successMsg + "-SCHEMA"));*/
-                                LOG.info(DFAPIMessage.logResponseMessage(successCode, subject
-                                        + "-SCHEMA"));
+                                LOG.info(DFAPIMessage.logResponseMessage(successCode, subject + "-SCHEMA"));
                                 // Once successful, we will update schema compatibility
                                 webClient.put(schemaRegistryRestPort, schemaRegistryRestHost,
                                         ConstantApp.SR_REST_URL_CONFIG + "/" + subject)
-                                        .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
-                                        .sendJsonObject( new JsonObject()
-                                                        .put(ConstantApp.SCHEMA_REGISTRY_KEY_COMPATIBILITY,
-                                                                compatibility),
+                                        .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE,
+                                                ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
+                                        .sendJsonObject(new JsonObject()
+                                                .put(ConstantApp.SCHEMA_REGISTRY_KEY_COMPATIBILITY, compatibility),
                                                 arc -> {
                                                     if (arc.succeeded()) {
                                                         HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                                                 .setStatusCode(ConstantApp.STATUS_CODE_OK)
-                                                                .end(DFAPIMessage.logResponseMessage(successCode,
-                                                                        successMsg + "-COMPATIBILITY"));
+                                                                .end(Json.encodePrettily(jsonObj));
                                                         LOG.info(DFAPIMessage.logResponseMessage(1017,
                                                                 successMsg + "-COMPATIBILITY"));
                                                     } else {
@@ -340,11 +346,12 @@ public class SchemaRegisterProcessor {
 
         try {
             res = Unirest.get(fullUrl).header("accept", "application/vnd.schemaregistry.v1+json").asString();
-            LOG.debug("getCompatibilityOfSubject res.getBody(): " + res.getBody());
+            LOG.debug("Subject:" + schemaSubject + " " + res.getBody());
             if (res.getBody() != null) {
                 if (res.getBody().indexOf("40401") > 0) {
                 } else {
                     JSONObject jason = new JSONObject(res.getBody().toString());
+                    // This attribute is different from confluent doc. TODo check update later
                     compatibility = jason.getString(ConstantApp.SCHEMA_REGISTRY_KEY_COMPATIBILITY_LEVEL);
                 }
             }
