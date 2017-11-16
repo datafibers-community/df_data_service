@@ -114,65 +114,7 @@ public class SchemaRegisterProcessor {
     }
 
     /**
-     * Retrieve the specified subject's schema information. Use block rest client, but unblock using vertx worker.
-     *
-     * @param vertx
-     * @param routingContext
-     * @param schema_registry_host_and_port
-     */
-    @Deprecated
-    public static void forwardGetOneSchema(Vertx vertx, RoutingContext routingContext,
-                                           String schema_registry_host_and_port) {
-        LOG.debug("SchemaRegisterProcessor.forwardGetOneSchema is called.");
-
-        final String subject = routingContext.request().getParam("id");
-        StringBuffer returnString = new StringBuffer();
-
-        WorkerExecutor executor = vertx.createSharedWorkerExecutor("getOneSchema_pool_" + subject,
-                ConstantApp.WORKER_POOL_SIZE, ConstantApp.MAX_RUNTIME);
-        executor.executeBlocking(future -> {
-            String restURI = "http://" + schema_registry_host_and_port + "/subjects/" + subject + "/versions/latest";
-            int status_code = ConstantApp.STATUS_CODE_OK;
-
-            if (subject == null) {
-                status_code = ConstantApp.STATUS_CODE_BAD_REQUEST;
-            } else {
-                try {
-                    HttpResponse<String> res = Unirest.get(restURI)
-                            .header("accept", ConstantApp.AVRO_REGISTRY_CONTENT_TYPE).asString();
-
-                    if (res == null) {
-                        status_code = ConstantApp.STATUS_CODE_BAD_REQUEST;
-                    } else if (res.getStatus() != ConstantApp.STATUS_CODE_OK) {
-                        status_code = res.getStatus();
-                    } else {
-                        JSONObject json = new JSONObject(res.getBody());
-
-                        // Get the subject's compatibility
-                        String compatibility = getCompatibilityOfSubject(schema_registry_host_and_port, subject);
-                        if (compatibility != null && !compatibility.isEmpty()) {
-                            json.put(ConstantApp.SCHEMA_REGISTRY_KEY_COMPATIBILITY, compatibility);
-                        }
-
-                        returnString.append(json.toString());
-                        status_code = ConstantApp.STATUS_CODE_OK;
-                    }
-                } catch (JSONException | UnirestException e) {
-                    LOG.error("SchemaRegisterProcessor - forwardGetOneSchema() - Exception message: " + e.getCause());
-                    status_code = ConstantApp.STATUS_CODE_BAD_REQUEST;
-                }
-            }
-            future.complete(status_code);
-        }, res -> {
-            Object result = HelpFunc.coalesce(res.result(), ConstantApp.STATUS_CODE_BAD_REQUEST);
-            HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                    .setStatusCode(Integer.parseInt(result.toString()))
-                    .end(HelpFunc.stringToJsonFormat(returnString.toString()));
-            executor.close();
-        });
-    }
-    /**
-     * Retrieve the specified subject's schema information. Use block rest client, but unblock using vertx worker.
+     * Retrieve the specified subject's schema information. Use unblock rest client.
      *
      * @param routingContext
      * @param webClient

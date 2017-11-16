@@ -983,7 +983,8 @@ public class DFDataProcessor extends AbstractVerticle {
      * @apiSampleRequest http://localhost:8080/api/df/schema/:subject
      */
     private void getOneSchema(RoutingContext routingContext) {
-        SchemaRegisterProcessor.forwardGetOneSchema(vertx, routingContext, schema_registry_host_and_port);
+        SchemaRegisterProcessor.forwardGetOneSchema(routingContext, wc_schema,
+                kafka_server_host, schema_registry_rest_port);
     }
 
     /**
