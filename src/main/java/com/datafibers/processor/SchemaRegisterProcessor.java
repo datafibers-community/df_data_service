@@ -100,14 +100,24 @@ public class SchemaRegisterProcessor {
         }, res -> {
             Object result = HelpFunc.coalesce(res.result(), ConstantApp.STATUS_CODE_BAD_REQUEST);
             try {
-                HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                        .setStatusCode(Integer.parseInt(result.toString()))
-                        .putHeader("X-Total-Count", new JSONArray(returnString.toString()).length() + "")
-                        .end(HelpFunc.stringToJsonFormat(
-                                HelpFunc.sortJsonArray(routingContext,
-                                        new JSONArray(returnString.toString())).toString()));
+                if (returnString == null || returnString.toString().isEmpty()) {
+                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                            .setStatusCode(Integer.parseInt(result.toString()))
+                            .putHeader("X-Total-Count", "0")
+                            .end("[]");
+
+                } else {
+                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                            .setStatusCode(Integer.parseInt(result.toString()))
+                            .putHeader("X-Total-Count", new JSONArray(returnString.toString()).length() + "")
+                            .end(HelpFunc.stringToJsonFormat(
+                                    HelpFunc.sortJsonArray(routingContext,
+                                            new JSONArray(returnString.toString())
+                                    ).toString())
+                            );
+                }
             } catch (JSONException je) {
-                LOG.error(DFAPIMessage.logResponseMessage(9027, " exception -" + je.getCause()));
+                LOG.error(DFAPIMessage.logResponseMessage(9027, " exception - " + je.getCause()));
             }
             executor.close();
         });
