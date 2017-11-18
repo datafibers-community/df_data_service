@@ -146,6 +146,7 @@ public class SchemaRegisterProcessor {
                                 .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
                                 .send(arc -> {
                                         JsonObject res = arc.result().bodyAsJsonObject();
+                                        // When failed to get compatibility, return NONE
                                         String compatibility =
                                                 res.containsKey(ConstantApp.SCHEMA_REGISTRY_KEY_COMPATIBILITY_LEVEL)?
                                                 res.getString(ConstantApp.SCHEMA_REGISTRY_KEY_COMPATIBILITY_LEVEL):
