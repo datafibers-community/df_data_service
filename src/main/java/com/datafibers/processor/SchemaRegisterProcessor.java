@@ -145,7 +145,6 @@ public class SchemaRegisterProcessor {
                                 ConstantApp.SR_REST_URL_CONFIG + "/" + subject)
                                 .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
                                 .send(arc -> {
-                                    if (arc.succeeded() && (arc.result().statusCode() == ConstantApp.STATUS_CODE_OK)) {
                                         JsonObject res = arc.result().bodyAsJsonObject();
                                         String compatibility =
                                                 res.containsKey(ConstantApp.SCHEMA_REGISTRY_KEY_COMPATIBILITY_LEVEL)?
@@ -158,12 +157,6 @@ public class SchemaRegisterProcessor {
                                                 .setStatusCode(ConstantApp.STATUS_CODE_OK)
                                                 .end(Json.encodePrettily(schema));
                                         LOG.info(DFAPIMessage.logResponseMessage(1030, subject));
-                                    } else {
-                                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                                                .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
-                                                .end(DFAPIMessage.getResponseMessage(9042, subject));
-                                        LOG.error(DFAPIMessage.logResponseMessage(9042, subject));
-                                    }
                                 });
                     } else {
                         HelpFunc.responseCorsHandleAddOn(routingContext.response())
