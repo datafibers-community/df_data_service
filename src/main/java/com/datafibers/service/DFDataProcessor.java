@@ -1884,7 +1884,16 @@ public class DFDataProcessor extends AbstractVerticle {
                                                     HelpFunc.getTaskStatusKafka(ar.result().bodyAsJsonObject());
 
                                             // Do change detection on status
-                                            if (statusRepo.compareToIgnoreCase(resStatus) != 0) { //status changes
+                                            /*
+                                            We detect that when adding new connect, some exiting running connect will
+                                            become UNASSIGNED within short time from RUNNING, then it goes back to normal.
+                                            In this case, we do not want to show it if the coming status is UNASSIGNED and
+                                            status in repo is RUNNING.
+                                             */
+                                            if (statusRepo.compareToIgnoreCase(resStatus) != 0 &&
+                                                    !(resStatus.equalsIgnoreCase(ConstantApp.DF_STATUS.UNASSIGNED.name())
+                                                    && statusRepo.equalsIgnoreCase(ConstantApp.DF_STATUS.RUNNING.name()))
+                                                ) { //status changes
                                                 DFJobPOPJ updateJob = new DFJobPOPJ(json);
                                                 updateJob.setStatus(resStatus);
                                                 mongo.updateCollection(COLLECTION, new JsonObject().put("_id", taskId),
