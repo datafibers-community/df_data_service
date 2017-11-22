@@ -116,19 +116,19 @@ export const TransformCreate = (props) => (
     			{ id: 'TRANSFORM_EXCHANGE_FLINK_SQLA2A', name: 'Streaming SQL' },
     			{ id: 'TRANSFORM_EXCHANGE_FLINK_Script', name: 'Streaming Table API' },
   		        { id: 'TRANSFORM_EXCHANGE_FLINK_UDF',  name: 'Streaming UDF' },
-		        ]} />
+		        ]} defaultValue='TRANSFORM_EXCHANGE_FLINK_SQLA2A' />
             </FormTab>
             <FormTab label="Setting">
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_FLINK_SQLA2A">
-                    <ReferenceArrayInput source="connectorConfig.topic_in" label="Choose Topics to Read Data" reference="schema" allowEmpty>
+                    <ReferenceArrayInput source="connectorConfig.topic_in" label="Choose a Read Topics" reference="schema" allowEmpty>
                         <SelectArrayInput optionText="subject" />
                     </ReferenceArrayInput>
-                    <BooleanInput source="connectorConfig.choose_or_create" label="Auto Create Output Topic?" defaultValue={false} style={{ width: 500 }} />
+                    <BooleanInput source="connectorConfig.choose_or_create" label="New Write Topic?" defaultValue={false} style={{ width: 500 }} />
                     <DependentInput dependsOn="connectorConfig.choose_or_create" value={true}>
-                        <LongTextInput source="connectorConfig.topic_out" label="Name a Topic Automatically Created" style={{ width: 500 }}/>
+                        <LongTextInput source="connectorConfig.topic_out" label="Auto Create a Write Topic" style={{ width: 500 }}/>
                     </DependentInput>
                     <DependentInput dependsOn="connectorConfig.choose_or_create" value={false}>
-                        <ReferenceInput source="connectorConfig.topic_out" label="Choose a Topic to Write Data" reference="schema" validate={[ required ]} allowEmpty>
+                        <ReferenceInput source="connectorConfig.topic_out" label="Choose a Write Topic Existed" reference="schema" validate={[ required ]} allowEmpty>
                             <AutocompleteInput optionText="subject" />
                         </ReferenceInput>
                     </DependentInput>
