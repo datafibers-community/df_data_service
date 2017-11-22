@@ -4,8 +4,7 @@ import { CreateButton }from 'admin-on-rest';
 import { CardActions } from 'material-ui/Card'
 import NavigationRefresh from 'material-ui/svg-icons/navigation/refresh'
 import { connect } from 'react-redux'
-import { REFRESH_VIEW } from 'admin-on-rest/src/actions/uiActions'
-import { refreshView as refreshViewAction } from 'admin-on-rest/src/actions/uiActions'
+import { refreshView as refreshViewAction } from 'admin-on-rest'
 
 class MyRefresh extends Component {
     componentDidMount() {
