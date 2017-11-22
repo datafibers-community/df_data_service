@@ -11,6 +11,7 @@ import { required, minLength, maxLength, minValue, maxValue, number, regex, emai
 import Icon from 'material-ui/svg-icons/image/transform';
 import RawJsonRecordField from '../component/RawJsonRecordField';
 import RawJsonRecordSpecificField from '../component/RawJsonRecordSpecificField';
+import RefreshListActions from '../buttons/RefreshListActions'
 
 export const TransformIcon = Icon;
 
@@ -38,7 +39,7 @@ export const TransformShow = (props) => (
 );
 
 export const TransformList = (props) => (
-    <List {...props} title="Transform List" filters={<TransformFilter />}>
+    <List {...props} title="Transform List" filters={<TransformFilter />} actions={<RefreshListActions refreshInterval="5000" />}>
         <Datagrid
             headerOptions={{ adjustForCheckbox: true, displaySelectAll: true }}
             bodyOptions={{ displayRowCheckbox: true, stripedRows: true, showRowHover: true}}

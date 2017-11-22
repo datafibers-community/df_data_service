@@ -10,6 +10,7 @@ import { DependentInput } from 'aor-dependent-input';
 import Icon from 'material-ui/svg-icons/action/language';
 import RawJsonRecordField from '../component/RawJsonRecordField';
 import RawJsonRecordSpecificField from '../component/RawJsonRecordSpecificField';
+import RefreshListActions from '../buttons/RefreshListActions'
 
 export const ProcessorIcon = Icon;
 
@@ -32,7 +33,9 @@ export const ProcessorShow = (props) => (
 );
 
 export const ProcessorList = (props) => (
-    <List {...props} title="All Connect and Transform List" filters={<ProcessorFilter />}>
+    <List {...props} title="All Live Task Status Board"
+    actions={<RefreshListActions refreshInterval="5000" />} filters={<ProcessorFilter />}
+    >
         <Datagrid bodyOptions={{ stripedRows: true, showRowHover: true}} >
             <TextField source="id" label="id" />
             <TextField source="taskSeq" label="seq." />

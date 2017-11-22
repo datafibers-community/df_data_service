@@ -15,6 +15,7 @@ import EmbeddedArrayInputFormField from '../component/EmbeddedArrayInputFormFiel
 import ApproveButton from './ApproveButton';
 import ReviewEditActions from './ReviewEditActions';
 import rowStyle from './rowStyle';
+import RefreshListActions from '../buttons/RefreshListActions'
 
 export const ConnectIcon = Icon;
 
@@ -42,7 +43,7 @@ export const ConnectShow = (props) => (
 );
 
 export const ConnectList = (props) => (
-    <List {...props} title="Connect List" filters={<ConnectFilter />} >
+    <List {...props} title="Connect List" filters={<ConnectFilter />} actions={<RefreshListActions refreshInterval="5000" />}>
         <Datagrid rowStyle={rowStyle}
             headerOptions={{ adjustForCheckbox: true, displaySelectAll: true }}
             bodyOptions={{ displayRowCheckbox: true, stripedRows: false, showRowHover: true}}
