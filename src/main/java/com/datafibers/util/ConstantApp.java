@@ -26,11 +26,6 @@ public final class ConstantApp {
     public static final String DF_CONNECTS_REST_URL_WILD = "/api/df/ps*";
     public static final String DF_CONNECTS_REST_URL_WITH_ID = DF_CONNECTS_REST_URL + "/:id";
 
-    // TODO - This is for API POC - Can be removed later
-    public static final String DF_CONNECTS_REST_URL2 = "/api/df/ps/new";
-    public static final String DF_CONNECTS_REST_URL_WITH_ID2 = DF_CONNECTS_REST_URL2 + "/:id";
-    public static final String DF_CONNECTS_REST_START_URL_WITH_ID = "/api/df/ps/new/start" + "/:id";
-
     // DF Transforms REST endpoint URLs
     public static final String DF_TRANSFORMS_REST_URL = "/api/df/tr";
     public static final String DF_TRANSFORMS_REST_URL_WILD = "/api/df/tr*";
@@ -103,6 +98,10 @@ public final class ConstantApp {
     public static final String SR_REST_URL_CONFIG = "/config";
     public static final String SR_REST_URL_VERSIONS = "/versions";
 
+    // Spark Livy rest api setting
+    public static final String LIVY_REST_URL_SESSIONS = "/sessions";
+    public static final String LIVY_REST_URL_STATEMENTS = "/statements";
+
     // HTTP req/res constants
     public static final String HTTP_HEADER_CONTENT_TYPE = "content-type";
     public static final String HTTP_HEADER_APPLICATION_JSON_CHARSET = "application/json; charset=utf-8";
@@ -152,8 +151,8 @@ public final class ConstantApp {
         TRANSFORM_EXCHANGE_FLINK_SQLA2A,
         TRANSFORM_EXCHANGE_FLINK_Script,
         TRANSFORM_EXCHANGE_FLINK_UDF,
-        TRANSFORM_EXCHANGE_SPARK_SQL,          // Spark streaming SQL
-        TRANSFORM_EXCHANGE_SPARK_BatchSQL,    // Spark streaming SQL
+        TRANSFORM_EXCHANGE_SPARK_SQL,          // Spark batch SQL
+        TRANSFORM_EXCHANGE_SPARK_STREAM,    // Spark streaming SQL
         TRANSFORM_EXCHANGE_SPARK_JOINS,        // Spark streaming of Data Join
         TRANSFORM_EXCHANGE_SPARK_UDF,          // Spark user defined jar/program
         TRANSFORM_EXCHANGE_HIVE_TRANS,         // Hive batch SQL
