@@ -4,6 +4,13 @@ import com.datafibers.model.DFJobPOPJ;
 import com.datafibers.util.ConstantApp;
 import com.datafibers.util.DFAPIMessage;
 import com.datafibers.util.HelpFunc;
+import com.mashape.unirest.http.HttpResponse;
+import com.mashape.unirest.http.JsonNode;
+import com.mashape.unirest.http.Unirest;
+import com.mashape.unirest.http.exceptions.UnirestException;
+import io.netty.util.Constant;
+import io.vertx.core.Vertx;
+import io.vertx.core.WorkerExecutor;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -31,54 +38,87 @@ public class SparkTransformProcessor {
      * @param taskCollection mongo collection name to keep df tasks
      * @param sparkRestHost spark/livy rest hostname
      * @param sparkRestPort spark/livy rest port number
-     * @param allowNonRestoredState
-     * @param savepointPath
-     * @param entryClass
-     * @param parallelism number of jobs run in parallelism
-     * @param programArgs parameters used by the jar files separated by " "
+     * @param vertx
+     * @param sql
      */
-    public static void forwardPostAsAddOne(WebClient webClient, DFJobPOPJ dfJob, MongoClient mongo,
-                                      String taskCollection, String sparkRestHost, int sparkRestPort, String jarId,
-                                      String allowNonRestoredState, String savepointPath, String entryClass,
-                                      String parallelism, String programArgs) {
-
-
-
+    public static void forwardPostAsAddOne(Vertx vertx, WebClient webClient, DFJobPOPJ dfJob, MongoClient mongo,
+                                           String taskCollection, String sparkRestHost, int sparkRestPort,
+                                           String sql) {
         String taskId = dfJob.getId();
-        if (jarId.isEmpty()) {
-            LOG.error(DFAPIMessage.logResponseMessage(9000, taskId));
-        } else {
-            // 1. Start a session using python spark, localhost:8998/sessions
-            webClient.post(sparkRestPort, sparkRestHost, ConstantApp.LIVY_REST_URL_SESSIONS)
-                    .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
-                    .sendJsonObject(new JsonObject().put("kind", "pyspark"), ar -> {
-                        if (ar.succeeded()) {
+        // 1. Start a session using python spark, localhost:8998/sessions
+        webClient.post(sparkRestPort, sparkRestHost, ConstantApp.LIVY_REST_URL_SESSIONS)
+                .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                .sendJsonObject(new JsonObject().put("kind", "pyspark"), ar -> {
+                    if (ar.succeeded()) {
+                        String sessionId = ar.result().bodyAsJsonObject().getString("id");
+                        dfJob.setJobConfig(ConstantApp.PK_LIVY_SESSION_ID, sessionId);
 
-                            // 2. Check if session is in idle, http://localhost:8998/sessions/3
+                        // 2. Check if session is in idle, http://localhost:8998/sessions/3
+                        WorkerExecutor executor = vertx.createSharedWorkerExecutor(taskId,
+                                ConstantApp.WORKER_POOL_SIZE, ConstantApp.MAX_RUNTIME);
+                        executor.executeBlocking(future -> {
+                            String restURL = "http://" + sparkRestHost + ":" + sparkRestPort +
+                                    ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId;
+
+                            HttpResponse<JsonNode> res;
+                            // Keep checking session status until it is in idle
+                            while(true) {
+                                try {
+                                    res = Unirest.get(restURL)
+                                            .header(ConstantApp.HTTP_HEADER_CONTENT_TYPE,
+                                                    ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                                            .asJson();
+                                    if(res.getBody().getObject().getString("state")
+                                            .equalsIgnoreCase("idle")) break;
+                                } catch (UnirestException e) {
+                                    LOG.error(DFAPIMessage.logResponseMessage(9006,
+                                            "exception - " + e.getCause()));
+                                }
+                            }
 
                             // 3. Once session is idle, submit sql code to the livy, localhost:8998/sessions/3/statements
+                            String pySparkCode = "a = sqlContext.sql(\"" + sql + "\").collect()\n%json a";
 
-                            // 4. Get job submission status/result, localhost:8998/sessions/3/statements/4
+                            webClient.post(sparkRestPort, sparkRestHost,
+                                    ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId + "/" +
+                                            ConstantApp.LIVY_REST_URL_STATEMENTS)
+                                    .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE,
+                                            ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                                    .sendJsonObject(new JsonObject().put("code", pySparkCode),
+                                            sar -> {
+                                                if (ar.succeeded()) {
+                                                    // 4. Get job submission status/result to keep in repo.
+                                                    // Further status update comes from refresh status module in fibers
+                                                    dfJob.setJobConfig(ConstantApp.PK_LIVY_STATEMENT_ID,
+                                                                    ar.result().bodyAsJsonObject().getString("id"))
+                                                            .setJobConfig(ConstantApp.PK_LIVY_STATEMENT_OUTPUT,
+                                                                    ar.result().bodyAsJsonObject().getString("output"))
+                                                            .setJobConfig(ConstantApp.PK_LIVY_STATEMENT_PROGRESS,
+                                                                    ar.result().bodyAsJsonObject().getString("progress"))
+                                                    .setStatus(ar.result().bodyAsJsonObject().getString("state")
+                                                            .toUpperCase()); // Task status is statement status
 
-                            LOG.debug("dfJob to Json = " + dfJob.toJson());
-                            // Update status to mongo
-                            mongo.updateCollection(taskCollection, new JsonObject().put("_id", taskId),
-                                    new JsonObject().put("$set", dfJob.toJson()), v -> {
-                                        if (v.failed()) {
-                                            LOG.error(DFAPIMessage.logResponseMessage(1001,
-                                                    taskId + " has error "));
-                                        } else {
-                                            LOG.info(DFAPIMessage.logResponseMessage(1005,
-                                                    taskId + " flinkJobId = "));
-                                        }
-                                    }
-                            );
-                        } else {
-                            LOG.error(DFAPIMessage.logResponseMessage(9010, taskId +
-                                    " details - " + ar.cause()));
-                        }
-                    });
-        }
+                                                    mongo.updateCollection(taskCollection, new JsonObject().put("_id", taskId),
+                                                            new JsonObject().put("$set", dfJob.toJson()), v -> {
+                                                                if (v.failed()) {
+                                                                    LOG.error(DFAPIMessage.logResponseMessage(1001,
+                                                                            taskId + " has error "));
+                                                                } else {
+                                                                    LOG.info(DFAPIMessage.logResponseMessage(1005,
+                                                                            taskId + " flinkJobId = "));
+                                                                }
+                                                            }
+                                                    );
+                                                }
+                                            }
+                                    );
+                        }, res -> {});
+                    } else {
+                        LOG.error(DFAPIMessage.logResponseMessage(9010, taskId +
+                                " details - " + ar.cause()));
+                    }
+                });
+
     }
 
     /**
@@ -156,7 +196,7 @@ public class SparkTransformProcessor {
                                     // If cancel response is succeeded, we'll submit the job
                                     int response = (ar.result().statusCode() == ConstantApp.STATUS_CODE_OK) ? 1002:9012;
                                     LOG.info(DFAPIMessage.logResponseMessage(response, id));
-                                    forwardPostAsAddOne(webClient,
+                                    /*forwardPostAsAddOne(webClient,
                                             dfJob,
                                             mongoClient,
                                             taskCollection,
@@ -167,7 +207,7 @@ public class SparkTransformProcessor {
                                             savepointPath,
                                             entryClass,
                                             parallelism,
-                                            programArgs);
+                                            programArgs);*/
                                 } else {
                                     // If response is failed, repose df ui and still keep the task
                                     HelpFunc.responseCorsHandleAddOn(routingContext.response())

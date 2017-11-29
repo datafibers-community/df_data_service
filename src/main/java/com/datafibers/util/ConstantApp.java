@@ -182,6 +182,11 @@ public final class ConstantApp {
     // Properties keys for UI
     public static final String PK_TRANSFORM_CUID = "cuid";
     public static final String PK_FLINK_SUBMIT_JOB_ID = "flink_job_id";
+    public static final String PK_LIVY_SESSION_ID = "livy_session_id";
+    public static final String PK_LIVY_STATEMENT_ID = "livy_statement_id";
+    public static final String PK_LIVY_STATEMENT_STATE = "livy_statement_state";
+    public static final String PK_LIVY_STATEMENT_OUTPUT = "livy_statement_output";
+    public static final String PK_LIVY_STATEMENT_PROGRESS = "livy_statement_progress";
 
     public static final String PK_SCHEMA_ID_INPUT = "schema_ids_in";
     public static final String PK_SCHEMA_ID_OUTPUT = "schema_ids_out";

@@ -239,10 +239,14 @@ public class DFJobPOPJ {
         return this;
     }
 
-    public DFJobPOPJ setFlinkIDToJobConfig(String jobID) {
+    public DFJobPOPJ setJobConfig(String key, String value) {
         if (this.jobConfig == null) this.jobConfig = new HashMap<>();
-        this.jobConfig.put(ConstantApp.PK_FLINK_SUBMIT_JOB_ID, jobID);
+        this.jobConfig.put(key, value);
         return this;
+    }
+
+    public DFJobPOPJ setFlinkIDToJobConfig(String jobID) {
+        return setJobConfig(ConstantApp.PK_FLINK_SUBMIT_JOB_ID, jobID);
     }
 
     @JsonIgnore
