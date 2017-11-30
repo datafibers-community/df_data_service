@@ -1,3 +1,4 @@
+/*
 package com.datafibers.test_tool;
 
 import com.databricks.spark.avro.SchemaConverters;
@@ -17,9 +18,11 @@ import org.apache.spark.sql.streaming.StreamingQueryException;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.StructType;
 
+*/
 /**
  * Structured streaming demo using Avro'ed Kafka topic as input
- */
+ *//*
+
 public class SparkStructuredStreamingDemo {
 
     private static Injection<GenericRecord, byte[]> recordInjection;
@@ -104,3 +107,4 @@ public class SparkStructuredStreamingDemo {
 
     }
 }
+*/
