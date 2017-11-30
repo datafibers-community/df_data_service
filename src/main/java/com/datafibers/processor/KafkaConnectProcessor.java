@@ -22,6 +22,8 @@ public class KafkaConnectProcessor {
      * This method is used to get the kafka job stauts. It first decodes the REST GET request to DFJobPOPJ object.
      * Then, it updates its job status and repack for Kafka REST GET.
      * After that, it forward the new GET to Kafka Connect. Once REST API forward is successful, response.
+     * Since we regular refresh status from kafka connect, so repo always has latest, the only reason to out it here is
+     * to get live status when opening the task.
      *
      * @param routingContext This is the contect from REST API
      * @param webClient This is vertx non-blocking rest client used for forwarding

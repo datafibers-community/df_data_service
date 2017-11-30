@@ -26,6 +26,16 @@ public class SparkTransformProcessor {
     private static final Logger LOG = Logger.getLogger(SparkTransformProcessor.class);
 
     /**
+     * forwardPostAsAddJar is a generic function to submit any spark jar to the livy.
+     * This function is equal to the spark-submit. Submit status will refreshed in status thread separately.
+     */
+    public static void forwardPostAsAddJar(Vertx vertx, WebClient webClient, DFJobPOPJ dfJob, MongoClient mongo,
+                                           String taskCollection, String sparkRestHost, int sparkRestPort,
+                                           String sql) {
+        // TODO to be implemented by livy batch api set
+    }
+
+    /**
      * forwardPostAsAddOne is a generic function to submit pyspark code taking sql statement to the livy.
      * This function will not response df ui. Since the UI is refreshed right way. Submit status will refreshed in status
      * thread separately.
@@ -37,7 +47,7 @@ public class SparkTransformProcessor {
      * @param sparkRestHost spark/livy rest hostname
      * @param sparkRestPort spark/livy rest port number
      * @param vertx used to initial blocking rest call for session status check
-     * @param sql statement of spark sql
+     * @param sql single sql statement of spark sql without ;
      */
     public static void forwardPostAsAddOne(Vertx vertx, WebClient webClient, DFJobPOPJ dfJob, MongoClient mongo,
                                            String taskCollection, String sparkRestHost, int sparkRestPort,
@@ -56,7 +66,7 @@ public class SparkTransformProcessor {
                                 ConstantApp.WORKER_POOL_SIZE, ConstantApp.MAX_RUNTIME);
                         executor.executeBlocking(future -> {
                             String restURL = "http://" + sparkRestHost + ":" + sparkRestPort +
-                                    ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId;
+                                    ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId + "/state";
 
                             HttpResponse<JsonNode> res;
                             // Keep checking session status until it is in idle
@@ -75,6 +85,7 @@ public class SparkTransformProcessor {
                             }
 
                             // 3. Once session is idle, submit sql code to the livy, localhost:8998/sessions/3/statements
+                            // TODO support multiple sql statement separated by ;
                             String pySparkCode = "a = sqlContext.sql(\"" + sql + "\").collect()\n%json a";
 
                             webClient.post(sparkRestPort, sparkRestHost,
@@ -119,28 +130,27 @@ public class SparkTransformProcessor {
     }
 
     /**
-     * This method cancel a flink job by jobId through Flink rest API
+     * This method cancel a session by sessionId through livy rest API.
      * Job may not exist or got exception. In this case, just delete it for now.
      *
      * @param routingContext  response for rest client
      * @param webClient web client for rest
-     * @param flinkRestHost flinbk rest hostname
-     * @param flinkRestPort flink rest port number
-     * @param mongoClient     repo handler
+     * @param sparkRestHost spark/livy rest hostname
+     * @param sparkRestPort spark/livy rest port number
+     * @param mongoClient repo handler
      * @param mongoCOLLECTION collection to keep data
-     * @param jobID           The job ID to cancel for flink job
+     * @param sessionId The livy session ID to cancel the job
      */
     public static void forwardDeleteAsCancelOne(RoutingContext routingContext, WebClient webClient,
                                                 MongoClient mongoClient, String mongoCOLLECTION,
-                                                String flinkRestHost, int flinkRestPort, String jobID) {
+                                                String sparkRestHost, int sparkRestPort, String sessionId) {
         String id = routingContext.request().getParam("id");
-        if (jobID == null || jobID.trim().isEmpty()) {
+        if (sessionId == null || sessionId.trim().isEmpty()) {
             LOG.error(DFAPIMessage.logResponseMessage(9000, id));
         } else {
-            webClient.delete(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL + "/" + jobID + "/cancel")
+            webClient.delete(sparkRestPort, sparkRestHost, ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId)
                     .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
-                    .sendJsonObject(DFAPIMessage.getResponseJsonObj(1002),
-                            ar -> {
+                    .send(ar -> {
                                 if (ar.succeeded()) {
                                     // Only if response is succeeded, delete from repo
                                     int response = (ar.result().statusCode() == ConstantApp.STATUS_CODE_OK) ? 1002:9012;
@@ -150,7 +160,7 @@ public class SparkTransformProcessor {
                                                     .setStatusCode(ConstantApp.STATUS_CODE_OK)
                                                     .end(DFAPIMessage.getResponseMessage(response, id)));
                                     LOG.info(DFAPIMessage.logResponseMessage(response, id));
-                                } else {
+                                } else { // TODO what's the return http code if session is timeout
                                     // If response is failed, repose df ui and still keep the task
                                     HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                             .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
@@ -164,62 +174,41 @@ public class SparkTransformProcessor {
 
 
     /**
-     * This method restart a flink job by cancel it then submit through Flink rest API
-     * Wen restart job, we do not remove tasks from repo.
+     * This method is to update a task by creating livy session and resubmit the statement to livy.
+     * In this case, we'll cancel the old session and submit update as new task.
+     * When update task, we do not remove tasks from repo.
      *
      * @param routingContext  response for rest client
      * @param webClient vertx web client for rest
-     * @param flinkRestHost flinbk rest hostname
-     * @param flinkRestPort flink rest port number
+     * @param sparkRestHost flinbk rest hostname
+     * @param sparkRestPort flink rest port number
      * @param mongoClient     repo handler
      * @param taskCollection collection to keep data
-     * @param jobID           The job ID to cancel for flink job
      */
-    public static void forwardPutAsRestartJob(RoutingContext routingContext, WebClient webClient,
-                                              MongoClient mongoClient, String jarVersionCollection, String taskCollection,
-                                              String flinkRestHost, int flinkRestPort, String jarId,
-                                              String jobID, DFJobPOPJ dfJob,
-                                              String allowNonRestoredState, String savepointPath, String entryClass,
-                                              String parallelism, String programArgs) {
-        String id = routingContext.request().getParam("id");
-        if (jobID == null || jobID.trim().isEmpty()) {
-            LOG.error(DFAPIMessage.logResponseMessage(9000, id));
-        } else {
-            webClient.delete(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL + "/" + jobID + "/cancel")
-                    .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
-                    .sendJsonObject(DFAPIMessage.getResponseJsonObj(1002),
-                            ar -> {
-                                if (ar.succeeded()) {
-                                    // If cancel response is succeeded, we'll submit the job
-                                    int response = (ar.result().statusCode() == ConstantApp.STATUS_CODE_OK) ? 1002:9012;
-                                    LOG.info(DFAPIMessage.logResponseMessage(response, id));
-                                    /*forwardPostAsAddOne(webClient,
-                                            dfJob,
-                                            mongoClient,
-                                            taskCollection,
-                                            flinkRestHost,
-                                            flinkRestPort,
-                                            jarId,
-                                            allowNonRestoredState,
-                                            savepointPath,
-                                            entryClass,
-                                            parallelism,
-                                            programArgs);*/
-                                } else {
-                                    // If response is failed, repose df ui and still keep the task
-                                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                                            .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
-                                            .end(DFAPIMessage.getResponseMessage(9029));
-                                    LOG.info(DFAPIMessage.logResponseMessage(9029, id));
-                                }
-                            }
-                    );
-        }
+    public static void forwardPutAsUpdateOne(Vertx vertx, RoutingContext routingContext, WebClient webClient,
+                                             DFJobPOPJ dfJob, MongoClient mongoClient,
+                                             String taskCollection, String sparkRestHost, int sparkRestPort) {
+
+        // Submit new task using new session and statement
+        forwardPostAsAddOne(
+                vertx, webClient, dfJob,
+                mongoClient, taskCollection,
+                sparkRestHost, sparkRestPort,
+                dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL)
+        );
+
+        // Cancel the old session any way
+        forwardDeleteAsCancelOne(
+                routingContext, webClient,
+                mongoClient, taskCollection,
+                sparkRestHost, sparkRestPort,
+                dfJob.getJobConfig().get(ConstantApp.PK_LIVY_SESSION_ID)
+        );
     }
 
     /**
      * This method first decode the REST GET request to DFJobPOPJ object. Then, it updates its job status and repack
-     * for REST GET. After that, it forward the new GET to Flink API.
+     * for REST GET. After that, it forward the GET to Livy API to get session and statement status including logging.
      * Once REST API forward is successful, response.
      *
      * @param routingContext This is the contect from REST API

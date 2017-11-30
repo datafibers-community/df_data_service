@@ -1085,7 +1085,7 @@ public class DFDataProcessor extends AbstractVerticle {
     }
 
     /**
-     * Get one task status with task id specified
+     * Get one task LIVE status with task id specified
      *
      * @api {get} /status/:taskId   2. Get a task status
      * @apiVersion 0.1.1
