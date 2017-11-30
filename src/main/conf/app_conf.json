@@ -24,7 +24,12 @@
   "flink.servers.host":"localhost",
   "flink.job.parallelism":1,
   "flink.server.port":6123,
+  "flink.rest.server.port":8001,
   "flink.trans.client.timeout":120000,
+
+  "transform.engine.spark.enable":"true",
+  "spark.livy.servers.host":"localhost",
+  "spark.livy.server.port":8998,
 
   "zookeeper.server.host":"localhost",
   "zookeeper.server.port":2181,

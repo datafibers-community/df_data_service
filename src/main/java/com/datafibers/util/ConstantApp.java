@@ -187,6 +187,7 @@ public final class ConstantApp {
     public static final String PK_LIVY_STATEMENT_STATE = "livy_statement_state";
     public static final String PK_LIVY_STATEMENT_OUTPUT = "livy_statement_output";
     public static final String PK_LIVY_STATEMENT_PROGRESS = "livy_statement_progress";
+    public static final String PK_LIVY_STATEMENT_SQL = "livy_statement_sql";
 
     public static final String PK_SCHEMA_ID_INPUT = "schema_ids_in";
     public static final String PK_SCHEMA_ID_OUTPUT = "schema_ids_out";

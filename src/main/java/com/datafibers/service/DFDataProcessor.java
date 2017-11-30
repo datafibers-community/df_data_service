@@ -2,6 +2,7 @@ package com.datafibers.service;
 
 import com.datafibers.model.DFLogPOPJ;
 import com.datafibers.processor.SchemaRegisterProcessor;
+import com.datafibers.processor.SparkTransformProcessor;
 import com.datafibers.util.*;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.vertx.core.*;
@@ -61,6 +62,7 @@ public class DFDataProcessor extends AbstractVerticle {
     private WebClient wc_schema;
     private WebClient wc_connect;
     private WebClient wc_flink;
+    private WebClient wc_spark;
     private WebClient wc_refresh;
     private static String df_jar_path;
     private static String df_jar_name;
@@ -72,12 +74,18 @@ public class DFDataProcessor extends AbstractVerticle {
     private static Integer kafka_connect_rest_port;
     private static Boolean kafka_connect_import_start;
 
-    // Transforms attributes
+    // Transforms attributes flink
     public static Boolean transform_engine_flink_enabled;
     private static String flink_server_host;
     private static Integer flink_server_port;
     private static Integer flink_rest_server_port;
     private static String flink_rest_server_host_port;
+
+    // Transforms attributes spark
+    public static Boolean transform_engine_spark_enabled;
+    private static String spark_livy_server_host;
+    private static Integer spark_livy_server_port;
+    private static String spark_livy_server_host_port;
 
     // Kafka attributes
     private static String kafka_server_host;
@@ -118,13 +126,21 @@ public class DFDataProcessor extends AbstractVerticle {
         this.kafka_connect_rest_port = config().getInteger("kafka.connect.rest.port", 8083);
         this.kafka_connect_import_start = config().getBoolean("kafka.connect.import.start", Boolean.TRUE);
 
-        // Check Transforms config
+        // Check Flink Transforms config
         this.transform_engine_flink_enabled = config().getBoolean("transform.engine.flink.enable", Boolean.TRUE);
         this.flink_server_host = config().getString("flink.servers.host", "localhost");
         this.flink_server_port = config().getInteger("flink.servers.port", 6123);
         this.flink_rest_server_port = config().getInteger("flink.rest.server.port", 8001); // Same to Flink Web Dashboard
         this.flink_rest_server_host_port = (this.flink_server_host.contains("http")?
                 this.flink_server_host : "http://" + this.flink_server_host) + ":" + this.flink_rest_server_port;
+
+        // Check Spark Transforms config
+        this.transform_engine_spark_enabled = config().getBoolean("transform.engine.spark.enable", Boolean.TRUE);
+        this.spark_livy_server_host = config().getString("spark.livy.servers.host", "localhost");
+        this.spark_livy_server_port = config().getInteger("spark.livy.servers.port", 8998);
+        this.spark_livy_server_host_port = (this.flink_server_host.contains("http")?
+                this.spark_livy_server_host : "http://" + this.spark_livy_server_host) + ":" +
+                this.spark_livy_server_port;
 
         // Kafka config
         this.kafka_server_host = this.kafka_connect_rest_host;
@@ -174,6 +190,11 @@ public class DFDataProcessor extends AbstractVerticle {
                 importAllFromKafkaConnect();
                 // importAllFromFlinkTransform();
                 startMetadataSink();
+            }
+
+            // Non-blocking Rest API Client to talk to Flink Rest when needed
+            if (this.transform_engine_spark_enabled) {
+                this.wc_spark = WebClient.create(vertx);
             }
 
             // Non-blocking Rest API Client to talk to Flink Rest when needed
@@ -1208,17 +1229,25 @@ public class DFDataProcessor extends AbstractVerticle {
         String mongoId = new ObjectId().toString();
         dfJob.setConnectUid(mongoId).setId(mongoId).getConnectorConfig().put(ConstantApp.PK_TRANSFORM_CUID, mongoId);
 
-        JsonObject para = HelpFunc.getFlinkJarPara(dfJob,
-                this.kafka_server_host_and_port,
-                this.schema_registry_host_and_port);
+        if(dfJob.getConnectorType().equalsIgnoreCase(ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_SPARK_SQL.name())) {
+            SparkTransformProcessor.forwardPostAsAddOne(vertx, wc_spark, dfJob, mongo, COLLECTION,
+                    spark_livy_server_host, spark_livy_server_port,
+                    dfJob.getJobConfig().get(ConstantApp.PK_LIVY_STATEMENT_SQL)
+            );
+        } else {
+            // Flink refers to KafkaServerHostPort.java
+            JsonObject para = HelpFunc.getFlinkJarPara(dfJob,
+                    this.kafka_server_host_and_port,
+                    this.schema_registry_host_and_port);
 
-        FlinkTransformProcessor.forwardPostAsSubmitJar(wc_flink, dfJob, mongo, COLLECTION,
-                flink_server_host, flink_rest_server_port, flink_jar_id,
-                para.getString("allowNonRestoredState"),
-                para.getString("savepointPath"),
-                para.getString("entryClass"),
-                para.getString("parallelism"),
-                para.getString("programArgs"));
+            FlinkTransformProcessor.forwardPostAsSubmitJar(wc_flink, dfJob, mongo, COLLECTION,
+                    flink_server_host, flink_rest_server_port, flink_jar_id,
+                    para.getString("allowNonRestoredState"),
+                    para.getString("savepointPath"),
+                    para.getString("entryClass"),
+                    para.getString("parallelism"),
+                    para.getString("programArgs"));
+        }
 
         mongo.insert(COLLECTION, dfJob.toJson(), r ->
                 HelpFunc.responseCorsHandleAddOn(routingContext.response())

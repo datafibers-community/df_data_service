@@ -8,7 +8,6 @@ import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
-import io.netty.util.Constant;
 import io.vertx.core.Vertx;
 import io.vertx.core.WorkerExecutor;
 import io.vertx.core.json.Json;
@@ -27,8 +26,7 @@ public class SparkTransformProcessor {
     private static final Logger LOG = Logger.getLogger(SparkTransformProcessor.class);
 
     /**
-     * forwardPostAsSubmitJar is a generic function to submit specific jar file with proper configurations, such as jar para,
-     * to the Flink Rest API. This is used for Flink SQL, UDF, and Table API submission with different client class.
+     * forwardPostAsAddOne is a generic function to submit pyspark code taking sql statement to the livy.
      * This function will not response df ui. Since the UI is refreshed right way. Submit status will refreshed in status
      * thread separately.
      *
@@ -38,8 +36,8 @@ public class SparkTransformProcessor {
      * @param taskCollection mongo collection name to keep df tasks
      * @param sparkRestHost spark/livy rest hostname
      * @param sparkRestPort spark/livy rest port number
-     * @param vertx
-     * @param sql
+     * @param vertx used to initial blocking rest call for session status check
+     * @param sql statement of spark sql
      */
     public static void forwardPostAsAddOne(Vertx vertx, WebClient webClient, DFJobPOPJ dfJob, MongoClient mongo,
                                            String taskCollection, String sparkRestHost, int sparkRestPort,
@@ -102,10 +100,10 @@ public class SparkTransformProcessor {
                                                             new JsonObject().put("$set", dfJob.toJson()), v -> {
                                                                 if (v.failed()) {
                                                                     LOG.error(DFAPIMessage.logResponseMessage(1001,
-                                                                            taskId + " has error "));
+                                                                            taskId + "error = " + v.cause()));
                                                                 } else {
                                                                     LOG.info(DFAPIMessage.logResponseMessage(1005,
-                                                                            taskId + " flinkJobId = "));
+                                                                            taskId));
                                                                 }
                                                             }
                                                     );
@@ -114,8 +112,7 @@ public class SparkTransformProcessor {
                                     );
                         }, res -> {});
                     } else {
-                        LOG.error(DFAPIMessage.logResponseMessage(9010, taskId +
-                                " details - " + ar.cause()));
+                        LOG.error(DFAPIMessage.logResponseMessage(9010, taskId + " details - " + ar.cause()));
                     }
                 });
 
@@ -133,7 +130,7 @@ public class SparkTransformProcessor {
      * @param mongoCOLLECTION collection to keep data
      * @param jobID           The job ID to cancel for flink job
      */
-    public static void forwardDeleteAsCancelJob(RoutingContext routingContext, WebClient webClient,
+    public static void forwardDeleteAsCancelOne(RoutingContext routingContext, WebClient webClient,
                                                 MongoClient mongoClient, String mongoCOLLECTION,
                                                 String flinkRestHost, int flinkRestPort, String jobID) {
         String id = routingContext.request().getParam("id");

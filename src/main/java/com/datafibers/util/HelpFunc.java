@@ -430,7 +430,7 @@ public class HelpFunc {
         }
     }
 
-    public static JsonObject getFlinkJarPara(DFJobPOPJ dfJob, String kafkaRestHostName, String srRestHostName ) {
+    public static JsonObject getFlinkJarPara(DFJobPOPJ dfJob, String kafkaRestHostName, String SchemaRegistryRestHostName ) {
 
         String allowNonRestoredState = "false";
         String savepointPath = "";
@@ -440,7 +440,7 @@ public class HelpFunc {
 
         if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_SQLA2A.name()) {
             entryClass = ConstantApp.FLINK_SQL_CLIENT_CLASS_NAME;
-            programArgs = String.join(" ", kafkaRestHostName, srRestHostName,
+            programArgs = String.join(" ", kafkaRestHostName, SchemaRegistryRestHostName,
                     dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_INPUT),
                     dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_OUTPUT),
                     dfJob.getConnectorConfig().get(ConstantApp.PK_FLINK_TABLE_SINK_KEYS),
