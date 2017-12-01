@@ -1230,9 +1230,9 @@ public class DFDataProcessor extends AbstractVerticle {
         dfJob.setConnectUid(mongoId).setId(mongoId).getConnectorConfig().put(ConstantApp.PK_TRANSFORM_CUID, mongoId);
 
         if(dfJob.getConnectorType().equalsIgnoreCase(ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_SPARK_SQL.name())) {
+            LOG.info("calling spark add =" + dfJob);
             SparkTransformProcessor.forwardPostAsAddOne(vertx, wc_spark, dfJob, mongo, COLLECTION,
-                    spark_livy_server_host, spark_livy_server_port,
-                    dfJob.getJobConfig().get(ConstantApp.PK_LIVY_STATEMENT_SQL)
+                    spark_livy_server_host, spark_livy_server_port
             );
         } else {
             // Flink refers to KafkaServerHostPort.java
@@ -1470,6 +1470,18 @@ public class DFDataProcessor extends AbstractVerticle {
                                 //update df status properly before response
                                 dfJob.setStatus(ConstantApp.DF_STATUS.UNASSIGNED.name());
 
+                            } else if (this.transform_engine_spark_enabled &&
+                                        dfJob.getConnectorType().contains("SPARK") &&
+                                        connectorConfigString.compareTo(before_update_connectorConfigString) != 0) {
+
+                                    SparkTransformProcessor.forwardPutAsUpdateOne(
+                                            vertx, routingContext, wc_spark,
+                                            dfJob, mongo, COLLECTION,
+                                            spark_livy_server_host, spark_livy_server_port
+                                    );
+
+                                    //update df status properly before response
+                                    dfJob.setStatus(ConstantApp.DF_STATUS.UNASSIGNED.name());
                             } else {
                                 LOG.info(DFAPIMessage.logResponseMessage(1007, id));
                             }
@@ -1489,7 +1501,6 @@ public class DFDataProcessor extends AbstractVerticle {
                                         }
                                     }
                             );
-
                         } else {
                             LOG.error(DFAPIMessage.
                                     logResponseMessage(9014, id + " details - " + res.cause()));
@@ -1633,16 +1644,37 @@ public class DFDataProcessor extends AbstractVerticle {
                                     remove -> HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                             .setStatusCode(ConstantApp.STATUS_CODE_OK)
                                             .end(DFAPIMessage.getResponseMessage(1002)));
-                            LOG.info(DFAPIMessage.logResponseMessage(1002, id + "- FLINK_JOB_NOT_RUNNING"));
+                            LOG.info(DFAPIMessage.logResponseMessage(1002,
+                                    id + "- FLINK_JOB_NOT_RUNNING"));
+                        }
+                    } else if(dfJob.getJobConfig() != null && this.transform_engine_spark_enabled &&
+                                dfJob.getConnectorType().contains("SPARK") &&
+                                dfJob.getJobConfig().containsKey(ConstantApp.PK_LIVY_SESSION_ID)) {
+                            jobId = dfJob.getJobConfig().get(ConstantApp.PK_LIVY_SESSION_ID);
+                            if (dfJob.getStatus().equalsIgnoreCase("RUNNING")) {
+                                // For cancel a running job, we want remove tasks from repo only when cancel is done
+                                SparkTransformProcessor.forwardDeleteAsCancelOne(
+                                        routingContext, wc_spark,
+                                        mongo, COLLECTION,
+                                        this.spark_livy_server_host, this.spark_livy_server_port,
+                                        jobId);
+                                LOG.info(DFAPIMessage.logResponseMessage(1006, id));
+                            } else {
+                                mongo.removeDocument(COLLECTION, new JsonObject().put("_id", id),
+                                        remove -> HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                                .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                                .end(DFAPIMessage.getResponseMessage(1002)));
+                                LOG.info(DFAPIMessage.logResponseMessage(1002,
+                                        id + "- SPARK_JOB_NOT_RUNNING"));
+                            }
                         }
                     } else {
                         mongo.removeDocument(COLLECTION, new JsonObject().put("_id", id),
                                 remove -> HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                         .setStatusCode(ConstantApp.STATUS_CODE_OK)
                                         .end(DFAPIMessage.getResponseMessage(1002)));
-                        LOG.info(DFAPIMessage.logResponseMessage(1002, id + "- FLINK_JOB_ID_NULL"));
+                        LOG.info(DFAPIMessage.logResponseMessage(1002, id + "- JOB_ID_NULL"));
                     }
-                }
             });
         }
     }
@@ -1958,7 +1990,7 @@ public class DFDataProcessor extends AbstractVerticle {
     private void updateFlinkJobStatus() {
         List<String> list = new ArrayList<>();
         // Add all transform
-        HelpFunc.addSpecifiedConnectTypetoList(list, "(?i:.*transform.*)") ;
+        HelpFunc.addSpecifiedConnectTypetoList(list, "(?i:.*transform_exchange_flink.*)") ;
 
         mongo.find(COLLECTION, new JsonObject().put("connectorType", new JsonObject().put("$in", list)), result -> {
             if (result.succeeded()) {
@@ -1977,7 +2009,7 @@ public class DFDataProcessor extends AbstractVerticle {
                                     if (v.failed()) {
                                         LOG.error(DFAPIMessage.logResponseMessage(9003, taskId + "cause:" + v.cause()));
                                     } else {
-                                        LOG.info(DFAPIMessage.logResponseMessage(1021, taskId));
+                                        LOG.info(DFAPIMessage.logResponseMessage(1022, taskId));
                                     }
                                 }
                         );
@@ -2022,6 +2054,94 @@ public class DFDataProcessor extends AbstractVerticle {
                 }
             } else {
                 LOG.error(DFAPIMessage.logResponseMessage(9002, "TRANSFORM_STATUS_REFRESH:" + result.cause()));
+            }
+        });
+    }
+
+    /**
+     * Keep refreshing the active Spark transforms/jobs' status in repository against remote Livy REST Server
+     */
+    private void updateSparkJobStatus() {
+        List<String> list = new ArrayList<>();
+        // Add all transform
+        HelpFunc.addSpecifiedConnectTypetoList(list, "(?i:.*transform_exchange_spark.*)") ;
+
+        mongo.find(COLLECTION, new JsonObject().put("connectorType", new JsonObject().put("$in", list)), result -> {
+            if (result.succeeded()) {
+                for (JsonObject json : result.result()) {
+                    String statusRepo = json.getString("status");
+                    String taskId = json.getString("_id");
+                    DFJobPOPJ updateJob = new DFJobPOPJ(json);
+
+                    if (json.getValue("jobConfig") == null ||
+                            !json.getJsonObject("jobConfig").containsKey(ConstantApp.PK_LIVY_SESSION_ID) ||
+                            !json.getJsonObject("jobConfig").containsKey(ConstantApp.PK_LIVY_STATEMENT_ID)) {
+                        updateJob.setStatus(ConstantApp.DF_STATUS.LOST.name());
+                        mongo.updateCollection(COLLECTION, new JsonObject().put("_id", updateJob.getId()),
+                                // The update syntax: {$set, the json object containing the fields to update}
+                                new JsonObject().put("$set", updateJob.toJson()), v -> {
+                                    if (v.failed()) {
+                                        LOG.error(DFAPIMessage.logResponseMessage(9003, taskId + "cause:" + v.cause()));
+                                    } else {
+                                        LOG.info(DFAPIMessage.logResponseMessage(1021, taskId));
+                                    }
+                                }
+                        );
+
+                    } else {
+                        String sessionId = json.getJsonObject("jobConfig").getString(ConstantApp.PK_LIVY_SESSION_ID);
+                        String statementId = json.getJsonObject("jobConfig").getString(ConstantApp.PK_LIVY_STATEMENT_ID);
+                        wc_refresh.get(spark_livy_server_port, spark_livy_server_host,
+                                ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId + "/" +
+                                        ConstantApp.LIVY_REST_URL_STATEMENTS + "/" + statementId)
+                                .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE,
+                                        ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                                .send(ar -> {
+                                    if (ar.succeeded()) {
+                                        JsonObject resultJo = ar.result().bodyAsJsonObject();
+                                        String resStatus = ar.result().statusCode() == ConstantApp.STATUS_CODE_NOT_FOUND ?
+                                                ConstantApp.DF_STATUS.LOST.name() :// Not find - Mark status as LOST
+                                                HelpFunc.getTaskStatusSpark(resultJo);
+
+                                        // Do change detection on status
+
+                                        if (statusRepo.compareToIgnoreCase(resStatus) != 0) { //status changes
+                                            updateJob.setStatus(resStatus);
+                                            // Also set result
+                                            updateJob.setJobConfig(ConstantApp.PK_LIVY_STATEMENT_PROGRESS,
+                                                    resultJo.getString("progress"))
+                                                    .setJobConfig(ConstantApp.PK_LIVY_STATEMENT_OUTPUT,
+                                                            resultJo.getJsonObject("output")
+                                                                    .getJsonObject("data")
+                                                                    .getJsonArray("application/json").toString());
+                                        } else {
+                                            LOG.debug(DFAPIMessage.logResponseMessage(1022, taskId));
+                                        }
+                                    } else {
+                                        // When jobId not found, set status LOST with error message.
+                                        LOG.info(DFAPIMessage.logResponseMessage(9006,
+                                                "TRANSFORM_STATUS_REFRESH_FOUND " + taskId + " LOST"));
+                                        updateJob.setStatus(ConstantApp.DF_STATUS.LOST.name());
+                                    }
+
+                                    // update status finally
+                                    mongo.updateCollection(COLLECTION, new JsonObject().put("_id", updateJob.getId()),
+                                            // The update syntax: {$set, the json object containing the fields to update}
+                                            new JsonObject().put("$set", updateJob.toJson()), v -> {
+                                                if (v.failed()) {
+                                                    LOG.error(DFAPIMessage.logResponseMessage(9003,
+                                                            taskId + "cause:" + v.cause()));
+                                                } else {
+                                                    LOG.info(DFAPIMessage.logResponseMessage(1021, taskId));
+                                                }
+                                            }
+                                    );
+                                });
+                    }
+                }
+            } else {
+                LOG.error(DFAPIMessage.logResponseMessage(9002,
+                        "TRANSFORM_STATUS_REFRESH:" + result.cause()));
             }
         });
     }

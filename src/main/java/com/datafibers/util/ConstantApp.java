@@ -152,12 +152,12 @@ public final class ConstantApp {
         TRANSFORM_EXCHANGE_FLINK_Script,
         TRANSFORM_EXCHANGE_FLINK_UDF,
         TRANSFORM_EXCHANGE_SPARK_SQL,          // Spark batch SQL
-        TRANSFORM_EXCHANGE_SPARK_STREAM,    // Spark streaming SQL
+        TRANSFORM_EXCHANGE_SPARK_STREAM,       // Spark streaming SQL
         TRANSFORM_EXCHANGE_SPARK_JOINS,        // Spark streaming of Data Join
         TRANSFORM_EXCHANGE_SPARK_UDF,          // Spark user defined jar/program
         TRANSFORM_EXCHANGE_HIVE_TRANS,         // Hive batch SQL
         TRANSFORM_EXCHANGE_HIVE_JOINS,         // Hive batch join
-        INTERNAL_METADATA_COLLECT,    // Reserved metadata sinl
+        INTERNAL_METADATA_COLLECT,             // Reserved metadata sink
         NONE
     }
 
@@ -187,7 +187,6 @@ public final class ConstantApp {
     public static final String PK_LIVY_STATEMENT_STATE = "livy_statement_state";
     public static final String PK_LIVY_STATEMENT_OUTPUT = "livy_statement_output";
     public static final String PK_LIVY_STATEMENT_PROGRESS = "livy_statement_progress";
-    public static final String PK_LIVY_STATEMENT_SQL = "livy_statement_sql";
 
     public static final String PK_SCHEMA_ID_INPUT = "schema_ids_in";
     public static final String PK_SCHEMA_ID_OUTPUT = "schema_ids_out";

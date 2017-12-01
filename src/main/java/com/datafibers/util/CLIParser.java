@@ -103,6 +103,10 @@ public class CLIParser {
             LOG.info("Starting both DataFibers Service and Web UI ...");
             return null;
         }
+
+        if(args.length > 0 && args[0].contains("-conf")) // ignore -conf option which is used by vertx config
+            return null;
+
         LOG.info("Starting DataFibers in customized options.");
         LOG.info("run_mode = " + this.run_mode);
         LOG.info("service_mode = " + this.service_mode);

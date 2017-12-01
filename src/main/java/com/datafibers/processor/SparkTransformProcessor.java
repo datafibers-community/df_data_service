@@ -47,12 +47,12 @@ public class SparkTransformProcessor {
      * @param sparkRestHost spark/livy rest hostname
      * @param sparkRestPort spark/livy rest port number
      * @param vertx used to initial blocking rest call for session status check
-     * @param sql single sql statement of spark sql without ;
      */
     public static void forwardPostAsAddOne(Vertx vertx, WebClient webClient, DFJobPOPJ dfJob, MongoClient mongo,
-                                           String taskCollection, String sparkRestHost, int sparkRestPort,
-                                           String sql) {
+                                           String taskCollection, String sparkRestHost, int sparkRestPort) {
         String taskId = dfJob.getId();
+        String sql = dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL);
+        LOG.info("forwardPostAsAddOne taskId=" + taskId + " sql=" + sql);
         // 1. Start a session using python spark, localhost:8998/sessions
         webClient.post(sparkRestPort, sparkRestHost, ConstantApp.LIVY_REST_URL_SESSIONS)
                 .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
@@ -60,6 +60,8 @@ public class SparkTransformProcessor {
                     if (ar.succeeded()) {
                         String sessionId = ar.result().bodyAsJsonObject().getString("id");
                         dfJob.setJobConfig(ConstantApp.PK_LIVY_SESSION_ID, sessionId);
+
+                        LOG.info("forwardPostAsAddOne sessionId=" + sessionId);
 
                         // 2. Check if session is in idle, http://localhost:8998/sessions/3
                         WorkerExecutor executor = vertx.createSharedWorkerExecutor(taskId,
@@ -193,8 +195,7 @@ public class SparkTransformProcessor {
         forwardPostAsAddOne(
                 vertx, webClient, dfJob,
                 mongoClient, taskCollection,
-                sparkRestHost, sparkRestPort,
-                dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL)
+                sparkRestHost, sparkRestPort
         );
 
         // Cancel the old session any way
@@ -213,38 +214,32 @@ public class SparkTransformProcessor {
      *
      * @param routingContext This is the contect from REST API
      * @param webClient This is vertx non-blocking web client used for forwarding
-     * @param flinkRestHost rest server host name
-     * @param flinkRestPort rest server port number
-     * @param taskId This is the id used to look up status
-     * @param jobId transform job id
+     * @param sparkRestHost flinbk rest hostname
+     * @param sparkRestPort flink rest port number
      */
-    public static void forwardGetAsJobStatus(RoutingContext routingContext, WebClient webClient,
-                                             String flinkRestHost, int flinkRestPort,
-                                             String taskId, String jobId) {
+    public static void forwardGetAsJobStatus(RoutingContext routingContext, WebClient webClient, DFJobPOPJ dfJob,
+                                             String sparkRestHost, int sparkRestPort) {
 
-        if (jobId == null || jobId.trim().isEmpty()) {
+        String sessionId = dfJob.getJobConfig().get(ConstantApp.PK_LIVY_SESSION_ID);
+        String statementId = dfJob.getJobConfig().get(ConstantApp.PK_LIVY_STATEMENT_ID);
+        String taskId = dfJob.getId();
+
+        if (sessionId == null || sessionId.trim().isEmpty() || statementId == null || statementId.trim().isEmpty()) {
             LOG.warn(DFAPIMessage.logResponseMessage(9000, taskId));
             HelpFunc.responseCorsHandleAddOn(routingContext.response())
                     .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
                     .end(DFAPIMessage.getResponseMessage(9000, taskId,
-                            "Cannot Get State Without JobId."));
+                            "Cannot Get State Without Session Id/Statement Id."));
         } else {
-            webClient.get(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL + "/" + jobId)
+            webClient.get(sparkRestPort, sparkRestHost,
+                    ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId + "/" +
+                            ConstantApp.LIVY_REST_URL_SESSIONS + "/" + statementId)
                     .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
-                    .sendJsonObject(DFAPIMessage.getResponseJsonObj(1003),
-                            ar -> {
+                    .send(ar -> {
                                 if (ar.succeeded() && ar.result().statusCode() == ConstantApp.STATUS_CODE_OK) {
                                     JsonObject jo = ar.result().bodyAsJsonObject();
-                                    JsonArray subTaskArray = jo.getJsonArray("vertices");
-                                    for (int i = 0; i < subTaskArray.size(); i++) {
-                                        subTaskArray.getJsonObject(i)
-                                                .put("subTaskId", subTaskArray.getJsonObject(i).getString("id"))
-                                                .put("id", taskId + "_" + subTaskArray.getJsonObject(i).getString("id"))
-                                                .put("jobId", jo.getString("jid"))
-                                                .put("dfTaskState",
-                                                        HelpFunc.getTaskStatusFlink(jo))
-                                                .put("taskState", jo.getString("state"));
-                                    }
+                                    JsonArray subTaskArray = jo.getJsonObject("output").getJsonObject("data")
+                                            .getJsonArray("application/json");
                                     HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                             .setStatusCode(ConstantApp.STATUS_CODE_OK)
                                             .putHeader("X-Total-Count", subTaskArray.size() + "" )
@@ -256,7 +251,7 @@ public class SparkTransformProcessor {
                                     HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                             .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
                                             .end(DFAPIMessage.getResponseMessage(9029, taskId,
-                                                     "Cannot Found State for job " + jobId));
+                                                     "Cannot Found State for job " + statementId));
                                     LOG.info(DFAPIMessage.logResponseMessage(9029, taskId));
                                 }
                             }

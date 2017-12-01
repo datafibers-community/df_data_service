@@ -251,6 +251,11 @@ public class HelpFunc {
         }
     }
 
+    /**
+     * Mapping rest state to df status category
+     * @param taskStatus
+     * @return
+     */
     public static String getTaskStatusFlink(JsonObject taskStatus) {
         if(taskStatus.containsKey("state")) {
             // Check sub-task status ony if the high level task is RUNNING
@@ -269,6 +274,42 @@ public class HelpFunc {
             } else {
                 return taskStatus.getString("state");
             }
+        } else {
+            return ConstantApp.DF_STATUS.NONE.name();
+        }
+    }
+    /**
+     * Mapping rest state to df status category
+     * @param taskStatus
+     * @return
+     */
+    public static String getTaskStatusSpark(JsonObject taskStatus) {
+        if(taskStatus.containsKey("state")) {
+            // Check sub-task status ony if the high level task is RUNNING
+            String restState = taskStatus.getString("state").toUpperCase();
+            String returnState;
+            switch(restState) {
+                case "RUNNING":
+                case "CANCELLING":
+                    returnState = ConstantApp.DF_STATUS.RUNNING.name();
+                    break;
+                case "WAITING":
+                    returnState = ConstantApp.DF_STATUS.UNASSIGNED.name();
+                    break;
+                case "AVAILABLE":
+                    returnState = ConstantApp.DF_STATUS.FINISHED.name();
+                    break;
+                case "ERROR":
+                    returnState = ConstantApp.DF_STATUS.FAILED.name();
+                    break;
+                case "CANCELLED":
+                    returnState = ConstantApp.DF_STATUS.CANCELED.name();
+                    break;
+                default:
+                    returnState = restState;
+                    break;
+            }
+            return returnState;
         } else {
             return ConstantApp.DF_STATUS.NONE.name();
         }
