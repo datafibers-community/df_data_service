@@ -64,9 +64,12 @@ export const TransformEdit = (props) => (
                 <TextInput source="name" label="Name" validate={[ required ]} />
 		        <LongTextInput source="description" label="Task Description" style={{ width: 500 }} />
 		        <SelectField source="connectorType" label="Task Type" validate={[ required ]} choices={[
-    			{ id: 'TRANSFORM_EXCHANGE_FLINK_SQLA2A', name: 'Streaming SQL' },
-    			{ id: 'TRANSFORM_EXCHANGE_FLINK_Script', name: 'Streaming Table API' },
-  		        { id: 'TRANSFORM_EXCHANGE_FLINK_UDF',  name: 'Streaming UDB' },
+    			{ id: 'TRANSFORM_EXCHANGE_FLINK_SQLA2A', name: 'Stream SQL on Queue' },
+    			{ id: 'TRANSFORM_EXCHANGE_SPARK_SQL', name: 'Batch SQL off Queue' },
+    			{ id: 'TRANSFORM_EXCHANGE_FLINK_Script', name: 'Stream Script on Queue' },
+    			{ id: 'TRANSFORM_EXCHANGE_SPARK_STREAM', name: 'Batch Script off Queue' },
+  		        { id: 'TRANSFORM_EXCHANGE_FLINK_UDF',  name: 'Stream UDF on Queue' },
+  		        { id: 'TRANSFORM_EXCHANGE_SPARK_UDF',  name: 'Batch UDF on Queue' },
 		        ]} />
             </FormTab>
             <FormTab label="Setting">
@@ -76,6 +79,9 @@ export const TransformEdit = (props) => (
                     <TextInput source="connectorConfig.topic_out" label="A Topic to Write Data" style={{ display: 'inline-block', marginLeft: 32 }} validate={[ required ]} />
                     <LongTextInput source="connectorConfig.group_id" label="Consumer ID to Read Data. (Optional)" style={{ width: 500 }} />
 		            <LongTextInput source="connectorConfig.sink_key_fields" label="List of Commas Separated Columns for Keys in Sink" style={{ width: 500 }} />
+		            <LongTextInput source="connectorConfig.trans_sql" label="Stream SQL Statement, such as select * from ..." validate={[ required ]} style={{ width: 500 }} />
+		        </DependentInput>
+		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_SPARK_SQL">
 		            <LongTextInput source="connectorConfig.trans_sql" label="Stream SQL Statement, such as select * from ..." validate={[ required ]} style={{ width: 500 }} />
 		        </DependentInput>
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_FLINK_Script">
@@ -113,9 +119,12 @@ export const TransformCreate = (props) => (
                 <TextInput source="name" label="Name" validate={[ required ]} style={{ width: 500 }} />
 		        <LongTextInput source="description" label="Task Description" style={{ width: 500 }} />
 		        <SelectInput source="connectorType" label="Task Type" validate={[ required ]} choices={[
-    			{ id: 'TRANSFORM_EXCHANGE_FLINK_SQLA2A', name: 'Streaming SQL' },
-    			{ id: 'TRANSFORM_EXCHANGE_FLINK_Script', name: 'Streaming Table API' },
-  		        { id: 'TRANSFORM_EXCHANGE_FLINK_UDF',  name: 'Streaming UDF' },
+    			{ id: 'TRANSFORM_EXCHANGE_FLINK_SQLA2A', name: 'Stream SQL on Queue' },
+    			{ id: 'TRANSFORM_EXCHANGE_SPARK_SQL', name: 'Batch SQL off Queue' },
+    			{ id: 'TRANSFORM_EXCHANGE_FLINK_Script', name: 'Stream Script on Queue' },
+    			{ id: 'TRANSFORM_EXCHANGE_SPARK_STREAM', name: 'Batch Script off Queue' },
+  		        { id: 'TRANSFORM_EXCHANGE_FLINK_UDF',  name: 'Stream UDF on Queue' },
+  		        { id: 'TRANSFORM_EXCHANGE_SPARK_UDF',  name: 'Batch UDF on Queue' },
 		        ]} defaultValue='TRANSFORM_EXCHANGE_FLINK_SQLA2A' />
             </FormTab>
             <FormTab label="Setting">
@@ -135,6 +144,9 @@ export const TransformCreate = (props) => (
                     <LongTextInput source="connectorConfig.group_id" label="Consumer ID to Read Data. (Optional)" style={{ width: 500 }} />
 		            <LongTextInput source="connectorConfig.sink_key_fields" label="Key Columns in Sink (separated by ,)" style={{ width: 500 }} />
 		            <LongTextInput source="connectorConfig.trans_sql" label="Stream SQL Statement" defaultValue="SELECT [col.] ... FROM [topic_name]" validate={[ required ]} style={{ width: 500 }} />
+		        </DependentInput>
+		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_SPARK_SQL">
+		            <LongTextInput source="connectorConfig.trans_sql" label="Spark SQL over Hive Statement" defaultValue="SELECT [col.] ... FROM [topic_name]" validate={[ required ]} style={{ width: 500 }} />
 		        </DependentInput>
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_FLINK_Script">
                     <TextInput source="connectorConfig.topic_in" label="A Topic to Read Data" style={{ display: 'inline-block' }} validate={[ required ]} />
