@@ -1121,12 +1121,21 @@ public class DFDataProcessor extends AbstractVerticle {
                                 kafka_connect_rest_host, kafka_connect_rest_port, id);
                     }
                     if(dfJob.getConnectorCategory().equalsIgnoreCase("TRANSFORM")) {
-                        // Find status from Flink API
-                        FlinkTransformProcessor.forwardGetAsJobStatus(
-                                routingContext, wc_flink,
-                                flink_server_host,
-                                flink_rest_server_port,
-                                id, dfJob.getFlinkIDFromJobConfig());
+
+                        if(dfJob.getConnectorType().contains("FLINK"))
+                            FlinkTransformProcessor.forwardGetAsJobStatus(
+                                    routingContext, wc_flink,
+                                    flink_server_host,
+                                    flink_rest_server_port,
+                                    id, dfJob.getFlinkIDFromJobConfig()
+                            );
+
+                        if(dfJob.getConnectorType().contains("SPARK"))
+                            SparkTransformProcessor.forwardGetAsJobStatus(
+                                    routingContext, wc_spark, dfJob,
+                                    spark_livy_server_host, spark_livy_server_port
+                            );
+
                     }
                 } else {
                     routingContext.response()
@@ -1230,7 +1239,7 @@ public class DFDataProcessor extends AbstractVerticle {
         dfJob.setConnectUid(mongoId).setId(mongoId).getConnectorConfig().put(ConstantApp.PK_TRANSFORM_CUID, mongoId);
 
         if(dfJob.getConnectorType().equalsIgnoreCase(ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_SPARK_SQL.name())) {
-            LOG.info("calling spark add =" + dfJob);
+            LOG.info("calling spark add = " + dfJob.toJson());
             SparkTransformProcessor.forwardPostAsAddOne(vertx, wc_spark, dfJob, mongo, COLLECTION,
                     spark_livy_server_host, spark_livy_server_port
             );

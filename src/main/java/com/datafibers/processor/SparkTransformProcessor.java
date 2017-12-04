@@ -30,8 +30,7 @@ public class SparkTransformProcessor {
      * This function is equal to the spark-submit. Submit status will refreshed in status thread separately.
      */
     public static void forwardPostAsAddJar(Vertx vertx, WebClient webClient, DFJobPOPJ dfJob, MongoClient mongo,
-                                           String taskCollection, String sparkRestHost, int sparkRestPort,
-                                           String sql) {
+                                           String taskCollection, String sparkRestHost, int sparkRestPort) {
         // TODO to be implemented by livy batch api set
     }
 
@@ -52,23 +51,23 @@ public class SparkTransformProcessor {
                                            String taskCollection, String sparkRestHost, int sparkRestPort) {
         String taskId = dfJob.getId();
         String sql = dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL);
-        LOG.info("forwardPostAsAddOne taskId=" + taskId + " sql=" + sql);
+        // TODO check all sessions submit a idle session. If all sessions are busy, create a new session
         // 1. Start a session using python spark, localhost:8998/sessions
         webClient.post(sparkRestPort, sparkRestHost, ConstantApp.LIVY_REST_URL_SESSIONS)
                 .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
                 .sendJsonObject(new JsonObject().put("kind", "pyspark"), ar -> {
                     if (ar.succeeded()) {
-                        String sessionId = ar.result().bodyAsJsonObject().getString("id");
+                        String sessionId = ar.result().bodyAsJsonObject().getInteger("id").toString();
                         dfJob.setJobConfig(ConstantApp.PK_LIVY_SESSION_ID, sessionId);
+                        String restURL = "http://" + sparkRestHost + ":" + sparkRestPort +
+                                ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId + "/state";
 
-                        LOG.info("forwardPostAsAddOne sessionId=" + sessionId);
+                        System.out.println("forwardPostAsAddOne is called with restURL = " + restURL);
 
                         // 2. Check if session is in idle, http://localhost:8998/sessions/3
                         WorkerExecutor executor = vertx.createSharedWorkerExecutor(taskId,
                                 ConstantApp.WORKER_POOL_SIZE, ConstantApp.MAX_RUNTIME);
                         executor.executeBlocking(future -> {
-                            String restURL = "http://" + sparkRestHost + ":" + sparkRestPort +
-                                    ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId + "/state";
 
                             HttpResponse<JsonNode> res;
                             // Keep checking session status until it is in idle
@@ -80,35 +79,36 @@ public class SparkTransformProcessor {
                                             .asJson();
                                     if(res.getBody().getObject().getString("state")
                                             .equalsIgnoreCase("idle")) break;
-                                } catch (UnirestException e) {
-                                    LOG.error(DFAPIMessage.logResponseMessage(9006,
-                                            "exception - " + e.getCause()));
+                                    Thread.sleep(2000);
+                                    System.out.println("checking session status");
+                                } catch (UnirestException|InterruptedException e) {
+                                    LOG.error(DFAPIMessage.logResponseMessage(9006, "exception - " + e.getCause()));
                                 }
                             }
 
                             // 3. Once session is idle, submit sql code to the livy, localhost:8998/sessions/3/statements
                             // TODO support multiple sql statement separated by ;
-                            String pySparkCode = "a = sqlContext.sql(\"" + sql + "\").collect()\n%json a";
+                            String pySparkCode = "a = sqlContext.sql(\"" + sql + "\").collect()\n%table a";
+                            System.out.println("Livy session " + sessionId + " is idle");
 
                             webClient.post(sparkRestPort, sparkRestHost,
-                                    ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId + "/" +
+                                    ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId +
                                             ConstantApp.LIVY_REST_URL_STATEMENTS)
                                     .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE,
                                             ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
                                     .sendJsonObject(new JsonObject().put("code", pySparkCode),
                                             sar -> {
-                                                if (ar.succeeded()) {
+                                                if (sar.succeeded()) {
+                                                    JsonObject response = sar.result().bodyAsJsonObject();
+                                                    System.out.println("Post returned = " + response);
                                                     // 4. Get job submission status/result to keep in repo.
                                                     // Further status update comes from refresh status module in fibers
-                                                    dfJob.setJobConfig(ConstantApp.PK_LIVY_STATEMENT_ID,
-                                                                    ar.result().bodyAsJsonObject().getString("id"))
-                                                            .setJobConfig(ConstantApp.PK_LIVY_STATEMENT_OUTPUT,
-                                                                    ar.result().bodyAsJsonObject().getString("output"))
-                                                            .setJobConfig(ConstantApp.PK_LIVY_STATEMENT_PROGRESS,
-                                                                    ar.result().bodyAsJsonObject().getString("progress"))
-                                                    .setStatus(ar.result().bodyAsJsonObject().getString("state")
-                                                            .toUpperCase()); // Task status is statement status
+                                                    dfJob.setJobConfig(
+                                                            ConstantApp.PK_LIVY_STATEMENT_ID,
+                                                            response.getInteger("id").toString()
+                                                    ).setStatus(HelpFunc.getTaskStatusSpark(response)); // Task status is statement status
 
+                                                    System.out.println("dfJob update = " + dfJob);
                                                     mongo.updateCollection(taskCollection, new JsonObject().put("_id", taskId),
                                                             new JsonObject().put("$set", dfJob.toJson()), v -> {
                                                                 if (v.failed()) {
@@ -150,6 +150,7 @@ public class SparkTransformProcessor {
         if (sessionId == null || sessionId.trim().isEmpty()) {
             LOG.error(DFAPIMessage.logResponseMessage(9000, id));
         } else {
+            // TODO delete only if session is ot idle since we'll share idle session first
             webClient.delete(sparkRestPort, sparkRestHost, ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId)
                     .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
                     .send(ar -> {
@@ -232,18 +233,46 @@ public class SparkTransformProcessor {
                             "Cannot Get State Without Session Id/Statement Id."));
         } else {
             webClient.get(sparkRestPort, sparkRestHost,
-                    ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId + "/" +
-                            ConstantApp.LIVY_REST_URL_SESSIONS + "/" + statementId)
+                    ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId + ConstantApp.LIVY_REST_URL_STATEMENTS)
                     .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
                     .send(ar -> {
                                 if (ar.succeeded() && ar.result().statusCode() == ConstantApp.STATUS_CODE_OK) {
+
                                     JsonObject jo = ar.result().bodyAsJsonObject();
-                                    JsonArray subTaskArray = jo.getJsonObject("output").getJsonObject("data")
-                                            .getJsonArray("application/json");
+
+                                    System.out.println("get status = " + jo);
+
+                                    JsonArray subTaskArray = jo.getJsonArray("statements");
+                                    JsonArray statusArray = new JsonArray();
+
+                                    for (int i = 0; i < subTaskArray.size(); i++) {
+                                        //Here, jobId = statementId, subTaskId = statementId
+                                        statusArray.add(new JsonObject()
+                                                .put("subTaskId", sessionId + "_" + subTaskArray.getJsonObject(i).getInteger("id"))
+                                                .put("id", taskId + "_" + subTaskArray.getJsonObject(i).getInteger("id"))
+                                                .put("jobId", sessionId)
+                                                .put("dfTaskState",
+                                                        HelpFunc.getTaskStatusSpark(subTaskArray.getJsonObject(i)))
+                                                .put("taskState",
+                                                        subTaskArray.getJsonObject(i).getString("state").toUpperCase())
+                                                .put("statement", subTaskArray.getJsonObject(i).getString("code"))
+                                                .put("output",
+                                                        "<table>\n" +
+                                                        "  <tr><th>Firstname</th><th>Lastname</th><th>Age</th></tr>\n" +
+                                                        "  <tr><td>Jill</td><td>Smith</td><td>50</td></tr>\n" +
+                                                        "  <tr><td>Eve</td><td>Jackson</td><td>94</td></tr>\n" +
+                                                        "  <tr><td>John</td><td>Doe</td><td>80</td></tr>\n" +
+                                                        "</table>")
+                                                       // HelpFunc.livyTableResultToArray(subTaskArray.getJsonObject(i)))
+                                        );
+                                    }
+
+                                    System.out.println("get status of array = " + statusArray);
+
                                     HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                             .setStatusCode(ConstantApp.STATUS_CODE_OK)
-                                            .putHeader("X-Total-Count", subTaskArray.size() + "" )
-                                            .end(Json.encodePrettily(subTaskArray.getList()));
+                                            .putHeader("X-Total-Count", statusArray.size() + "")
+                                            .end(Json.encodePrettily(statusArray.getList()));
                                     LOG.info(DFAPIMessage.logResponseMessage(1024, taskId));
 
                                 } else {
@@ -251,7 +280,7 @@ public class SparkTransformProcessor {
                                     HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                             .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
                                             .end(DFAPIMessage.getResponseMessage(9029, taskId,
-                                                     "Cannot Found State for job " + statementId));
+                                                    "Cannot Found State for job " + statementId));
                                     LOG.info(DFAPIMessage.logResponseMessage(9029, taskId));
                                 }
                             }

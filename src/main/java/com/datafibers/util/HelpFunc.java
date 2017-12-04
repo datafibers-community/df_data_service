@@ -13,6 +13,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import io.vertx.ext.mongo.FindOptions;
 import io.vertx.ext.web.RoutingContext;
+import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -503,5 +504,58 @@ public class HelpFunc {
                 .put("parallelism", parallelism)
                 .put("entryClass", entryClass)
                 .put("programArgs", programArgs);
+    }
+
+    public static String arrayToString(JsonArray ja) {
+        String result = "";
+        for (int i = 0; i < ja.size(); i++) {
+            result = result + ja.getValue(i).toString() + " | ";
+        }
+        return result + "\n\t";
+    }
+
+    public static String livyTableResultToArray(JsonObject livyStatementResult) {
+        String resultString = "";
+        if (livyStatementResult.getJsonObject("output").containsKey("data")) {
+            JsonObject dataJason = livyStatementResult.getJsonObject("output").getJsonObject("data");
+
+            if (livyStatementResult.getString("code").contains("%table")) { //livy magic word %json
+                JsonObject output = dataJason.getJsonObject("application/vnd.livy.table.v1+json");
+                JsonArray header = output.getJsonArray("headers");
+                JsonArray data = output.getJsonArray("data");
+                String headerRow = "";
+
+                if (data.size() == 0) return "";
+
+                for (int i = 0; i < header.size(); i++) {
+                    headerRow = headerRow + header.getJsonObject(i).getString("name") + " | ";
+                }
+
+                resultString = headerRow + "\n\t";
+
+                for (int i = 0; i < data.size(); i++) {
+                    resultString = resultString + arrayToString(data.getJsonArray(i));
+                }
+
+                return resultString;
+
+            } else if (livyStatementResult.getString("code").contains("%json")) { // livy magic word %json
+                JsonArray data = dataJason.getJsonArray("application/json");
+
+                if (data.size() == 0) return "";
+
+                for (int i = 0; i < data.size(); i++) {
+                    resultString = resultString + arrayToString(data.getJsonArray(i));
+                }
+
+                return resultString;
+
+            } else { // livy no magic word
+                String data = dataJason.getString("text/plain");
+                return data.replaceAll("Row", "\\\n\tRow");
+            }
+        } else {
+            return "";
+        }
     }
 }

@@ -2,17 +2,14 @@ package com.datafibers.test_tool;
 
 import com.datafibers.flinknext.Kafka010AvroTableSource;
 import com.datafibers.flinknext.Kafka09AvroTableSink;
-import com.datafibers.flinknext.Kafka09AvroTableSource;
 import com.datafibers.util.ConstantApp;
 import com.datafibers.util.SchemaRegistryClient;
 import org.apache.commons.codec.DecoderException;
-import org.apache.flink.core.fs.FileSystem;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.partitioner.FlinkFixedPartitioner;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableEnvironment;
 import org.apache.flink.table.api.java.StreamTableEnvironment;
-import org.apache.flink.table.sinks.CsvTableSink;
 import org.apache.log4j.Logger;
 import java.io.IOException;
 import java.nio.file.Paths;
