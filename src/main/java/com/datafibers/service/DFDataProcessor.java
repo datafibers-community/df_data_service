@@ -249,6 +249,7 @@ public class DFDataProcessor extends AbstractVerticle {
         vertx.setPeriodic(ConstantApp.REGULAR_REFRESH_STATUS_TO_REPO, id -> {
             if(this.kafka_connect_enabled) updateKafkaConnectorStatus();
             if(this.transform_engine_flink_enabled) updateFlinkJobStatus();
+            if(this.transform_engine_spark_enabled) updateSparkJobStatus();
         });
 
         // Start Core application
@@ -2069,6 +2070,10 @@ public class DFDataProcessor extends AbstractVerticle {
 
     /**
      * Keep refreshing the active Spark transforms/jobs' status in repository against remote Livy REST Server
+     * We need to find out three type of information
+     * * session status
+     * * statement status
+     * * last query result in rich text format at "livy_statement_output"
      */
     private void updateSparkJobStatus() {
         List<String> list = new ArrayList<>();
@@ -2087,65 +2092,117 @@ public class DFDataProcessor extends AbstractVerticle {
                             !json.getJsonObject("jobConfig").containsKey(ConstantApp.PK_LIVY_STATEMENT_ID)) {
                         updateJob.setStatus(ConstantApp.DF_STATUS.LOST.name());
                         mongo.updateCollection(COLLECTION, new JsonObject().put("_id", updateJob.getId()),
-                                // The update syntax: {$set, the json object containing the fields to update}
                                 new JsonObject().put("$set", updateJob.toJson()), v -> {
                                     if (v.failed()) {
-                                        LOG.error(DFAPIMessage.logResponseMessage(9003, taskId + "cause:" + v.cause()));
+                                        LOG.error(DFAPIMessage.logResponseMessage(9003,
+                                                taskId + "cause:" + v.cause()));
                                     } else {
                                         LOG.info(DFAPIMessage.logResponseMessage(1021, taskId));
                                     }
                                 }
                         );
 
-                    } else {
+                    } else if( // update status in repo when it is in running or unassigned
+                            updateJob.getStatus().equalsIgnoreCase(ConstantApp.DF_STATUS.RUNNING.name()) ||
+                                    updateJob.getStatus().equalsIgnoreCase(ConstantApp.DF_STATUS.UNASSIGNED.name())
+                            ) {
                         String sessionId = json.getJsonObject("jobConfig").getString(ConstantApp.PK_LIVY_SESSION_ID);
                         String statementId = json.getJsonObject("jobConfig").getString(ConstantApp.PK_LIVY_STATEMENT_ID);
+
+                        // 1. Check if session is available
                         wc_refresh.get(spark_livy_server_port, spark_livy_server_host,
-                                ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId + "/" +
-                                        ConstantApp.LIVY_REST_URL_STATEMENTS + "/" + statementId)
+                                ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId + "/state")
                                 .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE,
                                         ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
-                                .send(ar -> {
-                                    if (ar.succeeded()) {
-                                        JsonObject resultJo = ar.result().bodyAsJsonObject();
-                                        String resStatus = ar.result().statusCode() == ConstantApp.STATUS_CODE_NOT_FOUND ?
-                                                ConstantApp.DF_STATUS.LOST.name() :// Not find - Mark status as LOST
-                                                HelpFunc.getTaskStatusSpark(resultJo);
+                                .send(sar -> {
+                                    if (sar.succeeded() && sar.result().statusCode() == ConstantApp.STATUS_CODE_OK) {
+                                        updateJob.setJobConfig(ConstantApp.PK_LIVY_SESSION_STATE,
+                                                sar.result().bodyAsJsonObject().getString("state"));
 
-                                        // Do change detection on status
+                                        // 1. Check if statement is available
+                                        wc_refresh.get(spark_livy_server_port, spark_livy_server_host,
+                                                ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId + "/" +
+                                                        ConstantApp.LIVY_REST_URL_STATEMENTS + "/" + statementId)
+                                                .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE,
+                                                        ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                                                .send(ar -> {
+                                                    if (ar.succeeded() &&
+                                                            ar.result().statusCode() == ConstantApp.STATUS_CODE_OK) {
 
-                                        if (statusRepo.compareToIgnoreCase(resStatus) != 0) { //status changes
-                                            updateJob.setStatus(resStatus);
-                                            // Also set result
-                                            updateJob.setJobConfig(ConstantApp.PK_LIVY_STATEMENT_PROGRESS,
-                                                    resultJo.getString("progress"))
-                                                    .setJobConfig(ConstantApp.PK_LIVY_STATEMENT_OUTPUT,
-                                                            resultJo.getJsonObject("output")
-                                                                    .getJsonObject("data")
-                                                                    .getJsonArray("application/json").toString());
-                                        } else {
-                                            LOG.debug(DFAPIMessage.logResponseMessage(1022, taskId));
-                                        }
+                                                        JsonObject resultJo = ar.result().bodyAsJsonObject();
+                                                        String resStatus = ar.result().statusCode() == ConstantApp.STATUS_CODE_NOT_FOUND ?
+                                                                ConstantApp.DF_STATUS.LOST.name() :// Not find - Mark status as LOST
+                                                                HelpFunc.getTaskStatusSpark(resultJo);
+
+                                                        // Do change detection on status
+
+                                                        if (statusRepo.compareToIgnoreCase(resStatus) != 0) { //status changes
+
+                                                            // Set df job status from statement state
+                                                            updateJob.setStatus(resStatus);
+
+                                                            // Set statement state and progress
+                                                            updateJob.setJobConfig(ConstantApp.PK_LIVY_STATEMENT_STATE,
+                                                                    resultJo.getString("state"))
+                                                                    .setJobConfig(ConstantApp.PK_LIVY_STATEMENT_PROGRESS,
+                                                                            resultJo.getValue("progress").toString());
+
+                                                            // Set statement status
+                                                            updateJob.setJobConfig(ConstantApp.PK_LIVY_STATEMENT_STATUS,
+                                                                    resultJo.getJsonObject("output")
+                                                                            .getString("status"));
+
+                                                            // Set traceback in case of errors
+                                                            updateJob.setJobConfig(ConstantApp.PK_LIVY_STATEMENT_TRACEBACK,
+                                                                    resultJo.getJsonObject("output")
+                                                                            .getJsonArray("traceback").toString());
+
+                                                            // Also set result
+                                                            updateJob.setJobConfig(ConstantApp.PK_LIVY_STATEMENT_OUTPUT,
+                                                                            HelpFunc.livyTableResultToRichText(resultJo));
+                                                        } else {
+                                                            LOG.debug(DFAPIMessage.logResponseMessage(1022, taskId));
+                                                        }
+                                                    } else {
+                                                        // When jobId not found, set status LOST with error message.
+                                                        LOG.info(DFAPIMessage.logResponseMessage(9006,
+                                                                "TRANSFORM_STATUS_REFRESH_FOUND " + taskId + " LOST"));
+                                                        updateJob.setStatus(ConstantApp.DF_STATUS.LOST.name());
+                                                    }
+
+                                                    // update status finally
+                                                    mongo.updateCollection(COLLECTION, new JsonObject().put("_id", updateJob.getId()),
+                                                            // The update syntax: {$set, the json object containing the fields to update}
+                                                            new JsonObject().put("$set", updateJob.toJson()), v -> {
+                                                                if (v.failed()) {
+                                                                    LOG.error(DFAPIMessage.logResponseMessage(9003,
+                                                                            taskId + "cause:" + v.cause()));
+                                                                } else {
+                                                                    LOG.info(DFAPIMessage.logResponseMessage(1021, taskId));
+                                                                }
+                                                            }
+                                                    );
+                                                });
+
                                     } else {
-                                        // When jobId not found, set status LOST with error message.
-                                        LOG.info(DFAPIMessage.logResponseMessage(9006,
-                                                "TRANSFORM_STATUS_REFRESH_FOUND " + taskId + " LOST"));
-                                        updateJob.setStatus(ConstantApp.DF_STATUS.LOST.name());
+                                        updateJob.setJobConfig(ConstantApp.PK_LIVY_SESSION_STATE, "closed");
+                                        // update status finally
+                                        mongo.updateCollection(COLLECTION, new JsonObject().put("_id", updateJob.getId()),
+                                                // The update syntax: {$set, the json object containing the fields to update}
+                                                new JsonObject().put("$set", updateJob.toJson()), v -> {
+                                                    if (v.failed()) {
+                                                        LOG.error(DFAPIMessage.logResponseMessage(9003,
+                                                                taskId + "cause:" + v.cause()));
+                                                    } else {
+                                                        LOG.info(DFAPIMessage.logResponseMessage(1021, taskId));
+                                                    }
+                                                }
+                                        );
                                     }
 
-                                    // update status finally
-                                    mongo.updateCollection(COLLECTION, new JsonObject().put("_id", updateJob.getId()),
-                                            // The update syntax: {$set, the json object containing the fields to update}
-                                            new JsonObject().put("$set", updateJob.toJson()), v -> {
-                                                if (v.failed()) {
-                                                    LOG.error(DFAPIMessage.logResponseMessage(9003,
-                                                            taskId + "cause:" + v.cause()));
-                                                } else {
-                                                    LOG.info(DFAPIMessage.logResponseMessage(1021, taskId));
-                                                }
-                                            }
-                                    );
                                 });
+                    } else {
+                        LOG.debug(DFAPIMessage.logResponseMessage(1022, taskId));
                     }
                 }
             } else {

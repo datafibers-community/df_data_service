@@ -106,7 +106,7 @@ public class SparkTransformProcessor {
                                                     dfJob.setJobConfig(
                                                             ConstantApp.PK_LIVY_STATEMENT_ID,
                                                             response.getInteger("id").toString()
-                                                    ).setStatus(HelpFunc.getTaskStatusSpark(response)); // Task status is statement status
+                                                    );// Task status is updated by regular refresh
 
                                                     System.out.println("dfJob update = " + dfJob);
                                                     mongo.updateCollection(taskCollection, new JsonObject().put("_id", taskId),
@@ -175,7 +175,6 @@ public class SparkTransformProcessor {
         }
     }
 
-
     /**
      * This method is to update a task by creating livy session and resubmit the statement to livy.
      * In this case, we'll cancel the old session and submit update as new task.
@@ -211,12 +210,13 @@ public class SparkTransformProcessor {
     /**
      * This method first decode the REST GET request to DFJobPOPJ object. Then, it updates its job status and repack
      * for REST GET. After that, it forward the GET to Livy API to get session and statement status including logging.
-     * Once REST API forward is successful, response.
+     * Once REST API forward is successful, response. Right now, this is not beling used by web ui.
      *
      * @param routingContext This is the contect from REST API
      * @param webClient This is vertx non-blocking web client used for forwarding
      * @param sparkRestHost flinbk rest hostname
      * @param sparkRestPort flink rest port number
+     *
      */
     public static void forwardGetAsJobStatus(RoutingContext routingContext, WebClient webClient, DFJobPOPJ dfJob,
                                              String sparkRestHost, int sparkRestPort) {
@@ -256,14 +256,85 @@ public class SparkTransformProcessor {
                                                 .put("taskState",
                                                         subTaskArray.getJsonObject(i).getString("state").toUpperCase())
                                                 .put("statement", subTaskArray.getJsonObject(i).getString("code"))
-                                                .put("output",
-                                                        "<table>\n" +
-                                                        "  <tr><th>Firstname</th><th>Lastname</th><th>Age</th></tr>\n" +
-                                                        "  <tr><td>Jill</td><td>Smith</td><td>50</td></tr>\n" +
-                                                        "  <tr><td>Eve</td><td>Jackson</td><td>94</td></tr>\n" +
-                                                        "  <tr><td>John</td><td>Doe</td><td>80</td></tr>\n" +
-                                                        "</table>")
-                                                       // HelpFunc.livyTableResultToArray(subTaskArray.getJsonObject(i)))
+                                                .put("output", HelpFunc.livyTableResultToRichText(subTaskArray.getJsonObject(i)))
+                                        );
+                                    }
+
+                                    System.out.println("get status of array = " + statusArray);
+
+                                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                            .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                            .putHeader("X-Total-Count", statusArray.size() + "")
+                                            .end(Json.encodePrettily(statusArray.getList()));
+                                    LOG.info(DFAPIMessage.logResponseMessage(1024, taskId));
+
+                                } else {
+                                    // If response is failed, repose df ui and still keep the task
+                                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                            .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                                            .end(DFAPIMessage.getResponseMessage(9029, taskId,
+                                                    "Cannot Found State for job " + statementId));
+                                    LOG.info(DFAPIMessage.logResponseMessage(9029, taskId));
+                                }
+                            }
+                    );
+        }
+    }
+
+    /**
+     * This is to get live job status for spark. Since spark now only has batch, we do not use it in web UI.
+     * @param routingContext
+     * @param webClient
+     * @param dfJob
+     * @param sparkRestHost
+     * @param sparkRestPort
+     */
+    public static void forwardGetAsJobStatusFromRepo(RoutingContext routingContext, WebClient webClient, DFJobPOPJ dfJob,
+                                             String sparkRestHost, int sparkRestPort) {
+
+        String sessionId = dfJob.getJobConfig().get(ConstantApp.PK_LIVY_SESSION_ID);
+        String statementId = dfJob.getJobConfig().get(ConstantApp.PK_LIVY_STATEMENT_ID);
+        String taskId = dfJob.getId();
+
+        if (sessionId == null || sessionId.trim().isEmpty() || statementId == null || statementId.trim().isEmpty()) {
+            LOG.warn(DFAPIMessage.logResponseMessage(9000, taskId));
+            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                    .end(DFAPIMessage.getResponseMessage(9000, taskId,
+                            "Cannot Get State Without Session Id/Statement Id."));
+        } else {
+            webClient.get(sparkRestPort, sparkRestHost,
+                    ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId + ConstantApp.LIVY_REST_URL_STATEMENTS)
+                    .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                    .send(ar -> {
+                                if (ar.succeeded() && ar.result().statusCode() == ConstantApp.STATUS_CODE_OK) {
+
+                                    JsonObject jo = ar.result().bodyAsJsonObject();
+
+                                    System.out.println("get status = " + jo);
+
+                                    JsonArray subTaskArray = jo.getJsonArray("statements");
+                                    JsonArray statusArray = new JsonArray();
+
+                                    for (int i = 0; i < subTaskArray.size(); i++) {
+                                        //Here, jobId = statementId, subTaskId = statementId
+                                        statusArray.add(new JsonObject()
+                                                        .put("subTaskId", sessionId + "_" + subTaskArray.getJsonObject(i).getInteger("id"))
+                                                        .put("id", taskId + "_" + subTaskArray.getJsonObject(i).getInteger("id"))
+                                                        .put("jobId", sessionId)
+                                                        .put("dfTaskState",
+                                                                HelpFunc.getTaskStatusSpark(subTaskArray.getJsonObject(i)))
+                                                        .put("taskState",
+                                                                subTaskArray.getJsonObject(i).getString("state").toUpperCase())
+                                                        .put("statement", subTaskArray.getJsonObject(i).getString("code"))
+                                                        .put("output",
+                                                                "<table>\n" +
+                                                                        "  <tr><th>Firstname</th><th>Lastname</th><th>Age</th></tr>\n" +
+                                                                        "  <tr><td>Jill</td><td>Smith</td><td>50</td></tr>\n" +
+                                                                        "  <tr><td>Eve</td><td>Jackson</td><td>94</td></tr>\n" +
+                                                                        "  <tr><td>John</td><td>Doe</td><td>80</td></tr>\n" +
+                                                                        "</table>")
+                                                // HelpFunc.livyTableResultToArray(subTaskArray.getJsonObject(i)))
                                         );
                                     }
 

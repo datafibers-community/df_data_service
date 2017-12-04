@@ -13,7 +13,6 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import io.vertx.ext.mongo.FindOptions;
 import io.vertx.ext.web.RoutingContext;
-import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -280,7 +279,7 @@ public class HelpFunc {
         }
     }
     /**
-     * Mapping rest state to df status category
+     * Mapping livy statement rest state to df status category
      * @param taskStatus
      * @return
      */
@@ -506,16 +505,20 @@ public class HelpFunc {
                 .put("programArgs", programArgs);
     }
 
-    public static String arrayToString(JsonArray ja) {
-        String result = "";
+    public static String arrayToString(JsonArray ja, String begin, String separator, String end) {
         for (int i = 0; i < ja.size(); i++) {
-            result = result + ja.getValue(i).toString() + " | ";
+            if(i == ja.size() - 1) separator = "";
+            begin = begin + ja.getValue(i).toString() + separator;
         }
-        return result + "\n\t";
+        return begin + end;
     }
 
-    public static String livyTableResultToArray(JsonObject livyStatementResult) {
-        String resultString = "";
+    public static String livyTableResultToRichText(JsonObject livyStatementResult) {
+
+        String tableHeader = "<table border=\"1\">";
+        String tableTrailer = "</table>";
+        String dataRow = "";
+
         if (livyStatementResult.getJsonObject("output").containsKey("data")) {
             JsonObject dataJason = livyStatementResult.getJsonObject("output").getJsonObject("data");
 
@@ -523,21 +526,20 @@ public class HelpFunc {
                 JsonObject output = dataJason.getJsonObject("application/vnd.livy.table.v1+json");
                 JsonArray header = output.getJsonArray("headers");
                 JsonArray data = output.getJsonArray("data");
-                String headerRow = "";
+                String headerRow = "<tr><th>";
 
                 if (data.size() == 0) return "";
 
                 for (int i = 0; i < header.size(); i++) {
-                    headerRow = headerRow + header.getJsonObject(i).getString("name") + " | ";
+                    headerRow = headerRow + header.getJsonObject(i).getString("name") + "</th><th>";
                 }
-
-                resultString = headerRow + "\n\t";
 
                 for (int i = 0; i < data.size(); i++) {
-                    resultString = resultString + arrayToString(data.getJsonArray(i));
+                    dataRow = dataRow + arrayToString(data.getJsonArray(i),
+                            "<tr><td>", "</td><td>", "</td></tr>");
                 }
 
-                return resultString;
+                return tableHeader + headerRow + dataRow + tableTrailer;
 
             } else if (livyStatementResult.getString("code").contains("%json")) { // livy magic word %json
                 JsonArray data = dataJason.getJsonArray("application/json");
@@ -545,14 +547,16 @@ public class HelpFunc {
                 if (data.size() == 0) return "";
 
                 for (int i = 0; i < data.size(); i++) {
-                    resultString = resultString + arrayToString(data.getJsonArray(i));
+                    dataRow = dataRow + arrayToString(data.getJsonArray(i),
+                            "<tr><td>", "</td><td>", "</td></tr>");
                 }
 
-                return resultString;
+                return tableHeader + dataRow + tableTrailer;
 
             } else { // livy no magic word
                 String data = dataJason.getString("text/plain");
-                return data.replaceAll("Row", "\\\n\tRow");
+                return data.trim().replaceAll("\\[|]", "")
+                        .replaceAll(",Row", ",</br>Row");
             }
         } else {
             return "";
