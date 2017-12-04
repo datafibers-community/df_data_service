@@ -89,8 +89,6 @@ export const TransformEdit = (props) => (
 		            <LongTextInput source="connectorConfig.trans_sql" label="Stream SQL Statement, such as select * from ..." validate={[ required ]} style={{ width: 500 }} />
 		        </DependentInput>
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_SPARK_SQL">
-                    <DisabledInput source="jobConfig.livy_session_id" label="Livy Session ID" />
-                    <DisabledInput source="jobConfig.livy_statement_id" label="Livy Statement ID" />
 		            <LongTextInput source="connectorConfig.trans_sql" label="Stream SQL Statement, such as select * from ..." validate={[ required ]} style={{ width: 500 }} />
 		        </DependentInput>
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_FLINK_Script">
@@ -118,14 +116,11 @@ export const TransformEdit = (props) => (
                     </ReferenceManyField>
 		        </DependentInput>
                 <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_SPARK_SQL">
-                    <ReferenceManyField addLabel={false} reference="status" target="id">
-                        <Datagrid>
-                            <TextField source="subTaskId" label="Session/Statement" />
-                            <ChipField source="dfTaskState" label="State" />
-                            <TextField source="statement" label="Statement" />
-                            <RichTextField source="output" label="Statement Output" />
-                        </Datagrid>
-                    </ReferenceManyField>
+                    <DisabledInput source="jobConfig.livy_session_id" label="Livy Session ID" style={{ display: 'inline-block' }} />
+                    <DisabledInput source="jobConfig.livy_session_state" label="Livy Session State" style={{ display: 'inline-block', marginLeft: 32 }} />
+                    <DisabledInput source="jobConfig.livy_statement_id" label="Livy Statement ID" />
+                    <DisabledInput source="jobConfig.livy_statement_state" label="Livy Statement State" />
+                    <RichTextField source="jobConfig.livy_statement_output" label="Last Query Result" />
 		        </DependentInput>
             </FormTab>
         </TabbedForm>
