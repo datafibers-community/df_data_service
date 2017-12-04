@@ -39,7 +39,7 @@ export const TransformShow = (props) => (
 );
 
 export const TransformList = (props) => (
-    <List {...props} title="Transform List" filters={<TransformFilter />} actions={<RefreshListActions refreshInterval="5000" />}>
+    <List {...props} title="Transform List" filters={<TransformFilter />} actions={<RefreshListActions refreshInterval="10000" />}>
         <Datagrid
             headerOptions={{ adjustForCheckbox: true, displaySelectAll: true }}
             bodyOptions={{ displayRowCheckbox: true, stripedRows: true, showRowHover: true}}
@@ -48,7 +48,14 @@ export const TransformList = (props) => (
             <TextField source="id" label="id" />
             <TextField source="taskSeq" label="task seq." />
             <TextField source="name" label="name" />
-            <TextField source="connectorType" label="task type" />
+            <SelectField source="connectorType" label="Task Type" choices={[
+                			{ id: 'TRANSFORM_EXCHANGE_FLINK_SQLA2A', name: 'Stream SQL on Queue' },
+                			{ id: 'TRANSFORM_EXCHANGE_SPARK_SQL', name: 'Batch SQL off Queue' },
+                			{ id: 'TRANSFORM_EXCHANGE_FLINK_Script', name: 'Stream Script on Queue' },
+                			{ id: 'TRANSFORM_EXCHANGE_SPARK_STREAM', name: 'Batch Script off Queue' },
+              		        { id: 'TRANSFORM_EXCHANGE_FLINK_UDF',  name: 'Stream UDF on Queue' },
+              		        { id: 'TRANSFORM_EXCHANGE_SPARK_UDF',  name: 'Batch UDF on Queue' },
+            		        ]} />
             <ChipField source="status" label="status" />
             <EditButton />
         </Datagrid>
@@ -82,6 +89,8 @@ export const TransformEdit = (props) => (
 		            <LongTextInput source="connectorConfig.trans_sql" label="Stream SQL Statement, such as select * from ..." validate={[ required ]} style={{ width: 500 }} />
 		        </DependentInput>
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_SPARK_SQL">
+                    <DisabledInput source="jobConfig.livy_session_id" label="Livy Session ID" />
+                    <DisabledInput source="jobConfig.livy_statement_id" label="Livy Statement ID" />
 		            <LongTextInput source="connectorConfig.trans_sql" label="Stream SQL Statement, such as select * from ..." validate={[ required ]} style={{ width: 500 }} />
 		        </DependentInput>
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_FLINK_Script">
@@ -96,16 +105,28 @@ export const TransformEdit = (props) => (
                 </DependentInput>
 	        </FormTab>
             <FormTab label="State">
-                <ReferenceManyField addLabel={false} reference="status" target="id">
-                    <Datagrid>
-                        <TextField source="jobId" label="Engine Job ID." />
-                        <ChipField source="taskState" label="Engine Job State" />
-                        <TextField source="subTaskId" label="Engine Job ID." />
-                        <ChipField source="status" label="Subtask State" />
-                        <TextField source="name" label="Subtask Desc." />
-                        <ShowButton />
-                    </Datagrid>
-                </ReferenceManyField>
+                <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_FLINK_SQLA2A">
+                    <ReferenceManyField addLabel={false} reference="status" target="id">
+                        <Datagrid>
+                            <TextField source="jobId" label="Engine Job ID." />
+                            <ChipField source="taskState" label="Engine Job State" />
+                            <TextField source="subTaskId" label="Subtask ID." />
+                            <ChipField source="status" label="Subtask State" />
+                            <TextField source="name" label="Subtask Desc." />
+                            <ShowButton />
+                        </Datagrid>
+                    </ReferenceManyField>
+		        </DependentInput>
+                <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_SPARK_SQL">
+                    <ReferenceManyField addLabel={false} reference="status" target="id">
+                        <Datagrid>
+                            <TextField source="subTaskId" label="Session/Statement" />
+                            <ChipField source="dfTaskState" label="State" />
+                            <TextField source="statement" label="Statement" />
+                            <RichTextField source="output" label="Statement Output" />
+                        </Datagrid>
+                    </ReferenceManyField>
+		        </DependentInput>
             </FormTab>
         </TabbedForm>
     </Edit>
@@ -146,7 +167,7 @@ export const TransformCreate = (props) => (
 		            <LongTextInput source="connectorConfig.trans_sql" label="Stream SQL Statement" defaultValue="SELECT [col.] ... FROM [topic_name]" validate={[ required ]} style={{ width: 500 }} />
 		        </DependentInput>
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_SPARK_SQL">
-		            <LongTextInput source="connectorConfig.trans_sql" label="Spark SQL over Hive Statement" defaultValue="SELECT [col.] ... FROM [topic_name]" validate={[ required ]} style={{ width: 500 }} />
+		            <LongTextInput source="connectorConfig.trans_sql" label="Spark SQL over Hive Statement" defaultValue="show tables" validate={[ required ]} style={{ width: 500 }} />
 		        </DependentInput>
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_FLINK_Script">
                     <TextInput source="connectorConfig.topic_in" label="A Topic to Read Data" style={{ display: 'inline-block' }} validate={[ required ]} />

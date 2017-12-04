@@ -43,7 +43,7 @@ export const ConnectShow = (props) => (
 );
 
 export const ConnectList = (props) => (
-    <List {...props} title="Connect List" filters={<ConnectFilter />} actions={<RefreshListActions refreshInterval="5000" />}>
+    <List {...props} title="Connect List" filters={<ConnectFilter />} actions={<RefreshListActions refreshInterval="10000" />}>
         <Datagrid rowStyle={rowStyle}
             headerOptions={{ adjustForCheckbox: true, displaySelectAll: true }}
             bodyOptions={{ displayRowCheckbox: true, stripedRows: false, showRowHover: true}}
@@ -52,7 +52,13 @@ export const ConnectList = (props) => (
             <TextField source="id" label="id" />
             <TextField source="taskSeq" label="task seq." />
             <TextField source="name" label="name" />
-            <TextField source="connectorType" label="task type" />
+            <SelectField source="connectorType" label="Task Type" choices={[
+                                    { id: 'CONNECT_SOURCE_KAFKA_AvroFile', name: 'Source Avro Files' },
+                                    { id: 'CONNECT_SOURCE_STOCK_AvroFile', name: 'Source Stock API' },
+                                    { id: 'CONNECT_SINK_HDFS_AvroFile', name: 'Sink Hadoop|Hive' },
+                                    { id: 'CONNECT_SINK_MONGODB_AvroDB',  name: 'Sink MongoDB' },
+                                    { id: 'CONNECT_SINK_KAFKA_JDBC',  name: 'Sink JDBC' },
+                            ]} />
             <ChipField source="status" label="status" />
             <ApproveButton style={{ padding: 0 }} />
             <EditButton />

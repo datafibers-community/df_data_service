@@ -34,14 +34,26 @@ export const ProcessorShow = (props) => (
 
 export const ProcessorList = (props) => (
     <List {...props} title="All Live Task Status Board"
-    actions={<RefreshListActions refreshInterval="5000" />} filters={<ProcessorFilter />}
+    actions={<RefreshListActions refreshInterval="10000" />} filters={<ProcessorFilter />}
     >
         <Datagrid bodyOptions={{ stripedRows: true, showRowHover: true}} >
             <TextField source="id" label="id" />
             <TextField source="taskSeq" label="seq." />
             <TextField source="name" label="name" />
             <TextField source="connectorCategory" label="category" />
-            <TextField source="connectorType" label="type" />
+            <SelectField source="connectorType" label="type" choices={[
+                                    { id: 'CONNECT_SOURCE_KAFKA_AvroFile', name: 'Source Avro Files' },
+                                    { id: 'CONNECT_SOURCE_STOCK_AvroFile', name: 'Source Stock API' },
+                                    { id: 'CONNECT_SINK_HDFS_AvroFile', name: 'Sink Hadoop|Hive' },
+                                    { id: 'CONNECT_SINK_MONGODB_AvroDB',  name: 'Sink MongoDB' },
+                                    { id: 'CONNECT_SINK_KAFKA_JDBC',  name: 'Sink JDBC' },
+                                    { id: 'TRANSFORM_EXCHANGE_FLINK_SQLA2A', name: 'Stream SQL on Queue' },
+                         			{ id: 'TRANSFORM_EXCHANGE_SPARK_SQL', name: 'Batch SQL off Queue' },
+                         			{ id: 'TRANSFORM_EXCHANGE_FLINK_Script', name: 'Stream Script on Queue' },
+                         			{ id: 'TRANSFORM_EXCHANGE_SPARK_STREAM', name: 'Batch Script off Queue' },
+                       		        { id: 'TRANSFORM_EXCHANGE_FLINK_UDF',  name: 'Stream UDF on Queue' },
+                       		        { id: 'TRANSFORM_EXCHANGE_SPARK_UDF',  name: 'Batch UDF on Queue' },
+            ]} />
             <ChipField source="status" label="status" />
             <ShowButton />
         </Datagrid>
