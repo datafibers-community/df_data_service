@@ -212,9 +212,9 @@ public class SparkTransformProcessor {
      * for REST GET. After that, it forward the GET to Livy API to get session and statement status including logging.
      * Once REST API forward is successful, response. Right now, this is not beling used by web ui.
      *
-     * @param routingContext This is the contect from REST API
+     * @param routingContext response for rest client
      * @param webClient This is vertx non-blocking web client used for forwarding
-     * @param sparkRestHost flinbk rest hostname
+     * @param sparkRestHost flink rest hostname
      * @param sparkRestPort flink rest port number
      *
      */
