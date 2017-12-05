@@ -1683,7 +1683,7 @@ public class DFDataProcessor extends AbstractVerticle {
                                 remove -> HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                         .setStatusCode(ConstantApp.STATUS_CODE_OK)
                                         .end(DFAPIMessage.getResponseMessage(1002)));
-                        LOG.info(DFAPIMessage.logResponseMessage(1002, id + "- JOB_ID_NULL"));
+                        LOG.info(DFAPIMessage.logResponseMessage(1002, id + "- not found in repo"));
                     }
             });
         }
@@ -2084,8 +2084,7 @@ public class DFDataProcessor extends AbstractVerticle {
         mongo.find(COLLECTION, new JsonObject().put("connectorType", new JsonObject().put("$in", list)), result -> {
             if (result.succeeded()) {
                 for (JsonObject json : result.result()) {
-                    String statusRepo = json.getString("status");
-                    String statementRepo = json.getJsonObject("connectorConfig").getString(ConstantApp.PK_TRANSFORM_SQL);
+                    String repoStatus = json.getString("status");
                     String taskId = json.getString("_id");
                     DFJobPOPJ updateJob = new DFJobPOPJ(json);
 
@@ -2100,18 +2099,20 @@ public class DFDataProcessor extends AbstractVerticle {
                                                 taskId + "cause:" + v.cause()));
                                     } else {
                                         LOG.debug(DFAPIMessage
-                                                .logResponseMessage(1001, "Spark miss session/statement Id " + taskId));
+                                                .logResponseMessage(1001,
+                                                        "Livy session miss session/statement Id " + taskId));
                                     }
                                 }
                         );
 
-                    } else if( // update status in repo when it is in running or unassigned
+                    } else if( // update status in repo when it is in running or unassigned TODO may need to remove LOST later
                             updateJob.getStatus().equalsIgnoreCase(ConstantApp.DF_STATUS.RUNNING.name()) ||
                                     updateJob.getStatus().equalsIgnoreCase(ConstantApp.DF_STATUS.UNASSIGNED.name()) ||
                                     updateJob.getStatus().equalsIgnoreCase(ConstantApp.DF_STATUS.LOST.name())
                             ) {
                         String sessionId = json.getJsonObject("jobConfig").getString(ConstantApp.PK_LIVY_SESSION_ID);
                         String statementId = json.getJsonObject("jobConfig").getString(ConstantApp.PK_LIVY_STATEMENT_ID);
+                        String repoFullCode = json.getJsonObject("jobConfig").getString(ConstantApp.PK_LIVY_STATEMENT_CODE);
 
                         // 1. Check if session is available
                         wc_refresh.get(spark_livy_server_port, spark_livy_server_host,
@@ -2141,59 +2142,50 @@ public class DFDataProcessor extends AbstractVerticle {
                                                                 ConstantApp.DF_STATUS.LOST.name() :// Not find - Mark status as LOST
                                                                 HelpFunc.getTaskStatusSpark(resultJo);
 
-                                                        String resStatement = ar.result().statusCode() == ConstantApp.STATUS_CODE_NOT_FOUND ?
-                                                                "" :resultJo.getString("code");
+                                                        String resFullCode = ar.result().statusCode() == ConstantApp.STATUS_CODE_NOT_FOUND ?
+                                                                "":resultJo.getString("code");
 
-                                                        LOG.debug("statusRepo = " + statusRepo + " resStatus = " + resStatus);
-                                                        LOG.debug("statementRepo = " + statementRepo + " resStatement = " + resStatement);
+                                                        LOG.debug("repoStatus = " + repoStatus + " resStatus = " + resStatus);
+                                                        LOG.debug("repoFullCode = " + repoFullCode + " resStatement = " + resFullCode);
 
-                                                        // Do change detection on status, but sql must same
-                                                        // (actual contains, since we only keep sql in repo).
+                                                        // Do change detection on status, but code snip must same
                                                         // Because the livy session/statement id could be reset
-                                                        if (statusRepo.compareToIgnoreCase(resStatus) != 0 &&
-                                                                resStatement.contains(statementRepo)
-                                                                ) { //status changes
-
+                                                        if (repoStatus.compareToIgnoreCase(resStatus) != 0 &&
+                                                                repoFullCode.equalsIgnoreCase(repoFullCode)) { //status changes
                                                             // Set df job status from statement state
-                                                            updateJob.setStatus(resStatus);
-
-                                                            LOG.debug("updateJob 1 = " + updateJob);
-
-                                                            // Set statement state and progress
-                                                            updateJob.setJobConfig(ConstantApp.PK_LIVY_STATEMENT_STATE,
-                                                                    resultJo.getString("state"))
-                                                                    .setJobConfig(ConstantApp.PK_LIVY_STATEMENT_PROGRESS,
-                                                                            resultJo.getValue("progress").toString());
-                                                            LOG.debug("updateJob 2 = " + updateJob);
-
-                                                            // Set statement status
-                                                            updateJob.setJobConfig(ConstantApp.PK_LIVY_STATEMENT_STATUS,
-                                                                    resultJo.getJsonObject("output")
-                                                                            .getString("status"));
-                                                            LOG.debug("updateJob 3 = " + updateJob);
-
-                                                            // Set traceback in case of errors
-                                                            updateJob.setJobConfig(ConstantApp.PK_LIVY_STATEMENT_TRACEBACK,
-                                                                    resultJo.getJsonObject("output")
+                                                            updateJob
+                                                                    .setStatus(resStatus)
+                                                                    // Set statement state and progress
+                                                                    .setJobConfig(
+                                                                            ConstantApp.PK_LIVY_STATEMENT_STATE,
+                                                                            resultJo.getString("state"))
+                                                                    .setJobConfig(
+                                                                            ConstantApp.PK_LIVY_STATEMENT_PROGRESS,
+                                                                            resultJo.getValue("progress").toString())
+                                                                    // Set statement status
+                                                                    .setJobConfig(
+                                                                            ConstantApp.PK_LIVY_STATEMENT_STATUS,
+                                                                            resultJo.getJsonObject("output")
+                                                                            .getString("status"))
+                                                                    // Set traceback in case of errors
+                                                                    .setJobConfig(ConstantApp.PK_LIVY_STATEMENT_TRACEBACK,
+                                                                            resultJo.getJsonObject("output")
                                                                             .containsKey("traceback")?
                                                                             resultJo.getJsonObject("output")
                                                                                     .getJsonArray("traceback")
-                                                                                    .toString():"");
-                                                            LOG.debug("updateJob 4 = " + updateJob);
-
-                                                            // Also set result
-                                                            updateJob.setJobConfig(ConstantApp.PK_LIVY_STATEMENT_OUTPUT,
+                                                                                    .toString():"")
+                                                                    // Also set result
+                                                                    .setJobConfig(ConstantApp.PK_LIVY_STATEMENT_OUTPUT,
                                                                             HelpFunc.livyTableResultToRichText(resultJo));
 
-                                                            LOG.debug("updateJob = " + updateJob);
-
+                                                            LOG.debug("updateJob = " + updateJob.toJson());
                                                         } else {
                                                             LOG.debug(DFAPIMessage.logResponseMessage(1022, taskId));
                                                         }
                                                     } else {
                                                         // When jobId not found, set status LOST with error message.
                                                         LOG.info(DFAPIMessage.logResponseMessage(9006,
-                                                                "TRANSFORM_STATUS_REFRESH_FOUND " + taskId + " LOST"));
+                                                                "TRANSFORM_STATUS_REFRESH_FOUND SPARK " + taskId + " LOST"));
                                                         updateJob.setStatus(ConstantApp.DF_STATUS.LOST.name());
                                                     }
 

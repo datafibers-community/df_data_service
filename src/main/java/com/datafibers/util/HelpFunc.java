@@ -488,7 +488,7 @@ public class HelpFunc {
                     HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_CONSUMER_GROURP),
                             ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
                     "\"" + dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL)
-                            .replaceAll("\n", "") + "\"");
+                            .replaceAll("\n", " ") + "\"");
         } else if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_UDF.name()) {
             entryClass = dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_JAR_CLASS_NAME);
             programArgs = dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_JAR_PARA);
@@ -515,7 +515,14 @@ public class HelpFunc {
 
     public static String livyTableResultToRichText(JsonObject livyStatementResult) {
 
-        String tableHeader = "<table border=\"1\",cellpadding=\"4\">";
+        String tableHeader =
+                "<style type=\"text/css\">" +
+                ".myOtherTable { background-color:#FFFFFF;border-collapse:collapse;color:#000}" +
+                ".myOtherTable th { background-color:#99ceff;color:black;width:50%; }" +
+                ".myOtherTable td, .myOtherTable th { padding:5px;border:0; }" +
+                ".myOtherTable td { border-bottom:1px dotted #BDB76B; }" +
+                "</style><table class=\"myOtherTable\">";
+        //String tableHeader = "<table border=\"1\",cellpadding=\"4\">";
         String tableTrailer = "</table>";
         String dataRow = "";
 

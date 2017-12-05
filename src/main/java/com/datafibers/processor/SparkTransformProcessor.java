@@ -17,6 +17,7 @@ import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.client.WebClient;
 import org.apache.log4j.Logger;
+import org.codehaus.jackson.annotate.JsonValue;
 
 /**
  * For now, we communicate with Spark through Apache Livy
@@ -51,89 +52,92 @@ public class SparkTransformProcessor {
                                            String taskCollection, String sparkRestHost, int sparkRestPort) {
         String taskId = dfJob.getId();
         String sql = dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL);
+
         // TODO check all sessions submit a idle session. If all sessions are busy, create a new session
-        // 1. Start a session using python spark, localhost:8998/sessions
-        webClient.post(sparkRestPort, sparkRestHost, ConstantApp.LIVY_REST_URL_SESSIONS)
+        webClient.get(sparkRestPort, sparkRestHost,
+                ConstantApp.LIVY_REST_URL_SESSIONS)
                 .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
-                .sendJsonObject(new JsonObject().put("kind", "pyspark"), ar -> {
-                    if (ar.succeeded()) {
-                        String sessionId = ar.result().bodyAsJsonObject().getInteger("id").toString();
-                        dfJob.setJobConfig(ConstantApp.PK_LIVY_SESSION_ID, sessionId);
-                        String restURL = "http://" + sparkRestHost + ":" + sparkRestPort +
-                                ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId + "/state";
+                .send(sar -> {
+                            if (sar.succeeded()) {
+                                String idleSessionId = "";
+                                JsonArray sessionArray = sar.result().bodyAsJsonObject().getJsonArray("sessions");
 
-                        System.out.println("forwardPostAsAddOne is called with restURL = " + restURL);
+                                for (int i = 0; i < sessionArray.size(); i++) {
+                                    if(sessionArray.getJsonObject(i).getString("state")
+                                            .equalsIgnoreCase("idle")) {
+                                        idleSessionId = sessionArray.getJsonObject(i).getInteger("id").toString();
+                                        break;
+                                    }
+                                }
 
-                        // 2. Check if session is in idle, http://localhost:8998/sessions/3
-                        WorkerExecutor executor = vertx.createSharedWorkerExecutor(taskId,
-                                ConstantApp.WORKER_POOL_SIZE, ConstantApp.MAX_RUNTIME);
-                        executor.executeBlocking(future -> {
-
-                            HttpResponse<JsonNode> res;
-                            // Keep checking session status until it is in idle
-                            while(true) {
-                                try {
-                                    res = Unirest.get(restURL)
-                                            .header(ConstantApp.HTTP_HEADER_CONTENT_TYPE,
+                                if(idleSessionId.equalsIgnoreCase("")) {// No idle session, create one
+                                    // 1. Start a session using python spark, post to localhost:8998/sessions
+                                    webClient.post(sparkRestPort, sparkRestHost, ConstantApp.LIVY_REST_URL_SESSIONS)
+                                            .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE,
                                                     ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
-                                            .asJson();
-                                    if(res.getBody().getObject().getString("state")
-                                            .equalsIgnoreCase("idle")) break;
-                                    Thread.sleep(2000);
-                                    System.out.println("checking session status");
-                                } catch (UnirestException|InterruptedException e) {
-                                    LOG.error(DFAPIMessage.logResponseMessage(9006, "exception - " + e.getCause()));
+                                            .sendJsonObject(new JsonObject().put("kind", "pyspark"), ar -> {
+                                                if (ar.succeeded()) {
+                                                    String newSessionId = ar.result().bodyAsJsonObject()
+                                                            .getInteger("id").toString();
+                                                    dfJob.setJobConfig(ConstantApp.PK_LIVY_SESSION_ID, newSessionId);
+                                                    String restURL = "http://" + sparkRestHost + ":" + sparkRestPort +
+                                                            ConstantApp.LIVY_REST_URL_SESSIONS + "/" + newSessionId +
+                                                            "/state";
+
+                                                    // 2. Wait until new session is in idle
+                                                    WorkerExecutor executor = vertx.createSharedWorkerExecutor(taskId,
+                                                            ConstantApp.WORKER_POOL_SIZE, ConstantApp.MAX_RUNTIME);
+                                                    executor.executeBlocking(future -> {
+
+                                                        HttpResponse<JsonNode> res;
+                                                        // Keep checking session status until it is in idle
+                                                        while(true) {
+                                                            try {
+                                                                res = Unirest.get(restURL)
+                                                                        .header(ConstantApp.HTTP_HEADER_CONTENT_TYPE,
+                                                                                ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                                                                        .asJson();
+                                                                if(res.getBody().getObject().getString("state")
+                                                                        .equalsIgnoreCase("idle")) break;
+                                                                Thread.sleep(2000);
+                                                                System.out.println("checking session status");
+                                                            } catch (UnirestException|InterruptedException e) {
+                                                                LOG.error(DFAPIMessage
+                                                                        .logResponseMessage(9006,
+                                                                                "exception - " + e.getCause()));
+                                                            }
+                                                        }
+
+                                                        // 3. Once session is idle, submit sql code to the livy
+                                                        addStatementToSession(
+                                                                webClient, sparkRestHost, sparkRestPort,
+                                                                dfJob, mongo, taskCollection,
+                                                                newSessionId, sql
+                                                        );
+                                                    }, res -> {});
+                                                } else {
+                                                    LOG.error(DFAPIMessage.logResponseMessage(9010,
+                                                            taskId + " Start new session failed with details - "
+                                                                    + ar.cause()));
+                                                }
+                                            });
+
+                                } else {
+                                    addStatementToSession(
+                                            webClient, sparkRestHost, sparkRestPort,
+                                            dfJob, mongo, taskCollection,
+                                            idleSessionId, sql
+                                    );
                                 }
                             }
-
-                            // 3. Once session is idle, submit sql code to the livy, localhost:8998/sessions/3/statements
-                            // TODO support multiple sql statement separated by ;
-                            String pySparkCode = "a = sqlContext.sql(\"" + sql + "\").collect()\n%table a";
-                            System.out.println("Livy session " + sessionId + " is idle");
-
-                            webClient.post(sparkRestPort, sparkRestHost,
-                                    ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId +
-                                            ConstantApp.LIVY_REST_URL_STATEMENTS)
-                                    .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE,
-                                            ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
-                                    .sendJsonObject(new JsonObject().put("code", pySparkCode),
-                                            sar -> {
-                                                if (sar.succeeded()) {
-                                                    JsonObject response = sar.result().bodyAsJsonObject();
-                                                    System.out.println("Post returned = " + response);
-                                                    // 4. Get job submission status/result to keep in repo.
-                                                    // Further status update comes from refresh status module in fibers
-                                                    dfJob.setJobConfig(
-                                                            ConstantApp.PK_LIVY_STATEMENT_ID,
-                                                            response.getInteger("id").toString()
-                                                    );// Task status is updated by regular refresh
-
-                                                    System.out.println("dfJob update = " + dfJob);
-                                                    mongo.updateCollection(taskCollection, new JsonObject().put("_id", taskId),
-                                                            new JsonObject().put("$set", dfJob.toJson()), v -> {
-                                                                if (v.failed()) {
-                                                                    LOG.error(DFAPIMessage.logResponseMessage(1001,
-                                                                            taskId + "error = " + v.cause()));
-                                                                } else {
-                                                                    LOG.info(DFAPIMessage.logResponseMessage(1005,
-                                                                            taskId));
-                                                                }
-                                                            }
-                                                    );
-                                                }
-                                            }
-                                    );
-                        }, res -> {});
-                    } else {
-                        LOG.error(DFAPIMessage.logResponseMessage(9010, taskId + " details - " + ar.cause()));
-                    }
                 });
 
     }
 
     /**
      * This method cancel a session by sessionId through livy rest API.
-     * Job may not exist or got exception. In this case, just delete it for now.
+     * Job may not exist or got exception or timeout. In this case, just delete it for now.
+     * If session Id is in idle, delete the session too.
      *
      * @param routingContext  response for rest client
      * @param webClient web client for rest
@@ -148,30 +152,55 @@ public class SparkTransformProcessor {
                                                 String sparkRestHost, int sparkRestPort, String sessionId) {
         String id = routingContext.request().getParam("id");
         if (sessionId == null || sessionId.trim().isEmpty()) {
-            LOG.error(DFAPIMessage.logResponseMessage(9000, id));
+            LOG.error(DFAPIMessage.logResponseMessage(9000, "sessionId is null in task " + id));
         } else {
-            // TODO delete only if session is ot idle since we'll share idle session first
-            webClient.delete(sparkRestPort, sparkRestHost, ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId)
-                    .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
-                    .send(ar -> {
-                                if (ar.succeeded()) {
-                                    // Only if response is succeeded, delete from repo
-                                    int response = (ar.result().statusCode() == ConstantApp.STATUS_CODE_OK) ? 1002:9012;
-                                    mongoClient.removeDocument(mongoCOLLECTION, new JsonObject().put("_id", id),
-                                            mar -> HelpFunc
-                                                    .responseCorsHandleAddOn(routingContext.response())
-                                                    .setStatusCode(ConstantApp.STATUS_CODE_OK)
-                                                    .end(DFAPIMessage.getResponseMessage(response, id)));
-                                    LOG.info(DFAPIMessage.logResponseMessage(response, id));
-                                } else { // TODO what's the return http code if session is timeout
-                                    // If response is failed, repose df ui and still keep the task
-                                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                                            .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
-                                            .end(DFAPIMessage.getResponseMessage(9029));
-                                    LOG.info(DFAPIMessage.logResponseMessage(9029, id));
-                                }
-                            }
-                     );
+            // Delete only if session is at idle since we'll share idle session first
+            webClient.get(sparkRestPort, sparkRestHost,
+                    ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId + "/state")
+                    .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE,
+                            ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                    .send(sar -> {
+                        if (sar.succeeded() &&
+                                sar.result().statusCode() == ConstantApp.STATUS_CODE_OK &&
+                                sar.result().bodyAsJsonObject().getString("state")
+                                        .equalsIgnoreCase("idle")) {
+                            webClient.delete(sparkRestPort, sparkRestHost,
+                                    ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId)
+                                    .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE,
+                                            ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                                    .send(ar -> {
+                                                if (ar.succeeded()) {
+                                                    // Only if response is succeeded, delete from repo
+                                                    int response =
+                                                            (ar.result().statusCode() == ConstantApp.STATUS_CODE_OK) ?
+                                                                    1002 : 9012;
+                                                    mongoClient.removeDocument(mongoCOLLECTION,
+                                                            new JsonObject().put("_id", id),
+                                                            mar -> HelpFunc
+                                                                    .responseCorsHandleAddOn(routingContext.response())
+                                                                    .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                                                    .end(DFAPIMessage.getResponseMessage(response, id)));
+                                                    LOG.info(DFAPIMessage.logResponseMessage(response, id));
+                                                } else {
+                                                    // If response is failed, repose df ui and still keep the task
+                                                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                                            .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                                                            .end(DFAPIMessage.getResponseMessage(9029));
+                                                    LOG.info(DFAPIMessage.logResponseMessage(9029, id));
+                                                }
+                                            }
+                                    );
+                        } else { // session is busy/time out, delete the task from repo directly
+                            mongoClient.removeDocument(mongoCOLLECTION,
+                                    new JsonObject().put("_id", id),
+                                    mar -> HelpFunc
+                                            .responseCorsHandleAddOn(routingContext.response())
+                                            .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                            .end(DFAPIMessage.getResponseMessage(1002, id)));
+                            LOG.info(DFAPIMessage.logResponseMessage(1002, id));
+
+                        }
+                    });
         }
     }
 
@@ -210,7 +239,7 @@ public class SparkTransformProcessor {
     /**
      * This method first decode the REST GET request to DFJobPOPJ object. Then, it updates its job status and repack
      * for REST GET. After that, it forward the GET to Livy API to get session and statement status including logging.
-     * Once REST API forward is successful, response. Right now, this is not beling used by web ui.
+     * Once REST API forward is successful, response. Right now, this is not being used by web ui.
      *
      * @param routingContext response for rest client
      * @param webClient This is vertx non-blocking web client used for forwarding
@@ -282,6 +311,69 @@ public class SparkTransformProcessor {
     }
 
     /**
+     * Utilities to submit statement when session is in idle.
+     *
+     * @param webClient vertx web client for rest
+     * @param dfJob jd job object
+     * @param mongo mongodb client
+     * @param taskCollection mongo collection name to keep df tasks
+     * @param sparkRestHost spark/livy rest hostname
+     * @param sparkRestPort spark/livy rest port number
+     * @param vertx used to initial blocking rest call for session status check
+     */
+    private static void addStatementToSession(WebClient webClient, String sparkRestHost, int sparkRestPort,
+                                             DFJobPOPJ dfJob, MongoClient mongo, String taskCollection,
+                                             String sessionId, String sql) {
+        // Support multiple sql statement separated by ; Keep result only for the last query
+        sql = sql.replaceAll("\n", " "); // support multiple-lines of statements
+        String[] sqlList = sql.split(";");
+        String pySparkCode = "";
+        for(int i = 0; i < sqlList.length; i++) {
+            if(i == sqlList.length - 1) {
+                pySparkCode = "a = sqlContext.sql(\"" + sqlList[i] + "\")\n%table a";
+            } else {
+                pySparkCode = "sqlContext.sql(\"" + sqlList[i] + "\")\n";
+            }
+        }
+
+        LOG.debug("Livy session " + sessionId + " is idle and ready to take code " + pySparkCode);
+
+        webClient.post(sparkRestPort, sparkRestHost,
+                ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId +
+                        ConstantApp.LIVY_REST_URL_STATEMENTS)
+                .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE,
+                        ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                .sendJsonObject(new JsonObject().put("code", pySparkCode),
+                        sar -> {
+                            if (sar.succeeded()) {
+                                JsonObject response = sar.result().bodyAsJsonObject();
+                                System.out.println("Post returned = " + response);
+                                // Get job submission status/result to keep in repo.
+                                // Further status update comes from refresh status module in fibers
+                                dfJob.setJobConfig(
+                                        ConstantApp.PK_LIVY_STATEMENT_ID,
+                                        response.getInteger("id").toString())
+                                        .setJobConfig(
+                                                ConstantApp.PK_LIVY_STATEMENT_CODE,
+                                                response.getString("code"));
+
+                                mongo.updateCollection(taskCollection, new JsonObject().put("_id", dfJob.getId()),
+                                        new JsonObject().put("$set", dfJob.toJson()), v -> {
+                                            if (v.failed()) {
+                                                LOG.error(DFAPIMessage.logResponseMessage(1001,
+                                                        dfJob.getId() + "error = " + v.cause()));
+                                            } else {
+                                                LOG.info(DFAPIMessage.logResponseMessage(1005,
+                                                        dfJob.getId()));
+                                            }
+                                        }
+                                );
+                            }
+                        }
+                );
+    }
+
+    /**
      * This is to get live job status for spark. Since spark now only has batch, we do not use it in web UI.
      * @param routingContext
      * @param webClient
@@ -289,6 +381,7 @@ public class SparkTransformProcessor {
      * @param sparkRestHost
      * @param sparkRestPort
      */
+    @Deprecated
     public static void forwardGetAsJobStatusFromRepo(RoutingContext routingContext, WebClient webClient, DFJobPOPJ dfJob,
                                              String sparkRestHost, int sparkRestPort) {
 
@@ -358,4 +451,6 @@ public class SparkTransformProcessor {
                     );
         }
     }
+
+
 }

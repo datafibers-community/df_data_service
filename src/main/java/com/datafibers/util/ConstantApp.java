@@ -190,6 +190,7 @@ public final class ConstantApp {
     public static final String PK_LIVY_STATEMENT_OUTPUT = "livy_statement_output";
     public static final String PK_LIVY_STATEMENT_PROGRESS = "livy_statement_progress";
     public static final String PK_LIVY_STATEMENT_TRACEBACK = "livy_statement_traceback";
+    public static final String PK_LIVY_STATEMENT_CODE = "livy_statement_code";
 
     public static final String PK_SCHEMA_ID_INPUT = "schema_ids_in";
     public static final String PK_SCHEMA_ID_OUTPUT = "schema_ids_out";
