@@ -515,7 +515,7 @@ public class HelpFunc {
 
     public static String livyTableResultToRichText(JsonObject livyStatementResult) {
 
-        String tableHeader = "<table border=\"1\">";
+        String tableHeader = "<table border=\"1\",cellpadding=\"4\">";
         String tableTrailer = "</table>";
         String dataRow = "";
 
@@ -530,9 +530,13 @@ public class HelpFunc {
 
                 if (data.size() == 0) return "";
 
+                String separator = "</th><th>";
                 for (int i = 0; i < header.size(); i++) {
-                    headerRow = headerRow + header.getJsonObject(i).getString("name") + "</th><th>";
+                    if(i == header.size() - 1) separator = "";
+                    headerRow = headerRow + header.getJsonObject(i).getString("name") + separator;
                 }
+
+                headerRow = headerRow + "</th></tr>";
 
                 for (int i = 0; i < data.size(); i++) {
                     dataRow = dataRow + arrayToString(data.getJsonArray(i),
