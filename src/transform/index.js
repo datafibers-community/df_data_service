@@ -159,10 +159,10 @@ export const TransformCreate = (props) => (
                     </DependentInput>
                     <LongTextInput source="connectorConfig.group_id" label="Consumer ID to Read Data. (Optional)" style={{ width: 500 }} />
 		            <LongTextInput source="connectorConfig.sink_key_fields" label="Key Columns in Sink (separated by ,)" style={{ width: 500 }} />
-		            <LongTextInput source="connectorConfig.trans_sql" label="Stream SQL Statement" defaultValue="SELECT [col.] ... FROM [topic_name]" validate={[ required ]} style={{ width: 500 }} />
+		            <LongTextInput source="connectorConfig.trans_sql" label="Stream SQL Statement" defaultValue="--This is how to write comments\n--Only single sql statement is supported\nSELECT [col. list] FROM [topic_name]" validate={[ required ]} style={{ width: 500 }} />
 		        </DependentInput>
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_SPARK_SQL">
-		            <LongTextInput source="connectorConfig.trans_sql" label="Spark SQL over Hive Statement" defaultValue="show tables" validate={[ required ]} style={{ width: 500 }} />
+		            <LongTextInput source="connectorConfig.trans_sql" label="Spark SQL over Hive Statement" defaultValue="--This is how to write comments\n--Multiple query should be separated by ;\n--Result preview (top 10 rows) only available for the last query.\nshow tables" validate={[ required ]} style={{ width: 500 }} />
 		        </DependentInput>
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_FLINK_Script">
                     <TextInput source="connectorConfig.topic_in" label="A Topic to Read Data" style={{ display: 'inline-block' }} validate={[ required ]} />
