@@ -13,6 +13,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import io.vertx.ext.mongo.FindOptions;
 import io.vertx.ext.web.RoutingContext;
+import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -487,8 +488,7 @@ public class HelpFunc {
                     dfJob.getConnectorConfig().get(ConstantApp.PK_FLINK_TABLE_SINK_KEYS),
                     HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_CONSUMER_GROURP),
                             ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
-                    "\"" + dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL)
-                            .replaceAll("\n", " ") + "\"");
+                    "\"" + sqlCleaner(dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL)) + "\"");
         } else if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_UDF.name()) {
             entryClass = dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_JAR_CLASS_NAME);
             programArgs = dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_JAR_PARA);
@@ -503,6 +503,21 @@ public class HelpFunc {
                 .put("parallelism", parallelism)
                 .put("entryClass", entryClass)
                 .put("programArgs", programArgs);
+    }
+
+    /**
+     * Get input of sql statements and remove comments line, extract \n and extra ;
+     * @param sqlInput
+     * @return array of cleaned sql statement without ;
+     */
+    public static String[] sqlCleaner(String sqlInput) {
+        //Use @ to create extra space and \n for removing comments
+        sqlInput = sqlInput.replaceAll("\n", "@\n");
+        String cleanedSQL = "";
+        for(String line : sqlInput.split("\n")) { // remove all comments in each line
+            cleanedSQL = cleanedSQL + StringUtils.substringBefore(line, "--");
+        }
+        return cleanedSQL.replace("@", " ").split(";");
     }
 
     public static String arrayToString(JsonArray ja, String begin, String separator, String end) {

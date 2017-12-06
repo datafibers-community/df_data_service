@@ -1485,7 +1485,7 @@ public class DFDataProcessor extends AbstractVerticle {
                                         connectorConfigString.compareTo(before_update_connectorConfigString) != 0) {
 
                                     SparkTransformProcessor.forwardPutAsUpdateOne(
-                                            vertx, routingContext, wc_spark,
+                                            vertx, wc_spark,
                                             dfJob, mongo, COLLECTION,
                                             spark_livy_server_host, spark_livy_server_port
                                     );

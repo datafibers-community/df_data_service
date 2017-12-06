@@ -7,9 +7,12 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.configuration.SystemConfiguration;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * Created by DUW3 on 11/11/2016.
@@ -52,51 +55,13 @@ public class JsonTest {
     }
 
     public static void main(String[] args) throws IOException, DecoderException {
-        JsonObject jo = new JsonObject("{\n" +
-                "    \"id\": 0,\n" +
-                "    \"code\": \"a = sqlContext.sql(\\\"show tables\\\").collect()\\n%table a\",\n" +
-                "    \"state\": \"available\",\n" +
-                "    \"output\": {\n" +
-                "        \"status\": \"ok\",\n" +
-                "        \"execution_count\": 0,\n" +
-                "        \"data\": {\n" +
-                "            \"application/vnd.livy.table.v1+json\": {\n" +
-                "                \"headers\": [\n" +
-                "                    {\n" +
-                "                        \"type\": \"STRING_TYPE\",\n" +
-                "                        \"name\": \"database\"\n" +
-                "                    },\n" +
-                "                    {\n" +
-                "                        \"type\": \"BOOLEAN_TYPE\",\n" +
-                "                        \"name\": \"isTemporary\"\n" +
-                "                    },\n" +
-                "                    {\n" +
-                "                        \"type\": \"STRING_TYPE\",\n" +
-                "                        \"name\": \"tableName\"\n" +
-                "                    }\n" +
-                "                ],\n" +
-                "                \"data\": [\n" +
-                "                    [\n" +
-                "                        \"default\",\n" +
-                "                        false,\n" +
-                "                        \"a\"\n" +
-                "                    ],\n" +
-                "                    [\n" +
-                "                        \"default\",\n" +
-                "                        false,\n" +
-                "                        \"employee_external\"\n" +
-                "                    ],\n" +
-                "                    [\n" +
-                "                        \"default\",\n" +
-                "                        false,\n" +
-                "                        \"test_stock\"\n" +
-                "                    ]\n" +
-                "                ]\n" +
-                "            }\n" +
-                "        }\n" +
-                "    },\n" +
-                "    \"progress\": 1\n" +
-                "}");
+        String mySb = "--comments \n" +
+                "select * from test;--comments2\n" +
+                "select * from\n" +
+                "test2;";
+         mySb = "--comments \n" +
+                "select * from test;";
+        Arrays.asList(HelpFunc.sqlCleaner(mySb)).forEach(System.out::println);
 
     }
 }

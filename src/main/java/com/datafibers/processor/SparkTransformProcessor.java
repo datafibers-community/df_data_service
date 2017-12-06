@@ -17,7 +17,6 @@ import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.client.WebClient;
 import org.apache.log4j.Logger;
-import org.codehaus.jackson.annotate.JsonValue;
 
 /**
  * For now, we communicate with Spark through Apache Livy
@@ -216,23 +215,18 @@ public class SparkTransformProcessor {
      * @param mongoClient     repo handler
      * @param taskCollection collection to keep data
      */
-    public static void forwardPutAsUpdateOne(Vertx vertx, RoutingContext routingContext, WebClient webClient,
+    public static void forwardPutAsUpdateOne(Vertx vertx, WebClient webClient,
                                              DFJobPOPJ dfJob, MongoClient mongoClient,
                                              String taskCollection, String sparkRestHost, int sparkRestPort) {
 
-        // Submit new task using new session and statement
+        // TODO update should always use current session. If it is busy, the statement is in waiting state
+        // TODO unless the session is closed, this case, we use other idle or new session
+
+        // Submit new task using new/idle session and statement
         forwardPostAsAddOne(
                 vertx, webClient, dfJob,
                 mongoClient, taskCollection,
                 sparkRestHost, sparkRestPort
-        );
-
-        // Cancel the old session any way
-        forwardDeleteAsCancelOne(
-                routingContext, webClient,
-                mongoClient, taskCollection,
-                sparkRestHost, sparkRestPort,
-                dfJob.getJobConfig().get(ConstantApp.PK_LIVY_SESSION_ID)
         );
     }
 
@@ -319,18 +313,19 @@ public class SparkTransformProcessor {
      * @param taskCollection mongo collection name to keep df tasks
      * @param sparkRestHost spark/livy rest hostname
      * @param sparkRestPort spark/livy rest port number
-     * @param vertx used to initial blocking rest call for session status check
+     * @param sessionId livy session id
+     * @param sql spark sql statements
      */
     private static void addStatementToSession(WebClient webClient, String sparkRestHost, int sparkRestPort,
                                              DFJobPOPJ dfJob, MongoClient mongo, String taskCollection,
                                              String sessionId, String sql) {
-        // Support multiple sql statement separated by ; Keep result only for the last query
-        sql = sql.replaceAll("\n", " "); // support multiple-lines of statements
-        String[] sqlList = sql.split(";");
+        // Support multiple sql statement separated by ; and comments by --
+        String[] sqlList = HelpFunc.sqlCleaner(sql);
         String pySparkCode = "";
         for(int i = 0; i < sqlList.length; i++) {
             if(i == sqlList.length - 1) {
-                pySparkCode = "a = sqlContext.sql(\"" + sqlList[i] + "\")\n%table a";
+                // Keep result only for the last query and only top 10 rows
+                pySparkCode = "a = sqlContext.sql(\"" + sqlList[i] + "\").take(10)\n%table a";
             } else {
                 pySparkCode = "sqlContext.sql(\"" + sqlList[i] + "\")\n";
             }
