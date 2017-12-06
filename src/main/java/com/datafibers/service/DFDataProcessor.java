@@ -1619,6 +1619,8 @@ public class DFDataProcessor extends AbstractVerticle {
      */
     private void deleteOneTransforms(RoutingContext routingContext) {
         String id = routingContext.request().getParam("id");
+        System.out.println("DELETE ID = " + id);
+
         if (id == null) {
             routingContext.response()
                     .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
@@ -1634,12 +1636,24 @@ public class DFDataProcessor extends AbstractVerticle {
                         LOG.error(DFAPIMessage.logResponseMessage(9001, id));
                         return;
                     }
+
                     DFJobPOPJ dfJob = new DFJobPOPJ(ar.result());
 
                     String jobId;
-                    if(dfJob.getJobConfig() != null && this.transform_engine_flink_enabled &&
+
+                    // When jobConfig is null, we can remove task with canceling the underlying service job
+                    if(dfJob.getJobConfig() == null) {
+                        mongo.removeDocument(COLLECTION, new JsonObject().put("_id", id),
+                                remove -> HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                        .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                        .end(DFAPIMessage.getResponseMessage(1002)));
+                        LOG.info(DFAPIMessage.logResponseMessage(1002, id + "- service job info not found"));
+
+                    } else if(dfJob.getJobConfig() != null &&
+                            this.transform_engine_flink_enabled &&
                             dfJob.getConnectorType().contains("FLINK") &&
                             dfJob.getJobConfig().containsKey(ConstantApp.PK_FLINK_SUBMIT_JOB_ID)) {
+
                         jobId = dfJob.getJobConfig().get(ConstantApp.PK_FLINK_SUBMIT_JOB_ID);
                         if (dfJob.getStatus().equalsIgnoreCase("RUNNING")) {
                             // For cancel a running job, we want remove tasks from repo only when cancel is done
@@ -1657,9 +1671,12 @@ public class DFDataProcessor extends AbstractVerticle {
                             LOG.info(DFAPIMessage.logResponseMessage(1002,
                                     id + "- FLINK_JOB_NOT_RUNNING"));
                         }
-                    } else if(dfJob.getJobConfig() != null && this.transform_engine_spark_enabled &&
-                                dfJob.getConnectorType().contains("SPARK") &&
-                                dfJob.getJobConfig().containsKey(ConstantApp.PK_LIVY_SESSION_ID)) {
+
+                    } else if(dfJob.getJobConfig() != null &&
+                            this.transform_engine_spark_enabled &&
+                            dfJob.getConnectorType().contains("SPARK") &&
+                            dfJob.getJobConfig().containsKey(ConstantApp.PK_LIVY_SESSION_ID)) {
+
                             jobId = dfJob.getJobConfig().get(ConstantApp.PK_LIVY_SESSION_ID);
                             if (dfJob.getStatus().equalsIgnoreCase("RUNNING")) {
                                 // For cancel a running job, we want remove tasks from repo only when cancel is done
@@ -1678,12 +1695,13 @@ public class DFDataProcessor extends AbstractVerticle {
                                         id + "- SPARK_JOB_NOT_RUNNING"));
                             }
                         }
+
                     } else {
                         mongo.removeDocument(COLLECTION, new JsonObject().put("_id", id),
                                 remove -> HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                         .setStatusCode(ConstantApp.STATUS_CODE_OK)
                                         .end(DFAPIMessage.getResponseMessage(1002)));
-                        LOG.info(DFAPIMessage.logResponseMessage(1002, id + "- not found in repo"));
+                        LOG.info(DFAPIMessage.logResponseMessage(1002, id + "- Has jobConfig but missing service job id."));
                     }
             });
         }
