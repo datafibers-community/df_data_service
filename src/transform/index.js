@@ -120,7 +120,7 @@ export const TransformEdit = (props) => (
                     <DisabledInput source="jobConfig.livy_session_state" label="Livy Session State" style={{ display: 'inline-block', marginLeft: 32 }} />
                     <DisabledInput source="jobConfig.livy_statement_id" label="Livy Statement ID" />
                     <DisabledInput source="jobConfig.livy_statement_state" label="Livy Statement State" />
-                    <RichTextField source="jobConfig.livy_statement_output" label="Last Query Result" />
+                    <RichTextField source="jobConfig.livy_statement_output" label="Last Query Result Preview" style={{ width: 500 }}/>
 		        </DependentInput>
             </FormTab>
         </TabbedForm>
