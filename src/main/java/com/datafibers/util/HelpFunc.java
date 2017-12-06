@@ -530,8 +530,6 @@ public class HelpFunc {
     }
 
     public static String livyTableResultToRichText(JsonObject livyStatementResult) {
-        // TODO set show top number of n rows as parameters
-
         String tableHeader =
                 "<style type=\"text/css\">" +
                 ".myOtherTable { background-color:#FFFFFF;border-collapse:collapse;color:#000}" +

@@ -19,7 +19,7 @@ import io.vertx.ext.web.client.WebClient;
 import org.apache.log4j.Logger;
 
 /**
- * For now, we communicate with Spark through Apache Livy
+ * This is the utility class to communicate with Spark through Apache Livy Rest Service
  */
 
 public class SparkTransformProcessor {
@@ -50,9 +50,8 @@ public class SparkTransformProcessor {
     public static void forwardPostAsAddOne(Vertx vertx, WebClient webClient, DFJobPOPJ dfJob, MongoClient mongo,
                                            String taskCollection, String sparkRestHost, int sparkRestPort) {
         String taskId = dfJob.getId();
-        String sql = dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL);
 
-        // TODO check all sessions submit a idle session. If all sessions are busy, create a new session
+        // Check all sessions submit a idle session. If all sessions are busy, create a new session
         webClient.get(sparkRestPort, sparkRestHost,
                 ConstantApp.LIVY_REST_URL_SESSIONS)
                 .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
@@ -99,7 +98,6 @@ public class SparkTransformProcessor {
                                                                 if(res.getBody().getObject().getString("state")
                                                                         .equalsIgnoreCase("idle")) break;
                                                                 Thread.sleep(2000);
-                                                                System.out.println("checking session status");
                                                             } catch (UnirestException|InterruptedException e) {
                                                                 LOG.error(DFAPIMessage
                                                                         .logResponseMessage(9006,
@@ -109,9 +107,8 @@ public class SparkTransformProcessor {
 
                                                         // 3. Once session is idle, submit sql code to the livy
                                                         addStatementToSession(
-                                                                webClient, sparkRestHost, sparkRestPort,
-                                                                dfJob, mongo, taskCollection,
-                                                                newSessionId, sql
+                                                                webClient, dfJob, sparkRestHost, sparkRestPort,
+                                                                mongo, taskCollection, newSessionId
                                                         );
                                                     }, res -> {});
                                                 } else {
@@ -123,9 +120,8 @@ public class SparkTransformProcessor {
 
                                 } else {
                                     addStatementToSession(
-                                            webClient, sparkRestHost, sparkRestPort,
-                                            dfJob, mongo, taskCollection,
-                                            idleSessionId, sql
+                                            webClient, dfJob, sparkRestHost, sparkRestPort,
+                                            mongo, taskCollection, idleSessionId
                                     );
                                 }
                             }
@@ -205,29 +201,50 @@ public class SparkTransformProcessor {
 
     /**
      * This method is to update a task by creating livy session and resubmit the statement to livy.
-     * In this case, we'll cancel the old session and submit update as new task.
-     * When update task, we do not remove tasks from repo.
-     *
-     * @param routingContext  response for rest client
+     * Update should always use current session. If it is busy, the statement is in waiting state.
+     * If the sesseion is closed or session id is not available, use new/idle session.
+     * @param vertx  response for rest client
      * @param webClient vertx web client for rest
      * @param sparkRestHost flinbk rest hostname
      * @param sparkRestPort flink rest port number
-     * @param mongoClient     repo handler
+     * @param mongoClient repo handler
      * @param taskCollection collection to keep data
      */
     public static void forwardPutAsUpdateOne(Vertx vertx, WebClient webClient,
                                              DFJobPOPJ dfJob, MongoClient mongoClient,
                                              String taskCollection, String sparkRestHost, int sparkRestPort) {
 
-        // TODO update should always use current session. If it is busy, the statement is in waiting state
-        // TODO unless the session is closed, this case, we use other idle or new session
-
-        // Submit new task using new/idle session and statement
-        forwardPostAsAddOne(
-                vertx, webClient, dfJob,
-                mongoClient, taskCollection,
-                sparkRestHost, sparkRestPort
-        );
+        // When session id is not available, use new/idle session to add new statement
+        if(dfJob.getJobConfig() == null ||
+                (dfJob.getJobConfig() != null && !dfJob.getJobConfig().containsKey(ConstantApp.PK_LIVY_STATEMENT_ID))) {
+            // Submit new task using new/idle session and statement
+            forwardPostAsAddOne(
+                    vertx, webClient, dfJob,
+                    mongoClient, taskCollection,
+                    sparkRestHost, sparkRestPort
+            );
+        } else {
+            String sessionId = dfJob.getJobConfig().get(ConstantApp.PK_LIVY_STATEMENT_ID);
+            webClient.get(sparkRestPort, sparkRestHost,
+                    ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId + "/state")
+                    .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE,
+                            ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                    .send(sar -> { // If session is active, we always wait
+                                if (sar.succeeded() && sar.result().statusCode() == ConstantApp.STATUS_CODE_OK) {
+                                    addStatementToSession(
+                                            webClient, dfJob,
+                                            sparkRestHost, sparkRestPort, mongoClient, taskCollection, sessionId
+                                    );
+                                } else { // session is closed
+                                    // Submit new task using new/idle session and statement
+                                    forwardPostAsAddOne(
+                                            vertx, webClient, dfJob,
+                                            mongoClient, taskCollection,
+                                            sparkRestHost, sparkRestPort
+                                    );
+                                }
+                    });
+        }
     }
 
     /**
@@ -314,11 +331,13 @@ public class SparkTransformProcessor {
      * @param sparkRestHost spark/livy rest hostname
      * @param sparkRestPort spark/livy rest port number
      * @param sessionId livy session id
-     * @param sql spark sql statements
      */
-    private static void addStatementToSession(WebClient webClient, String sparkRestHost, int sparkRestPort,
-                                             DFJobPOPJ dfJob, MongoClient mongo, String taskCollection,
-                                             String sessionId, String sql) {
+    private static void addStatementToSession(WebClient webClient, DFJobPOPJ dfJob,
+                                              String sparkRestHost, int sparkRestPort,
+                                              MongoClient mongo, String taskCollection,
+                                              String sessionId) {
+
+        String sql = dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL);
         // Support multiple sql statement separated by ; and comments by --
         String[] sqlList = HelpFunc.sqlCleaner(sql);
         String pySparkCode = "";
