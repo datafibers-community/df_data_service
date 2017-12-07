@@ -350,8 +350,6 @@ public class SparkTransformProcessor {
             }
         }
 
-        LOG.debug("Livy session " + sessionId + " is idle and ready to take code " + pySparkCode);
-
         webClient.post(sparkRestPort, sparkRestHost,
                 ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId +
                         ConstantApp.LIVY_REST_URL_STATEMENTS)
@@ -361,12 +359,14 @@ public class SparkTransformProcessor {
                         sar -> {
                             if (sar.succeeded()) {
                                 JsonObject response = sar.result().bodyAsJsonObject();
-                                System.out.println("Post returned = " + response);
+                                //System.out.println("Post returned = " + response);
+
                                 // Get job submission status/result to keep in repo.
                                 // Further status update comes from refresh status module in fibers
-                                dfJob.setJobConfig(
-                                        ConstantApp.PK_LIVY_STATEMENT_ID,
-                                        response.getInteger("id").toString())
+                                dfJob.setJobConfig(ConstantApp.PK_LIVY_SESSION_ID, sessionId)
+                                        .setJobConfig(ConstantApp.PK_LIVY_STATEMENT_ID,
+                                                response.getInteger("id").toString()
+                                        )
                                         .setJobConfig(
                                                 ConstantApp.PK_LIVY_STATEMENT_CODE,
                                                 response.getString("code"));
@@ -417,8 +417,6 @@ public class SparkTransformProcessor {
                                 if (ar.succeeded() && ar.result().statusCode() == ConstantApp.STATUS_CODE_OK) {
 
                                     JsonObject jo = ar.result().bodyAsJsonObject();
-
-                                    System.out.println("get status = " + jo);
 
                                     JsonArray subTaskArray = jo.getJsonArray("statements");
                                     JsonArray statusArray = new JsonArray();
