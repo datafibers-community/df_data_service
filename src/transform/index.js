@@ -86,17 +86,17 @@ export const TransformEdit = (props) => (
                     <TextInput source="connectorConfig.topic_out" label="A Topic to Write Data" style={{ display: 'inline-block', marginLeft: 32 }} validate={[ required ]} />
                     <LongTextInput source="connectorConfig.group_id" label="Consumer ID to Read Data. (Optional)" style={{ width: 500 }} />
 		            <LongTextInput source="connectorConfig.sink_key_fields" label="List of Commas Separated Columns for Keys in Sink" style={{ width: 500 }} />
-		            <LongTextInput source="connectorConfig.trans_sql" label="Stream SQL Statement, such as select * from ..." validate={[ required ]} style={{ width: 500 }} />
+		            <LongTextInput source="connectorConfig.trans_sql" label="Stream SQL Query, such as select * from ..." validate={[ required ]} style={{ width: 500 }} />
 		        </DependentInput>
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_SPARK_SQL">
-		            <LongTextInput source="connectorConfig.trans_sql" label="Stream SQL Statement, such as select * from ..." validate={[ required ]} style={{ width: 500 }} />
+		            <LongTextInput source="connectorConfig.trans_sql" label="Spark SQL over Hive Queries, such as select * from ..." validate={[ required ]} style={{ width: 500 }} />
 		        </DependentInput>
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_FLINK_Script">
                     <TextInput source="connectorConfig.topic_in" label="A Topic to Read Data" style={{ display: 'inline-block' }} validate={[ required ]} />
                     <TextInput source="connectorConfig.topic_out" label="A Topic to Write Data" style={{ display: 'inline-block', marginLeft: 32 }} validate={[ required ]} />
                     <LongTextInput source="connectorConfig.group_id" label="Consumer ID to Read Data. (Optional)" style={{ width: 500 }} />
 		            <LongTextInput source="connectorConfig.sink_key_fields" label="List of Commas Separated Columns for Keys in Sink" style={{ width: 500 }} />
-		            <LongTextInput source="connectorConfig.trans_script" label="Stream SQL Statement, such as select * from ..." validate={[ required ]} style={{ width: 500 }} />
+		            <LongTextInput source="connectorConfig.trans_script" label="Stream Statement" validate={[ required ]} style={{ width: 500 }} />
 		        </DependentInput>
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_FLINK_UDF">
                     <TextInput source="connectorConfig.trans_jar" label="UDF Jar File Name" validate={[ required ]} />
@@ -118,9 +118,9 @@ export const TransformEdit = (props) => (
                 <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_SPARK_SQL">
                     <DisabledInput source="jobConfig.livy_session_id" label="Livy Session ID" style={{ display: 'inline-block' }} />
                     <DisabledInput source="jobConfig.livy_session_state" label="Livy Session State" style={{ display: 'inline-block', marginLeft: 32 }} />
-                    <DisabledInput source="jobConfig.livy_statement_id" label="Livy Statement ID" />
-                    <DisabledInput source="jobConfig.livy_statement_state" label="Livy Statement State" />
-                    <RichTextField source="jobConfig.livy_statement_output" label="Last Query Result Preview" style={{ width: 500 }}/>
+                    <DisabledInput source="jobConfig.livy_statement_id" label="Livy Statement ID" style={{ display: 'inline-block', marginLeft: 32 }} />
+                    <DisabledInput source="jobConfig.livy_statement_state" label="Livy Statement State" style={{ display: 'inline-block', marginLeft: 32 }} />
+                    <RichTextField source="jobConfig.livy_statement_output" label="Last Query Result Top 20 Rows Preview"/>
 		        </DependentInput>
             </FormTab>
         </TabbedForm>
@@ -159,10 +159,10 @@ export const TransformCreate = (props) => (
                     </DependentInput>
                     <LongTextInput source="connectorConfig.group_id" label="Consumer ID to Read Data. (Optional)" style={{ width: 500 }} />
 		            <LongTextInput source="connectorConfig.sink_key_fields" label="Key Columns in Sink (separated by ,)" style={{ width: 500 }} />
-		            <LongTextInput source="connectorConfig.trans_sql" label="Stream SQL Statement" defaultValue="--This is how to write comments\n--Only single sql statement is supported\nSELECT [col. list] FROM [topic_name]" validate={[ required ]} style={{ width: 500 }} />
+		            <LongTextInput source="connectorConfig.trans_sql" label="Stream SQL Query" defaultValue="--This is comments and only single sql statement is supported" validate={[ required ]} style={{ width: 500 }} />
 		        </DependentInput>
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_SPARK_SQL">
-		            <LongTextInput source="connectorConfig.trans_sql" label="Spark SQL over Hive Statement" defaultValue="--This is how to write comments\n--Multiple query should be separated by ;\n--Result preview (top 10 rows) only available for the last query.\nshow tables" validate={[ required ]} style={{ width: 500 }} />
+		            <LongTextInput source="connectorConfig.trans_sql" label="Batch SQL Queries (Comments --, Queries separate by ;)" defaultValue="--Result preview (top 10 rows) is only available for the last query." validate={[ required ]} style={{ width: 500 }} />
 		        </DependentInput>
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_FLINK_Script">
                     <TextInput source="connectorConfig.topic_in" label="A Topic to Read Data" style={{ display: 'inline-block' }} validate={[ required ]} />
