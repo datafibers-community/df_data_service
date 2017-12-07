@@ -1619,7 +1619,6 @@ public class DFDataProcessor extends AbstractVerticle {
      */
     private void deleteOneTransforms(RoutingContext routingContext) {
         String id = routingContext.request().getParam("id");
-        System.out.println("DELETE ID = " + id);
 
         if (id == null) {
             routingContext.response()
@@ -1629,27 +1628,19 @@ public class DFDataProcessor extends AbstractVerticle {
         } else {
             mongo.findOne(COLLECTION, new JsonObject().put("_id", id), null, ar -> {
                 if (ar.succeeded()) {
-                    if (ar.result() == null) {
-                        routingContext.response()
-                                .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
-                                .end(DFAPIMessage.getResponseMessage(9001));
-                        LOG.error(DFAPIMessage.logResponseMessage(9001, id));
-                        return;
-                    }
 
                     DFJobPOPJ dfJob = new DFJobPOPJ(ar.result());
-
                     String jobId;
 
                     // When jobConfig is null, we can remove task with canceling the underlying service job
-                    if(dfJob.getJobConfig() == null) {
+                    if (dfJob.getJobConfig() == null) {
                         mongo.removeDocument(COLLECTION, new JsonObject().put("_id", id),
                                 remove -> HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                         .setStatusCode(ConstantApp.STATUS_CODE_OK)
                                         .end(DFAPIMessage.getResponseMessage(1002)));
                         LOG.info(DFAPIMessage.logResponseMessage(1002, id + "- service job info not found"));
 
-                    } else if(dfJob.getJobConfig() != null &&
+                    } else if (dfJob.getJobConfig() != null &&
                             this.transform_engine_flink_enabled &&
                             dfJob.getConnectorType().contains("FLINK") &&
                             dfJob.getJobConfig().containsKey(ConstantApp.PK_FLINK_SUBMIT_JOB_ID)) {
@@ -1672,30 +1663,28 @@ public class DFDataProcessor extends AbstractVerticle {
                                     id + "- FLINK_JOB_NOT_RUNNING"));
                         }
 
-                    } else if(dfJob.getJobConfig() != null &&
+                    } else if (dfJob.getJobConfig() != null &&
                             this.transform_engine_spark_enabled &&
                             dfJob.getConnectorType().contains("SPARK") &&
                             dfJob.getJobConfig().containsKey(ConstantApp.PK_LIVY_SESSION_ID)) {
 
-                            jobId = dfJob.getJobConfig().get(ConstantApp.PK_LIVY_SESSION_ID);
-                            if (dfJob.getStatus().equalsIgnoreCase("RUNNING")) {
-                                // For cancel a running job, we want remove tasks from repo only when cancel is done
-                                SparkTransformProcessor.forwardDeleteAsCancelOne(
-                                        routingContext, wc_spark,
-                                        mongo, COLLECTION,
-                                        this.spark_livy_server_host, this.spark_livy_server_port,
-                                        jobId);
-                                LOG.info(DFAPIMessage.logResponseMessage(1006, id));
-                            } else {
-                                mongo.removeDocument(COLLECTION, new JsonObject().put("_id", id),
-                                        remove -> HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                                                .setStatusCode(ConstantApp.STATUS_CODE_OK)
-                                                .end(DFAPIMessage.getResponseMessage(1002)));
-                                LOG.info(DFAPIMessage.logResponseMessage(1002,
-                                        id + "- SPARK_JOB_NOT_RUNNING"));
-                            }
+                        jobId = dfJob.getJobConfig().get(ConstantApp.PK_LIVY_SESSION_ID);
+                        if (dfJob.getStatus().equalsIgnoreCase("RUNNING")) {
+                            // For cancel a running job, we want remove tasks from repo only when cancel is done
+                            SparkTransformProcessor.forwardDeleteAsCancelOne(
+                                    routingContext, wc_spark,
+                                    mongo, COLLECTION,
+                                    this.spark_livy_server_host, this.spark_livy_server_port,
+                                    jobId);
+                            LOG.info(DFAPIMessage.logResponseMessage(1006, id));
+                        } else {
+                            mongo.removeDocument(COLLECTION, new JsonObject().put("_id", id),
+                                    remove -> HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                            .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                            .end(DFAPIMessage.getResponseMessage(1002)));
+                            LOG.info(DFAPIMessage.logResponseMessage(1002,
+                                    id + "- SPARK_JOB_NOT_RUNNING"));
                         }
-
                     } else {
                         mongo.removeDocument(COLLECTION, new JsonObject().put("_id", id),
                                 remove -> HelpFunc.responseCorsHandleAddOn(routingContext.response())
@@ -1703,6 +1692,12 @@ public class DFDataProcessor extends AbstractVerticle {
                                         .end(DFAPIMessage.getResponseMessage(1002)));
                         LOG.info(DFAPIMessage.logResponseMessage(1002, id + "- Has jobConfig but missing service job id."));
                     }
+                } else {
+                    routingContext.response()
+                            .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
+                            .end(DFAPIMessage.getResponseMessage(9001));
+                    LOG.error(DFAPIMessage.logResponseMessage(9001, id));
+                }
             });
         }
     }
@@ -2118,7 +2113,7 @@ public class DFDataProcessor extends AbstractVerticle {
                                     } else {
                                         LOG.debug(DFAPIMessage
                                                 .logResponseMessage(1001,
-                                                        "Livy session miss session/statement Id " + taskId));
+                                                        "Missing Livy session/statement with task Id " + taskId));
                                     }
                                 }
                         );
