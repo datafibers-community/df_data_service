@@ -42,6 +42,7 @@ export const ProcessorList = (props) => (
             <TextField source="name" label="name" />
             <TextField source="connectorCategory" label="category" />
             <SelectField source="connectorType" label="type" choices={[
+                                    { id: 'INTERNAL_METADATA_COLLECT', name: 'Internal Meta Sink'},
                                     { id: 'CONNECT_SOURCE_KAFKA_AvroFile', name: 'Source Avro Files' },
                                     { id: 'CONNECT_SOURCE_STOCK_AvroFile', name: 'Source Stock API' },
                                     { id: 'CONNECT_SINK_HDFS_AvroFile', name: 'Sink Hadoop|Hive' },
