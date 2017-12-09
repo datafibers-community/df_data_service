@@ -350,7 +350,20 @@ public class SparkTransformProcessor {
             }
         }
 
-        //String pySparkCpde = HelpFunc.sqlToPySpark(sqlList, true, "file:///tmp/data");
+/*
+
+        Boolean streamFlag = false;
+        String streamBasePath = "";
+        if(dfJob.getConnectorConfig().containsKey("streamFlag") &&
+                        dfJob.getConnectorConfig().get("streamFlag").toString().contentEquals("true")) {
+            streamFlag = true;
+            streamBasePath = "file://" + dfJob.getConnectorConfig().get("streamBasePath").replaceAll("\\\\", "/") +
+                    "/" + dfJob.getId(); // format, such as "file:///tmp/data"
+        }
+
+        String pySparkCpde = HelpFunc.sqlToPySpark(sqlList, streamFlag, streamBasePath);
+
+*/
 
         webClient.post(sparkRestPort, sparkRestHost,
                 ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId +
