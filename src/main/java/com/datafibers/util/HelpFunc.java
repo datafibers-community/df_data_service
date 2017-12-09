@@ -521,6 +521,31 @@ public class HelpFunc {
         return cleanedSQL.replace("@", " ").split(";");
     }
 
+    /**
+     * Convert spark SQL to pyspark code. If stream the result back is needed, add additional code.
+     * @return
+     */
+    public static String sqlToPySpark(String[] sqlList, boolean streamBackFlag, String streamPath) {
+
+        String pySparkCode = "";
+
+        for(int i = 0; i < sqlList.length; i++) {
+            if(i == sqlList.length - 1) {
+                // Check if we need to stream the resultset
+                if(streamBackFlag) {
+                    pySparkCode = pySparkCode + "sqlContext.sql(\"" + sqlList[i] +
+                            "\").write.format(\"com.databricks.spark.csv\").save(\"" + streamPath + "\")\n";
+                }
+                // Keep result only for the last query and only top 10 rows
+                pySparkCode = pySparkCode + "a = sqlContext.sql(\"" + sqlList[i] + "\").take(10)\n%table a";
+            } else {
+                pySparkCode = pySparkCode + "sqlContext.sql(\"" + sqlList[i] + "\")\n";
+            }
+        }
+
+        return pySparkCode;
+    }
+
     public static String arrayToString(JsonArray ja, String begin, String separator, String end) {
         for (int i = 0; i < ja.size(); i++) {
             if(i == ja.size() - 1) separator = "";

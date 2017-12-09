@@ -2161,6 +2161,15 @@ public class DFDataProcessor extends AbstractVerticle {
                                                         LOG.debug("repoStatus = " + repoStatus + " resStatus = " + resStatus);
                                                         LOG.debug("repoFullCode = " + repoFullCode + " resStatement = " + resFullCode);
 
+                                                        /*
+                                                        TODO
+                                                        Here, we'll regular check connectConfig to see if we need to
+                                                        stream the result back to Kafka specified topic and
+                                                        also kick off the stream back connect
+                                                        check if the exported files are processed
+                                                        then delete the connect (source)
+                                                         */
+
                                                         // Do change detection on status, but code snip must same
                                                         // Because the livy session/statement id could be reset
                                                         if (repoStatus.compareToIgnoreCase(resStatus) != 0 &&

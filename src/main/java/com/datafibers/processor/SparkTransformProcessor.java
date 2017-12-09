@@ -350,6 +350,8 @@ public class SparkTransformProcessor {
             }
         }
 
+        //String pySparkCpde = HelpFunc.sqlToPySpark(sqlList, true, "file:///tmp/data");
+
         webClient.post(sparkRestPort, sparkRestHost,
                 ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId +
                         ConstantApp.LIVY_REST_URL_STATEMENTS)
@@ -370,6 +372,7 @@ public class SparkTransformProcessor {
                                         .setJobConfig(
                                                 ConstantApp.PK_LIVY_STATEMENT_CODE,
                                                 response.getString("code"));
+                                // TODO also set stream back information. Later, the spark job status checker will upload the file to kafka
 
                                 mongo.updateCollection(taskCollection, new JsonObject().put("_id", dfJob.getId()),
                                         new JsonObject().put("$set", dfJob.toJson()), v -> {
@@ -385,6 +388,15 @@ public class SparkTransformProcessor {
                             }
                         }
                 );
+    }
+
+    /**
+     * Using this class to stream the spark sql result back to Kafka.
+     * Firstly, export the result set to csv files.
+     * Then, call file source connect to read files into Kafka.
+     */
+    public static void streamSparkSQLResult(String sqlStatement) {
+
     }
 
     /**
