@@ -359,7 +359,7 @@ public class SparkTransformProcessor {
                         .contentEquals("true")) {
             streamBackFlag = true;
             streamBackBasePath = "file://" +
-            dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_STREAM_BACK_BASE_PATH).replaceAll("\\\\", "/") +
+            dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_STREAM_BACK_BASE_PATH) +
                     "/" + dfJob.getId(); // format, such as "file:///tmp/data"
         }
 
