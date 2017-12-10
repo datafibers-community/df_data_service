@@ -121,11 +121,12 @@ public final class ConstantApp {
     public static final int idSize = 4;
 
     public enum DF_STATUS {
-        UNASSIGNED,         // The Kafka connector/task has not yet been assigned to a worker.
-        RUNNING,            // The Kafka connector/task is running.
-        PAUSED,             // The Kafka connector/task has been administratively paused.
-        FAILED,             // The Kafka connector/task has failed.
-        LOST,               // The Kafka connect restart and lost the connector job in DF repository.
+        UNASSIGNED,         // The connector/task has not yet been assigned to a worker.
+        RUNNING,            // The connector/task is running.
+        STREAMING,          // Streaming the data back to Queue.
+        PAUSED,             // The connector/task has been administratively paused.
+        FAILED,             // The connector/task has failed.
+        LOST,               // The connect restart and lost the connector job in DF repository.
         CANCELED,           // Job (Flink) is canceled
         RWE,                // Connector/Transform is running with one of task is failed - RUNNING_WITH_ERROR
         FINISHED,
@@ -211,4 +212,6 @@ public final class ConstantApp {
     public static final String PK_TRANSFORM_SCRIPT = "trans_script";
     public static final String PK_TRANSFORM_JAR_CLASS_NAME = "trans_jar_class";
     public static final String PK_TRANSFORM_JAR_PARA = "trans_jar_para";
+    public static final String PK_TRANSFORM_STREAM_BACK_FLAG = "stream_back_flag";
+    public static final String PK_TRANSFORM_STREAM_BACK_BASE_PATH = "stream_back_base_path";
 }

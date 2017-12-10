@@ -351,17 +351,19 @@ public class SparkTransformProcessor {
         }
 
 /*
-
-        Boolean streamFlag = false;
-        String streamBasePath = "";
-        if(dfJob.getConnectorConfig().containsKey("streamFlag") &&
-                        dfJob.getConnectorConfig().get("streamFlag").toString().contentEquals("true")) {
-            streamFlag = true;
-            streamBasePath = "file://" + dfJob.getConnectorConfig().get("streamBasePath").replaceAll("\\\\", "/") +
+        // TODO also set stream back information. Later, the spark job status checker will upload the file to kafka
+        Boolean streamBackFlag = false;
+        String streamBackBasePath = "";
+        if(dfJob.getConnectorConfig().containsKey(ConstantApp.PK_TRANSFORM_STREAM_BACK_FLAG) &&
+                        dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_STREAM_BACK_FLAG).toString()
+                        .contentEquals("true")) {
+            streamBackFlag = true;
+            streamBackBasePath = "file://" +
+            dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_STREAM_BACK_BASE_PATH).replaceAll("\\\\", "/") +
                     "/" + dfJob.getId(); // format, such as "file:///tmp/data"
         }
 
-        String pySparkCpde = HelpFunc.sqlToPySpark(sqlList, streamFlag, streamBasePath);
+        String pySparkCpde = HelpFunc.sqlToPySpark(sqlList, streamBackFlag, streamBackBasePath);
 
 */
 
@@ -385,7 +387,6 @@ public class SparkTransformProcessor {
                                         .setJobConfig(
                                                 ConstantApp.PK_LIVY_STATEMENT_CODE,
                                                 response.getString("code"));
-                                // TODO also set stream back information. Later, the spark job status checker will upload the file to kafka
 
                                 mongo.updateCollection(taskCollection, new JsonObject().put("_id", dfJob.getId()),
                                         new JsonObject().put("$set", dfJob.toJson()), v -> {
