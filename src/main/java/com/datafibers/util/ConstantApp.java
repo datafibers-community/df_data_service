@@ -102,6 +102,8 @@ public final class ConstantApp {
     public static final String LIVY_REST_URL_SESSIONS = "/sessions";
     public static final String LIVY_REST_URL_STATEMENTS = "/statements";
 
+    public static final String TRANSFORM_STREAM_BACK_PATH = "/tmp/streamback";
+
     // HTTP req/res constants
     public static final String HTTP_HEADER_CONTENT_TYPE = "content-type";
     public static final String HTTP_HEADER_APPLICATION_JSON_CHARSET = "application/json; charset=utf-8";
@@ -213,5 +215,5 @@ public final class ConstantApp {
     public static final String PK_TRANSFORM_JAR_CLASS_NAME = "trans_jar_class";
     public static final String PK_TRANSFORM_JAR_PARA = "trans_jar_para";
     public static final String PK_TRANSFORM_STREAM_BACK_FLAG = "stream_back_flag";
-    public static final String PK_TRANSFORM_STREAM_BACK_BASE_PATH = "stream_back_base_path";
+    public static final String PK_TRANSFORM_STREAM_BACK_PATH = "stream_back_path";
 }

@@ -358,9 +358,9 @@ public class SparkTransformProcessor {
                         dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_STREAM_BACK_FLAG).toString()
                         .contentEquals("true")) {
             streamBackFlag = true;
-            streamBackBasePath = "file://" +
-            dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_STREAM_BACK_BASE_PATH) +
+            streamBackBasePath = "file://" + ConstantApp.TRANSFORM_STREAM_BACK_PATH +
                     "/" + dfJob.getId(); // format, such as "file:///tmp/data"
+            dfJob.setConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_PATH); //set full path
         }
 
         String pySparkCpde = HelpFunc.sqlToPySpark(sqlList, streamBackFlag, streamBackBasePath);
