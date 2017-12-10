@@ -148,7 +148,7 @@ export const TransformCreate = (props) => (
                     <ReferenceArrayInput source="connectorConfig.topic_in" label="Choose a Read Topics" reference="schema" allowEmpty>
                         <SelectArrayInput optionText="subject" />
                     </ReferenceArrayInput>
-                    <BooleanInput source="connectorConfig.choose_or_create" label="New Write Topic?" defaultValue={false} style={{ width: 500 }} />
+                    <BooleanInput source="connectorConfig.choose_or_create" label="New or Choose Topic?" defaultValue={false} style={{ width: 500 }} />
                     <DependentInput dependsOn="connectorConfig.choose_or_create" value={true}>
                         <LongTextInput source="connectorConfig.topic_out" label="Auto Create a Write Topic" style={{ width: 500 }}/>
                     </DependentInput>
@@ -162,6 +162,18 @@ export const TransformCreate = (props) => (
 		            <LongTextInput source="connectorConfig.trans_sql" label="Stream SQL Query" defaultValue="--This is comments and only single sql statement is supported" validate={[ required ]} style={{ width: 500 }} />
 		        </DependentInput>
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_SPARK_SQL">
+                    <BooleanInput source="connectorConfig.stream_back_flag" label="Stream Back the Result?" defaultValue={false} style={{ width: 500 }} />
+                    <DependentInput dependsOn="connectorConfig.stream_back_flag" value={true}>
+                        <BooleanInput source="connectorConfig.choose_or_create" label="New or Choose Topic?" defaultValue={false} style={{ width: 500 }} />
+                        <DependentInput dependsOn="connectorConfig.choose_or_create" value={true}>
+                            <LongTextInput source="connectorConfig.topic_out" label="Auto Create a Write Topic" style={{ width: 500 }}/>
+                        </DependentInput>
+                        <DependentInput dependsOn="connectorConfig.choose_or_create" value={false}>
+                            <ReferenceInput source="connectorConfig.topic_out" label="Choose a Write Topic Existed" reference="schema" validate={[ required ]} allowEmpty>
+                                <AutocompleteInput optionText="subject" />
+                            </ReferenceInput>
+                        </DependentInput>
+                    </DependentInput>
 		            <LongTextInput source="connectorConfig.trans_sql" label="Batch SQL Queries (Comments --, Queries separate by ;)" defaultValue="--Result preview (top 10 rows) is only available for the last query." validate={[ required ]} style={{ width: 500 }} />
 		        </DependentInput>
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_FLINK_Script">
