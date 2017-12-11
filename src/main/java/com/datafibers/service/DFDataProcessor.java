@@ -2088,6 +2088,8 @@ public class DFDataProcessor extends AbstractVerticle {
      * * session status
      * * statement status
      * * last query result in rich text format at "livy_statement_output"
+     *
+     * In addition, this function will trigger batch spark sql result set stream back when it is needed.
      */
     private void updateSparkJobStatus() {
         List<String> list = new ArrayList<>();
@@ -2121,7 +2123,8 @@ public class DFDataProcessor extends AbstractVerticle {
                     } else if( // update status in repo when it is in running or unassigned
                         // TODO may need to remove LOST later
                             updateJob.getStatus().equalsIgnoreCase(ConstantApp.DF_STATUS.RUNNING.name()) ||
-                                    updateJob.getStatus().equalsIgnoreCase(ConstantApp.DF_STATUS.UNASSIGNED.name()) ||
+                                    updateJob.getStatus().equalsIgnoreCase(ConstantApp.DF_STATUS.STREAMING.name()) ||
+                    updateJob.getStatus().equalsIgnoreCase(ConstantApp.DF_STATUS.UNASSIGNED.name()) ||
                                     updateJob.getStatus().equalsIgnoreCase(ConstantApp.DF_STATUS.LOST.name())
                             ) {
                         String sessionId = json.getJsonObject("jobConfig").getString(ConstantApp.PK_LIVY_SESSION_ID);
@@ -2175,6 +2178,9 @@ public class DFDataProcessor extends AbstractVerticle {
                                                         // Because the livy session/statement id could be reset
                                                         if (repoStatus.compareToIgnoreCase(resStatus) != 0 &&
                                                                 repoFullCode.equalsIgnoreCase(repoFullCode)) { //status changes
+
+
+
                                                             // Set df job status from statement state
                                                             updateJob
                                                                     .setStatus(resStatus)
@@ -2206,6 +2212,32 @@ public class DFDataProcessor extends AbstractVerticle {
                                                                     // Also set result
                                                                     .setJobConfig(ConstantApp.PK_LIVY_STATEMENT_OUTPUT,
                                                                             HelpFunc.livyTableResultToRichText(resultJo));
+
+                                                            // Check if stream back is needed.
+                                                            // This has to come after above update dfJob since we do not want loose status when update stream back status in separate thread
+                                                            if(repoStatus.equalsIgnoreCase(
+                                                                    ConstantApp.DF_STATUS.FINISHED.name()) &&
+                                                                    updateJob.getConnectorConfig().containsKey(ConstantApp.PK_TRANSFORM_STREAM_BACK_FLAG)) {
+                                                                // When stream back is needed, we either check status of kick off the job
+                                                                if(updateJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_STREAM_BACK_FLAG)
+                                                                        .equalsIgnoreCase("true")) {
+
+                                                                    if(!updateJob.getConnectorConfig().containsKey(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE) ||
+                                                                            (updateJob.getConnectorConfig().containsKey(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE) &&
+                                                                                    !updateJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE)
+                                                                                            .equalsIgnoreCase("finished"))) {
+                                                                        // When there is no status/state for stream back or stream back is not finish, overwrite state
+                                                                        updateJob.setStatus(ConstantApp.DF_STATUS.STREAMING.name());
+
+                                                                        if(updateJob.getConnectorConfig().containsKey(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_ID)) {
+                                                                            // TODO get id and check status (all files are processed?), then update status
+                                                                            // TODO if state is finished, delete it
+                                                                        } else {
+                                                                            // TODO Create a jobId and start a stream back source job
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
 
                                                             LOG.debug("updateJob = " + updateJob.toJson());
                                                         } else {
