@@ -340,7 +340,7 @@ public class SparkTransformProcessor {
         String sql = dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL);
         // Support multiple sql statement separated by ; and comments by --
         String[] sqlList = HelpFunc.sqlCleaner(sql);
-        String pySparkCode = "";
+/*        String pySparkCode = "";
         for(int i = 0; i < sqlList.length; i++) {
             if(i == sqlList.length - 1) {
                 // Keep result only for the last query and only top 10 rows
@@ -348,24 +348,21 @@ public class SparkTransformProcessor {
             } else {
                 pySparkCode = "sqlContext.sql(\"" + sqlList[i] + "\")\n";
             }
-        }
+        }*/
 
-/*
-        // TODO also set stream back information. Later, the spark job status checker will upload the file to kafka
+        // Here set stream back information. Later, the spark job status checker will upload the file to kafka
         Boolean streamBackFlag = false;
         String streamBackBasePath = "";
         if(dfJob.getConnectorConfig().containsKey(ConstantApp.PK_TRANSFORM_STREAM_BACK_FLAG) &&
                         dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_STREAM_BACK_FLAG).toString()
                         .contentEquals("true")) {
             streamBackFlag = true;
-            streamBackBasePath = "file://" + ConstantApp.TRANSFORM_STREAM_BACK_PATH +
-                    "/" + dfJob.getId(); // format, such as "file:///tmp/data"
-            dfJob.setConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_PATH); //set full path
+            // export path format, such as "file:///tmp/data"
+            streamBackBasePath = "file://" + ConstantApp.TRANSFORM_STREAM_BACK_PATH + "/" + dfJob.getId();
+            dfJob.getConnectorConfig().put(ConstantApp.PK_TRANSFORM_STREAM_BACK_PATH, streamBackBasePath); //set full path
         }
 
-        String pySparkCpde = HelpFunc.sqlToPySpark(sqlList, streamBackFlag, streamBackBasePath);
-
-*/
+        String pySparkCode = HelpFunc.sqlToPySpark(sqlList, streamBackFlag, streamBackBasePath);
 
         webClient.post(sparkRestPort, sparkRestHost,
                 ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId +
@@ -402,15 +399,6 @@ public class SparkTransformProcessor {
                             }
                         }
                 );
-    }
-
-    /**
-     * Using this class to stream the spark sql result back to Kafka.
-     * Firstly, export the result set to csv files.
-     * Then, call file source connect to read files into Kafka.
-     */
-    public static void streamSparkSQLResult(String sqlStatement) {
-
     }
 
     /**

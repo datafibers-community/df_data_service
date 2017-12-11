@@ -536,8 +536,8 @@ public class HelpFunc {
         String pySparkCode = "";
 
         for(int i = 0; i < sqlList.length; i++) {
-            if(i == sqlList.length - 1) {
-                // Check if we need to stream the resultset
+            if(i == sqlList.length - 1) { // This is the last query
+                // Check if we need to stream the result set
                 if(streamBackFlag) {
                     pySparkCode = pySparkCode + "sqlContext.sql(\"" + sqlList[i] +
                             "\").write.format(\"com.databricks.spark.csv\").save(\"" + streamPath + "\")\n";

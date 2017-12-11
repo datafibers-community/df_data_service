@@ -123,7 +123,7 @@ public final class ConstantApp {
     public static final int idSize = 4;
 
     public enum DF_STATUS {
-        UNASSIGNED,         // The connector/task has not yet been assigned to a worker.
+        UNASSIGNED,         // The connector/task has not yet been assigned to a worker. This is the initial state.
         RUNNING,            // The connector/task is running.
         STREAMING,          // Streaming the data back to Queue.
         PAUSED,             // The connector/task has been administratively paused.
