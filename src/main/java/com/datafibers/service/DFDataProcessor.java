@@ -2118,7 +2118,8 @@ public class DFDataProcessor extends AbstractVerticle {
                                 }
                         );
 
-                    } else if( // update status in repo when it is in running or unassigned TODO may need to remove LOST later
+                    } else if( // update status in repo when it is in running or unassigned
+                        // TODO may need to remove LOST later
                             updateJob.getStatus().equalsIgnoreCase(ConstantApp.DF_STATUS.RUNNING.name()) ||
                                     updateJob.getStatus().equalsIgnoreCase(ConstantApp.DF_STATUS.UNASSIGNED.name()) ||
                                     updateJob.getStatus().equalsIgnoreCase(ConstantApp.DF_STATUS.LOST.name())
@@ -2189,13 +2190,19 @@ public class DFDataProcessor extends AbstractVerticle {
                                                                             ConstantApp.PK_LIVY_STATEMENT_STATUS,
                                                                             resultJo.getJsonObject("output")
                                                                             .getString("status"))
-                                                                    // Set traceback in case of errors
+                                                                    // Set detailed error and traceback in case of failed
                                                                     .setJobConfig(ConstantApp.PK_LIVY_STATEMENT_TRACEBACK,
                                                                             resultJo.getJsonObject("output")
                                                                             .containsKey("traceback")?
                                                                             resultJo.getJsonObject("output")
                                                                                     .getJsonArray("traceback")
                                                                                     .toString():"")
+                                                                    .setJobConfig(ConstantApp.PK_LIVY_STATEMENT_EXCEPTION,
+                                                                            resultJo.getJsonObject("output")
+                                                                                    .containsKey("evalue")?
+                                                                                    resultJo.getJsonObject("output")
+                                                                                            .getJsonArray("evalue")
+                                                                                            .toString():"")
                                                                     // Also set result
                                                                     .setJobConfig(ConstantApp.PK_LIVY_STATEMENT_OUTPUT,
                                                                             HelpFunc.livyTableResultToRichText(resultJo));

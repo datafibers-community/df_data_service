@@ -297,9 +297,15 @@ public class HelpFunc {
                 case "WAITING":
                     returnState = ConstantApp.DF_STATUS.UNASSIGNED.name();
                     break;
-                case "AVAILABLE":
-                    returnState = ConstantApp.DF_STATUS.FINISHED.name();
+                case "AVAILABLE": {
+                    if(taskStatus.getJsonObject("output").getString("status").equalsIgnoreCase("ok")){
+                        returnState = ConstantApp.DF_STATUS.FINISHED.name();
+                    } else {
+                        // Some sql runtime error will have output status as "error", but statement state as "available"
+                        returnState = ConstantApp.DF_STATUS.FAILED.name();
+                    }
                     break;
+                }
                 case "ERROR":
                     returnState = ConstantApp.DF_STATUS.FAILED.name();
                     break;
