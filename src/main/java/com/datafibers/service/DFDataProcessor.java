@@ -2179,8 +2179,6 @@ public class DFDataProcessor extends AbstractVerticle {
                                                         if (repoStatus.compareToIgnoreCase(resStatus) != 0 &&
                                                                 repoFullCode.equalsIgnoreCase(repoFullCode)) { //status changes
 
-
-
                                                             // Set df job status from statement state
                                                             updateJob
                                                                     .setStatus(resStatus)
@@ -2214,29 +2212,38 @@ public class DFDataProcessor extends AbstractVerticle {
                                                                             HelpFunc.livyTableResultToRichText(resultJo));
 
                                                             // Check if stream back is needed.
-                                                            // This has to come after above update dfJob since we do not want loose status when update stream back status in separate thread
-                                                            if(repoStatus.equalsIgnoreCase(
+                                                            // This has to come after above update dfJob since we do not want loose dfJob status
+                                                            // when update stream back status in separate thread
+                                                            HashMap<String, String> connectConfig = updateJob.getConnectorConfig();
+
+                                                            if(resStatus.equalsIgnoreCase(
                                                                     ConstantApp.DF_STATUS.FINISHED.name()) &&
-                                                                    updateJob.getConnectorConfig().containsKey(ConstantApp.PK_TRANSFORM_STREAM_BACK_FLAG)) {
+                                                                    connectConfig.containsKey(ConstantApp.PK_TRANSFORM_STREAM_BACK_FLAG)) {
+
                                                                 // When stream back is needed, we either check status of kick off the job
-                                                                if(updateJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_STREAM_BACK_FLAG)
+                                                                if(connectConfig
+                                                                        .get(ConstantApp.PK_TRANSFORM_STREAM_BACK_FLAG)
                                                                         .equalsIgnoreCase("true")) {
 
-                                                                    if(!updateJob.getConnectorConfig().containsKey(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE) ||
-                                                                            (updateJob.getConnectorConfig().containsKey(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE) &&
-                                                                                    !updateJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE)
-                                                                                            .equalsIgnoreCase("finished"))) {
-                                                                        // When there is no status/state for stream back or stream back is not finish, overwrite state
-                                                                        updateJob.setStatus(ConstantApp.DF_STATUS.STREAMING.name());
+                                                                    if(connectConfig
+                                                                            .containsKey(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE)){
 
-                                                                        if(updateJob.getConnectorConfig().containsKey(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_ID)) {
-                                                                            // TODO get id and check status (all files are processed?), then update status
-                                                                            // TODO if state is finished, delete it
+                                                                        if(connectConfig.get(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE)
+                                                                                .equalsIgnoreCase("finished")) {
+                                                                            // TODO delete the stream back file source task and do not overwrite transform task state
                                                                         } else {
-                                                                            // TODO Create a jobId and start a stream back source job
+                                                                            // TODO check folder to see if all files are processed if yes set PK_TRANSFORM_STREAM_BACK_TASK_STATE as finished
+                                                                            // TODO or else, overwrite the transform task state to streaming
                                                                         }
+                                                                    } else {
+                                                                        // TODO Overwrite status to STREAMING and Create a jobId and start a stream back source job (with new or old schema)
+                                                                        // TODO then, set PK_TRANSFORM_STREAM_BACK_TASK_ID and PK_TRANSFORM_STREAM_BACK_TASK_STATE = running
                                                                     }
+                                                                } else {
+                                                                    LOG.debug("PK_TRANSFORM_STREAM_BACK_FLAG=false Ignore Stream Back.");
                                                                 }
+                                                            } else {
+                                                                LOG.debug("PK_TRANSFORM_STREAM_BACK_FLAG Not Found");
                                                             }
 
                                                             LOG.debug("updateJob = " + updateJob.toJson());
