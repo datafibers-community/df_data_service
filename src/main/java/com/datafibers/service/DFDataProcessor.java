@@ -64,6 +64,7 @@ public class DFDataProcessor extends AbstractVerticle {
     private WebClient wc_flink;
     private WebClient wc_spark;
     private WebClient wc_refresh;
+    private WebClient wc_streamback;
     private static String df_jar_path;
     private static String df_jar_name;
     private static String flink_jar_id;
@@ -245,6 +246,7 @@ public class DFDataProcessor extends AbstractVerticle {
 
         // Regular update Kafka connects/Flink transform status through unblocking api
         this.wc_refresh = WebClient.create(vertx);
+        this.wc_streamback = WebClient.create(vertx);
 
         vertx.setPeriodic(ConstantApp.REGULAR_REFRESH_STATUS_TO_REPO, id -> {
             if(this.kafka_connect_enabled) updateKafkaConnectorStatus();
@@ -1209,7 +1211,7 @@ public class DFDataProcessor extends AbstractVerticle {
             LOG.warn(DFAPIMessage.logResponseMessage(9008, mongoId));
         }
     }
-    
+
     /**
      * Transforms specific addOne End Point for Rest API
      * @param routingContext
@@ -2225,19 +2227,108 @@ public class DFDataProcessor extends AbstractVerticle {
                                                                         .get(ConstantApp.PK_TRANSFORM_STREAM_BACK_FLAG)
                                                                         .equalsIgnoreCase("true")) {
 
-                                                                    if(connectConfig
-                                                                            .containsKey(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE)){
+                                                                    if(connectConfig.containsKey(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE)){
 
-                                                                        if(connectConfig.get(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE)
-                                                                                .equalsIgnoreCase("finished")) {
+                                                                        if(connectConfig
+                                                                                .get(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE)
+                                                                                .equalsIgnoreCase(ConstantApp.DF_STATUS.FINISHED.name())) {
                                                                             // TODO delete the stream back file source task and do not overwrite transform task state
+                                                                        } else if(connectConfig
+                                                                                .get(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE)
+                                                                                .equalsIgnoreCase(ConstantApp.DF_STATUS.FAILED.name())) {
+                                                                            // Overwrite transform task state as FAILED, but we keep the stream worker task for now
+                                                                            updateJob
+                                                                                    .setStatus(ConstantApp.DF_STATUS.FAILED.name());
                                                                         } else {
                                                                             // TODO check folder to see if all files are processed if yes set PK_TRANSFORM_STREAM_BACK_TASK_STATE as finished
                                                                             // TODO or else, overwrite the transform task state to streaming
                                                                         }
                                                                     } else {
-                                                                        // TODO Overwrite status to STREAMING and Create a jobId and start a stream back source job (with new or old schema)
-                                                                        // TODO then, set PK_TRANSFORM_STREAM_BACK_TASK_ID and PK_TRANSFORM_STREAM_BACK_TASK_STATE = running
+                                                                        /*
+                                                                        Overwrite status to STREAMING and Create a jobId and start a stream back source job (with new or old schema)
+                                                                        then, set PK_TRANSFORM_STREAM_BACK_TASK_ID and PK_TRANSFORM_STREAM_BACK_TASK_STATE = running/failed
+
+                                                                        We has to start the stream back source connect here since only get the spark sql result we know the result schema
+                                                                        Then, we can decide either use old schema or create new schema based on the data set schema
+                                                                         */
+
+                                                                        // First, set current job state and stream back state
+                                                                        String streambackId = updateJob.getId() + "_stream_worker";
+                                                                        updateJob
+                                                                                .setStatus(ConstantApp.DF_STATUS.STREAMING.name())
+                                                                                .getConnectorConfig()
+                                                                                .put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE, ConstantApp.DF_STATUS.UNASSIGNED.name());
+                                                                        updateJob.getConnectorConfig()
+                                                                                .put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_ID, streambackId);
+
+                                                                        DFJobPOPJ streambackTask = new DFJobPOPJ();
+                                                                        String subject = updateJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_STREAM_BACK_TOPIC);
+
+                                                                        final HashMap<String, String> connectorConfigMap = new HashMap<>();
+                                                                        connectorConfigMap.put(ConstantApp.PK_STREAM_BACK_CONNECT_TASK, "1");
+                                                                        connectorConfigMap.put(ConstantApp.PK_STREAM_BACK_CONNECT_SRURI, "http://" + schema_registry_host_and_port);
+                                                                        connectorConfigMap.put(ConstantApp.PK_STREAM_BACK_CONNECT_OW, "true");
+                                                                        connectorConfigMap.put(ConstantApp.PK_STREAM_BACK_CONNECT_LOC, updateJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_STREAM_BACK_PATH));
+                                                                        connectorConfigMap.put(ConstantApp.PK_STREAM_BACK_CONNECT_GLOB, "*.csv");
+                                                                        connectorConfigMap.put(ConstantApp.PK_STREAM_BACK_CONNECT_TOPIC, subject);
+
+                                                                        // Create the topic if it asks to create a new topic from ui
+                                                                        if( updateJob
+                                                                                .getConnectorConfig()
+                                                                                .get(ConstantApp.PK_TRANSFORM_STREAM_BACK_TOPIC_CREATION)
+                                                                                .equalsIgnoreCase("true")) {
+                                                                            wc_streamback.post(schema_registry_rest_port, kafka_server_host,
+                                                                                    ConstantApp.SR_REST_URL_SUBJECTS + "/" + subject + ConstantApp.SR_REST_URL_VERSIONS)
+                                                                                    .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
+                                                                                    .sendJsonObject( new JsonObject()
+                                                                                            .put(ConstantApp.SCHEMA_REGISTRY_KEY_SCHEMA, schemaObj.toString()),ar -> {
+                                                                                        if (ar.succeeded()) {
+
+                                                                                        }
+                                                                                    });
+                                                                        }
+
+
+                                                                        streambackTask
+                                                                                .setId(streambackId)
+                                                                                .setName("stream_worker")
+                                                                                .setDescription("stream_worker")
+                                                                                .setConnectorType(ConstantApp.DF_CONNECT_TYPE.CONNECT_SOURCE_KAFKA_AvroFile.name())
+                                                                                .setConnectorCategory("source")
+                                                                                .setConnectorConfig(connectorConfigMap); // Populate file connect task config
+
+                                                                        // Use local client to create a source file task from datafibers rest service. Update its status to failed when submission failed
+                                                                        wc_streamback
+                                                                                .post(
+                                                                                        config().getInteger("rest.port.df.processor", 8080),
+                                                                                        "localhost",
+                                                                                        ConstantApp.DF_CONNECTS_REST_URL
+                                                                                )
+                                                                                .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                                                                                .sendJsonObject(streambackTask.toKafkaConnectJson(),
+                                                                                        war -> {
+                                                                                            updateJob
+                                                                                                    .getConnectorConfig()
+                                                                                                    .put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE,
+                                                                                                            ar.succeeded()?
+                                                                                                                    ConstantApp.DF_STATUS.RUNNING.name():
+                                                                                                                    ConstantApp.DF_STATUS.FAILED.name()
+                                                                                                    );
+
+                                                                                                // Once REST API forward is successful, add the record to the local repository
+                                                                                                mongo.updateCollection(COLLECTION, new JsonObject().put("_id", updateJob.getId()), // Select a unique document
+                                                                                                        // The update syntax: {$set, the json object containing the fields to update}
+                                                                                                        new JsonObject().put("$set", updateJob.toJson()), v -> {
+                                                                                                            if (v.failed()) {
+                                                                                                                LOG.error(DFAPIMessage.logResponseMessage(9003, updateJob.getId()));
+                                                                                                            } else {
+                                                                                                                LOG.info(DFAPIMessage.logResponseMessage(1001, updateJob.getId()));
+                                                                                                            }
+                                                                                                        }
+                                                                                                );
+
+                                                                                            }
+                                                                                );
                                                                     }
                                                                 } else {
                                                                     LOG.debug("PK_TRANSFORM_STREAM_BACK_FLAG=false Ignore Stream Back.");
@@ -2245,7 +2336,6 @@ public class DFDataProcessor extends AbstractVerticle {
                                                             } else {
                                                                 LOG.debug("PK_TRANSFORM_STREAM_BACK_FLAG Not Found");
                                                             }
-
                                                             LOG.debug("updateJob = " + updateJob.toJson());
                                                         } else {
                                                             LOG.debug(DFAPIMessage.logResponseMessage(1022, taskId));

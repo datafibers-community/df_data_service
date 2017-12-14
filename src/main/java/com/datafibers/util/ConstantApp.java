@@ -183,7 +183,9 @@ public final class ConstantApp {
     public static final String PK_DF_ALL_TOPIC_ALIAS = PK_DF_TOPICS_ALIAS + "," + PK_DF_TOPIC_ALIAS;
 
     // Properties keys for UI
-    // JobConfig properties
+    /*
+    JobConfig properties
+     */
     public static final String PK_TRANSFORM_CUID = "cuid";
     public static final String PK_FLINK_SUBMIT_JOB_ID = "flink_job_id";
     public static final String PK_LIVY_SESSION_ID = "livy_session_id";
@@ -197,7 +199,18 @@ public final class ConstantApp {
     public static final String PK_LIVY_STATEMENT_EXCEPTION = "livy_statement_exception";
     public static final String PK_LIVY_STATEMENT_CODE = "livy_statement_code";
 
-    // ConnectConfig properties
+    /*
+     ConnectConfig properties
+      */
+    // Used for stream back csv only
+    public static final String PK_STREAM_BACK_CONNECT_TASK = "tasks_max";
+    public static final String PK_STREAM_BACK_CONNECT_SRURI = "schema_registry_uri";
+    public static final String PK_STREAM_BACK_CONNECT_OW = "file_overwrite";
+    public static final String PK_STREAM_BACK_CONNECT_LOC = "file_location";
+    public static final String PK_STREAM_BACK_CONNECT_GLOB = "file_glob";
+    public static final String PK_STREAM_BACK_CONNECT_TOPIC = "topic";
+
+    // Used for flink client
     public static final String PK_SCHEMA_ID_INPUT = "schema_ids_in";
     public static final String PK_SCHEMA_ID_OUTPUT = "schema_ids_out";
     public static final String PK_SCHEMA_STR_INPUT = "schema_string_in";
@@ -217,8 +230,12 @@ public final class ConstantApp {
     public static final String PK_TRANSFORM_SCRIPT = "trans_script";
     public static final String PK_TRANSFORM_JAR_CLASS_NAME = "trans_jar_class";
     public static final String PK_TRANSFORM_JAR_PARA = "trans_jar_para";
+
+    // Used for stream back transform
     public static final String PK_TRANSFORM_STREAM_BACK_FLAG = "stream_back_flag";
     public static final String PK_TRANSFORM_STREAM_BACK_PATH = "stream_back_path";
+    public static final String PK_TRANSFORM_STREAM_BACK_TOPIC = "stream_back_topic";
+    public static final String PK_TRANSFORM_STREAM_BACK_TOPIC_CREATION = "choose_or_create";
     public static final String PK_TRANSFORM_STREAM_BACK_TASK_ID = "stream_back_task_id";
     public static final String PK_TRANSFORM_STREAM_BACK_TASK_STATE = "stream_back_task_state";
 }

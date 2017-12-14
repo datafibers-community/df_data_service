@@ -560,6 +560,11 @@ public class HelpFunc {
         return begin + end;
     }
 
+    /**
+     * Used to format the livy result to better rich text so that it can show in the web ui better
+     * @param livyStatementResult
+     * @return
+     */
     public static String livyTableResultToRichText(JsonObject livyStatementResult) {
         String tableHeader =
                 "<style type=\"text/css\">" +
@@ -618,5 +623,78 @@ public class HelpFunc {
         } else {
             return "";
         }
+    }
+
+    /**
+     * Used to format Livy statement result to a list a fields and types for schema creation
+     * @param livyStatementResult
+     * @return
+     */
+    public static String livyTableResultToAvroFields(JsonObject livyStatementResult, String subject) {
+        String dataRow = "";
+
+        if (livyStatementResult.getJsonObject("output").containsKey("data")) {
+            JsonObject dataJason = livyStatementResult.getJsonObject("output").getJsonObject("data");
+
+            if (livyStatementResult.getString("code").contains("%table")) { //livy magic word %json
+                JsonObject output = dataJason.getJsonObject("application/vnd.livy.table.v1+json");
+                JsonArray header = output.getJsonArray("headers");
+                JsonObject schema = new JsonObject().put("type", "record").put("name", subject);
+
+                String separator = "</th><th>";
+                for (int i = 0; i < header.size(); i++) {
+                    header = headerRow + header.getJsonObject(i).getString("name") + separator;
+                }
+
+                headerRow = headerRow + "</th></tr>";
+
+                for (int i = 0; i < data.size(); i++) {
+                    dataRow = dataRow + arrayToString(data.getJsonArray(i),
+                            "<tr><td>", "</td><td>", "</td></tr>");
+                }
+
+                return tableHeader + headerRow + dataRow + tableTrailer;
+            }
+        } else {
+            return "";
+        }
+    }
+
+    /**
+     * Map hive type (from Livy statement result) to avro schema type
+     * @param hiveType
+     * @return
+     */
+    private static String typeHive2Avro(String hiveType) {
+
+        String avroType;
+        switch(hiveType) {
+            case "DATE_TYPE":
+            case "TIMESTAMP_TYPE":
+            case "STRING_TYPE":
+            case "VARCHAR_TYPE":
+            case "CHAR_TYPE":
+                avroType = "string";
+                break;
+            case "BOOLEAN_TYPE":
+                avroType = "boolean";
+                break;
+            case "INT_TYPE":
+                avroType = "int";
+                break;
+            case "DOUBLE_TYPE":
+                avroType = "double";
+                break;
+            case "DECIMAL_TYPE":
+                avroType = "double";
+                break;
+            case "CANCELLED":
+                returnState = ConstantApp.DF_STATUS.CANCELED.name();
+                break;
+            default:
+                avroType = "string";
+                break;
+        }
+        return avroType;
     }
 }
