@@ -12,9 +12,11 @@ import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import io.vertx.ext.mongo.FindOptions;
+import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.client.WebClient;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.log4j.Logger;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -581,7 +583,7 @@ public class HelpFunc {
         if (livyStatementResult.getJsonObject("output").containsKey("data")) {
             JsonObject dataJason = livyStatementResult.getJsonObject("output").getJsonObject("data");
 
-            if (livyStatementResult.getString("code").contains("%table")) { //livy magic word %json
+            if (livyStatementResult.getString("code").contains("%table")) { //livy magic word %table
                 JsonObject output = dataJason.getJsonObject("application/vnd.livy.table.v1+json");
                 JsonArray header = output.getJsonArray("headers");
                 JsonArray data = output.getJsonArray("data");
@@ -627,16 +629,16 @@ public class HelpFunc {
     }
 
     /**
-     * Used to format Livy statement result to a list a fields and types for schema creation
+     * Used to format Livy statement result to a list a fields and types for schema creation. Only support %table now
      * @param livyStatementResult
-     * @return
+     * @return string of fields with type
      */
     public static String livyTableResultToAvroFields(JsonObject livyStatementResult, String subject) {
 
         if (livyStatementResult.getJsonObject("output").containsKey("data")) {
             JsonObject dataJason = livyStatementResult.getJsonObject("output").getJsonObject("data");
 
-            if (livyStatementResult.getString("code").contains("%table")) { //livy magic word %json
+            if (livyStatementResult.getString("code").contains("%table")) { //livy magic word %table
                 JsonObject output = dataJason.getJsonObject("application/vnd.livy.table.v1+json");
                 JsonArray header = output.getJsonArray("headers");
 
@@ -657,12 +659,18 @@ public class HelpFunc {
     /**
      * Map hive type (from Livy statement result) to avro schema type
      * @param hiveType
-     * @return
+     * @return type in avro
      */
     private static String typeHive2Avro(String hiveType) {
 
         String avroType;
         switch(hiveType) {
+            case "NULL_TYPE":
+                avroType = "null";
+                break;
+            case "BYTE_TYPE":
+                avroType = "bytes";
+                break;
             case "DATE_TYPE":
             case "TIMESTAMP_TYPE":
             case "STRING_TYPE":
@@ -688,5 +696,123 @@ public class HelpFunc {
                 break;
         }
         return avroType;
+    }
+
+    /**
+     * Helper class to update mongodb status
+     * @param mongo
+     * @param COLLECTION
+     * @param updateJob
+     * @param LOG
+     */
+    public static void updateRepoWithLogging(MongoClient mongo, String COLLECTION, DFJobPOPJ updateJob, Logger LOG) {
+        mongo.updateCollection(COLLECTION, new JsonObject().put("_id", updateJob.getId()),
+                // The update syntax: {$set, the json object containing the fields to update}
+                new JsonObject().put("$set", updateJob.toJson()), v -> {
+                    if (v.failed()) {
+                        LOG.error(DFAPIMessage.logResponseMessage(9003, updateJob.getId() + "cause:" + v.cause()));
+                    } else {
+                        LOG.info(DFAPIMessage.logResponseMessage(1021, updateJob.getId()));
+                    }
+                }
+        );
+    }
+
+    /**
+     * Help class to add a stream back task. Will check to add a new or update existing one.
+     * @param wc_streamback
+     * @param mongo
+     * @param COLLECTION
+     * @param schema_registry_rest_port
+     * @param kafka_server_host
+     * @param df_rest_port
+     * @param df_rest_host
+     * @param createNewSchema
+     * @param subject
+     * @param schemaFields
+     * @param streamBackMaster
+     * @param streamBackWorker
+     * @param LOG
+     */
+    public static void addStreamBackTask(WebClient wc_streamback, MongoClient mongo, String COLLECTION,
+                                         int schema_registry_rest_port, String kafka_server_host,
+                                         int df_rest_port, String df_rest_host,
+                                         Boolean createNewSchema,
+                                         String subject, String schemaFields,
+                                         DFJobPOPJ streamBackMaster, DFJobPOPJ streamBackWorker, Logger LOG) {
+        if(createNewSchema) {
+            wc_streamback.post(schema_registry_rest_port, kafka_server_host,
+                    ConstantApp.SR_REST_URL_SUBJECTS + "/" + subject + ConstantApp.SR_REST_URL_VERSIONS)
+                    .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
+                    .sendJsonObject( new JsonObject().put(ConstantApp.SCHEMA_REGISTRY_KEY_SCHEMA, schemaFields), schemar -> {
+                        if (schemar.succeeded()) {
+                            // Use local client to create a stream back worker source file task from datafibers rest service.
+                            // Update stream back master status to failed when submission failed
+                            // Then, check if the taskId already in repo, if yes update instead of create
+                            LOG.error("Stream Back Schema is created with version " + schemar.result().bodyAsString());
+                            mongo.findOne(COLLECTION, new JsonObject().put("_id", streamBackWorker.getId()),
+                                    new JsonObject().put("connectorConfig", 1), res -> {
+                                        if (res.succeeded() &&
+                                                res.result().getJsonObject("connectorConfig").toString() != null) {
+                                            // found in repo, update
+                                            wc_streamback
+                                                    .put(df_rest_port, df_rest_host, ConstantApp.DF_CONNECTS_REST_URL + "/" + streamBackWorker.getId())
+                                                    .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                                                    .sendJsonObject(streamBackWorker.toKafkaConnectJson(),
+                                                            war -> {
+                                                                streamBackMaster.getConnectorConfig().put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE,
+                                                                        war.succeeded() ? ConstantApp.DF_STATUS.RUNNING.name() : ConstantApp.DF_STATUS.FAILED.name());
+                                                                updateRepoWithLogging(mongo, COLLECTION, streamBackMaster, LOG);
+                                                            }
+                                                    );
+                                        } else {
+                                            // create a new task
+                                            wc_streamback
+                                                    .post(df_rest_port, df_rest_host, ConstantApp.DF_CONNECTS_REST_URL)
+                                                    .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                                                    .sendJsonObject(streamBackWorker.toKafkaConnectJson(),
+                                                            war -> {
+                                                                streamBackMaster.getConnectorConfig().put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE,
+                                                                        war.succeeded() ? ConstantApp.DF_STATUS.RUNNING.name() : ConstantApp.DF_STATUS.FAILED.name());
+                                                                updateRepoWithLogging(mongo, COLLECTION, streamBackMaster, LOG);
+                                                            }
+                                                    );
+                                        }
+                                    });
+                        } else {
+                            LOG.error("Schema creation failed for streaming back worker");
+                        }
+                    });
+        } else {
+            mongo.findOne(COLLECTION, new JsonObject().put("_id", streamBackWorker.getId()),
+                    new JsonObject().put("connectorConfig", 1), res -> {
+                        if (res.succeeded() &&
+                                res.result().getJsonObject("connectorConfig").toString() != null) {
+                            // found in repo, update
+                            wc_streamback
+                                    .put(df_rest_port, df_rest_host, ConstantApp.DF_CONNECTS_REST_URL + "/" + streamBackWorker.getId())
+                                    .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                                    .sendJsonObject(streamBackWorker.toKafkaConnectJson(),
+                                            war -> {
+                                                streamBackMaster.getConnectorConfig().put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE,
+                                                        war.succeeded() ? ConstantApp.DF_STATUS.RUNNING.name() : ConstantApp.DF_STATUS.FAILED.name());
+                                                updateRepoWithLogging(mongo, COLLECTION, streamBackMaster, LOG);
+                                            }
+                                    );
+                        } else {
+                            // create a new task
+                            wc_streamback
+                                    .post(df_rest_port, df_rest_host, ConstantApp.DF_CONNECTS_REST_URL)
+                                    .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                                    .sendJsonObject(streamBackWorker.toKafkaConnectJson(),
+                                            war -> {
+                                                streamBackMaster.getConnectorConfig().put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE,
+                                                        war.succeeded() ? ConstantApp.DF_STATUS.RUNNING.name() : ConstantApp.DF_STATUS.FAILED.name());
+                                                updateRepoWithLogging(mongo, COLLECTION, streamBackMaster, LOG);
+                                            }
+                                    );
+                        }
+                    });
+        }
     }
 }

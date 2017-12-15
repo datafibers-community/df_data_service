@@ -2130,10 +2130,9 @@ public class DFDataProcessor extends AbstractVerticle {
                     } else if( // update status in repo when it is in running or unassigned
                         // TODO may need to remove LOST later
                             updateJob.getStatus().equalsIgnoreCase(ConstantApp.DF_STATUS.RUNNING.name()) ||
-                                    updateJob.getStatus().equalsIgnoreCase(ConstantApp.DF_STATUS.STREAMING.name()) ||
-                    updateJob.getStatus().equalsIgnoreCase(ConstantApp.DF_STATUS.UNASSIGNED.name()) ||
-                                    updateJob.getStatus().equalsIgnoreCase(ConstantApp.DF_STATUS.LOST.name())
-                            ) {
+                            updateJob.getStatus().equalsIgnoreCase(ConstantApp.DF_STATUS.STREAMING.name()) ||
+                            updateJob.getStatus().equalsIgnoreCase(ConstantApp.DF_STATUS.UNASSIGNED.name()) ||
+                            updateJob.getStatus().equalsIgnoreCase(ConstantApp.DF_STATUS.LOST.name())) {
                         String sessionId = json.getJsonObject("jobConfig").getString(ConstantApp.PK_LIVY_SESSION_ID);
                         String statementId = json.getJsonObject("jobConfig").getString(ConstantApp.PK_LIVY_STATEMENT_ID);
                         String repoFullCode = json.getJsonObject("jobConfig").getString(ConstantApp.PK_LIVY_STATEMENT_CODE);
@@ -2145,15 +2144,14 @@ public class DFDataProcessor extends AbstractVerticle {
                                         ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
                                 .send(sar -> {
                                     if (sar.succeeded() && sar.result().statusCode() == ConstantApp.STATUS_CODE_OK) {
-                                        updateJob.setJobConfig(ConstantApp.PK_LIVY_SESSION_STATE,
-                                                sar.result().bodyAsJsonObject().getString("state"));
+                                        updateJob.setJobConfig(ConstantApp.PK_LIVY_SESSION_STATE, sar.result().bodyAsJsonObject().getString("state"));
 
                                         LOG.debug("session info response = " + sar.result().bodyAsJsonObject());
 
                                         // 1. Check if statement is available
-                                        wc_refresh.get(spark_livy_server_port, spark_livy_server_host,
-                                                ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId +
-                                                        ConstantApp.LIVY_REST_URL_STATEMENTS + "/" + statementId)
+                                        wc_refresh
+                                                .get(spark_livy_server_port, spark_livy_server_host,
+                                                        ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId + ConstantApp.LIVY_REST_URL_STATEMENTS + "/" + statementId)
                                                 .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE,
                                                         ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
                                                 .send(ar -> {
@@ -2214,38 +2212,31 @@ public class DFDataProcessor extends AbstractVerticle {
                                                                                             .getJsonArray("evalue")
                                                                                             .toString():"")
                                                                     // Also set result
-                                                                    .setJobConfig(ConstantApp.PK_LIVY_STATEMENT_OUTPUT,
-                                                                            HelpFunc.livyTableResultToRichText(resultJo));
+                                                                    .setJobConfig(ConstantApp.PK_LIVY_STATEMENT_OUTPUT, HelpFunc.livyTableResultToRichText(resultJo));
 
-                                                            // Check if stream back is needed.
+                                                            // Check if stream back is needed. If yes, enable it when batch is FINISHED.
                                                             // This has to come after above update dfJob since we do not want loose dfJob status
                                                             // when update stream back status in separate thread
                                                             HashMap<String, String> connectConfig = updateJob.getConnectorConfig();
 
-                                                            if(resStatus.equalsIgnoreCase(
-                                                                    ConstantApp.DF_STATUS.FINISHED.name()) &&
-                                                                    connectConfig.containsKey(ConstantApp.PK_TRANSFORM_STREAM_BACK_FLAG)) {
-
-                                                                // When stream back is needed, we either check status of kick off the job
-                                                                if(connectConfig
-                                                                        .get(ConstantApp.PK_TRANSFORM_STREAM_BACK_FLAG)
-                                                                        .equalsIgnoreCase("true")) {
-
+                                                            if(resStatus.equalsIgnoreCase(ConstantApp.DF_STATUS.FINISHED.name()) &&
+                                                                    connectConfig.get(ConstantApp.PK_TRANSFORM_STREAM_BACK_FLAG).equalsIgnoreCase("true")) {
+                                                                    // When stream back is needed, we either check status OR kick off the job
+                                                                    // If state is available, the stream back job is already started. Or else, start it.
                                                                     if(connectConfig.containsKey(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE)){
-
                                                                         if(connectConfig
                                                                                 .get(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE)
                                                                                 .equalsIgnoreCase(ConstantApp.DF_STATUS.FINISHED.name())) {
-                                                                            // TODO delete the stream back file source task and do not overwrite transform task state
+                                                                            // TODO delete the stream back file source task and do not overwrite transform task state - If not implement, the task will keep not impact
                                                                         } else if(connectConfig
                                                                                 .get(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE)
                                                                                 .equalsIgnoreCase(ConstantApp.DF_STATUS.FAILED.name())) {
-                                                                            // Overwrite transform task state as FAILED, but we keep the stream worker task for now
-                                                                            updateJob
-                                                                                    .setStatus(ConstantApp.DF_STATUS.FAILED.name());
+                                                                            // Overwrite transform task state as FAILED, but we keep the failed stream worker task for now
+                                                                            HelpFunc.updateRepoWithLogging(mongo, COLLECTION, updateJob.setStatus(ConstantApp.DF_STATUS.FAILED.name()), LOG);
                                                                         } else {
-                                                                            // TODO check folder to see if all files are processed if yes set PK_TRANSFORM_STREAM_BACK_TASK_STATE as finished
-                                                                            // TODO or else, overwrite the transform task state to streaming
+                                                                            // TODO check stream back task status in repo is failed or lost. If yes, set PK_TRANSFORM_STREAM_BACK_TASK_STATE as failed
+                                                                            // TODO or else check stream back folder to see if all files are processed if yes set PK_TRANSFORM_STREAM_BACK_TASK_STATE as finished
+                                                                            // TODO or else, overwrite the transform task/master state to streaming
                                                                         }
                                                                     } else {
                                                                         /*
@@ -2284,100 +2275,34 @@ public class DFDataProcessor extends AbstractVerticle {
                                                                                 .setConnectorCategory("source")
                                                                                 .setConnectorConfig(connectorConfigMap); // Populate file connect task config
 
+                                                                        LOG.debug("Streamback connect obj = " + streambackTask.toJson());
+
                                                                         // Create the topic if it asks to create a new topic from ui
-                                                                        if(updateJob
-                                                                                .getConnectorConfig()
-                                                                                .get(ConstantApp.PK_TRANSFORM_STREAM_BACK_TOPIC_CREATION)
-                                                                                .equalsIgnoreCase("true")) {
-                                                                            wc_streamback.post(schema_registry_rest_port, kafka_server_host,
-                                                                                    ConstantApp.SR_REST_URL_SUBJECTS + "/" + subject + ConstantApp.SR_REST_URL_VERSIONS)
-                                                                                    .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
-                                                                                    .sendJsonObject( new JsonObject()
-                                                                                            .put(ConstantApp.SCHEMA_REGISTRY_KEY_SCHEMA,
-                                                                                                    HelpFunc.livyTableResultToAvroFields(resultJo, subject)), schemar -> {
-                                                                                        if (schemar.succeeded()) {
-                                                                                            // Use local client to create a source file task from datafibers rest service. Update its status to failed when submission failed
-                                                                                            wc_streamback
-                                                                                                    .post(df_rest_port, "localhost", ConstantApp.DF_CONNECTS_REST_URL)
-                                                                                                    .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
-                                                                                                    .sendJsonObject(streambackTask.toKafkaConnectJson(),
-                                                                                                            war -> {
-                                                                                                                updateJob
-                                                                                                                        .getConnectorConfig()
-                                                                                                                        .put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE,
-                                                                                                                                war.succeeded()?
-                                                                                                                                        ConstantApp.DF_STATUS.RUNNING.name():
-                                                                                                                                        ConstantApp.DF_STATUS.FAILED.name()
-                                                                                                                        );
-
-                                                                                                                // Once REST API forward is successful, add the record to the local repository
-                                                                                                                mongo.updateCollection(COLLECTION, new JsonObject().put("_id", updateJob.getId()), // Select a unique document
-                                                                                                                        // The update syntax: {$set, the json object containing the fields to update}
-                                                                                                                        new JsonObject().put("$set", updateJob.toJson()), v -> {
-                                                                                                                            if (v.failed()) {
-                                                                                                                                LOG.error(DFAPIMessage.logResponseMessage(9003, updateJob.getId()));
-                                                                                                                            } else {
-                                                                                                                                LOG.info(DFAPIMessage.logResponseMessage(1001, updateJob.getId()));
-                                                                                                                            }
-                                                                                                                        }
-                                                                                                                );
-
-                                                                                                            }
-                                                                                                    );
-                                                                                        } else {
-                                                                                            LOG.error("Schema creation failed for streaming back worker");
-                                                                                        }
-                                                                                    });
-                                                                        } else { // create the task without create new schema subject
-                                                                            // Use local client to create a source file task from datafibers rest service. Update its status to failed when submission failed
-                                                                            wc_streamback
-                                                                                    .post(df_rest_port, "localhost", ConstantApp.DF_CONNECTS_REST_URL)
-                                                                                    .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
-                                                                                    .sendJsonObject(streambackTask.toKafkaConnectJson(),
-                                                                                            war -> {
-                                                                                                updateJob
-                                                                                                        .getConnectorConfig()
-                                                                                                        .put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE,
-                                                                                                                war.succeeded()?
-                                                                                                                        ConstantApp.DF_STATUS.RUNNING.name():
-                                                                                                                        ConstantApp.DF_STATUS.FAILED.name()
-                                                                                                        );
-
-                                                                                                // Once REST API forward is successful, add the record to the local repository
-                                                                                                mongo.updateCollection(COLLECTION, new JsonObject().put("_id", updateJob.getId()), // Select a unique document
-                                                                                                        // The update syntax: {$set, the json object containing the fields to update}
-                                                                                                        new JsonObject().put("$set", updateJob.toJson()), v -> {
-                                                                                                            if (v.failed()) {
-                                                                                                                LOG.error(DFAPIMessage.logResponseMessage(9003, updateJob.getId()));
-                                                                                                            } else {
-                                                                                                                LOG.info(DFAPIMessage.logResponseMessage(1001, updateJob.getId()));
-                                                                                                            }
-                                                                                                        }
-                                                                                                );
-
-                                                                                            }
-                                                                                    );
-                                                                        }
+                                                                        HelpFunc.addStreamBackTask(
+                                                                                wc_streamback, mongo, COLLECTION,
+                                                                                schema_registry_rest_port, kafka_server_host,
+                                                                                df_rest_port, "localhost",
+                                                                                Boolean.parseBoolean(updateJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_STREAM_BACK_TOPIC_CREATION).toString()),
+                                                                                subject, HelpFunc.livyTableResultToAvroFields(resultJo, subject),
+                                                                                updateJob, streambackTask, LOG
+                                                                        );
                                                                     }
-                                                                } else {
-                                                                    LOG.debug("PK_TRANSFORM_STREAM_BACK_FLAG=false Ignore Stream Back.");
-                                                                }
                                                             } else {
-                                                                LOG.debug("PK_TRANSFORM_STREAM_BACK_FLAG Not Found");
+                                                                HelpFunc.updateRepoWithLogging(mongo, COLLECTION, updateJob, LOG);
+                                                                LOG.debug("PK_TRANSFORM_STREAM_BACK_FLAG Not Found or equal to FALSE, so update as regular job.");
                                                             }
-                                                            LOG.debug("updateJob = " + updateJob.toJson());
                                                         } else {
+                                                            // No status changes, do nothing
                                                             LOG.debug(DFAPIMessage.logResponseMessage(1022, taskId));
                                                         }
                                                     } else {
                                                         // When jobId not found, set status LOST with error message.
-                                                        LOG.info(DFAPIMessage.logResponseMessage(9006,
-                                                                "TRANSFORM_STATUS_REFRESH_FOUND SPARK " + taskId + " LOST"));
-                                                        updateJob.setStatus(ConstantApp.DF_STATUS.LOST.name());
+                                                        HelpFunc.updateRepoWithLogging(mongo, COLLECTION, updateJob.setStatus(ConstantApp.DF_STATUS.LOST.name()), LOG);
+                                                        LOG.info(DFAPIMessage.logResponseMessage(9006,"TRANSFORM_STATUS_REFRESH_FOUND SPARK " + taskId + " LOST"));
                                                     }
 
                                                     // update status finally
-                                                    mongo.updateCollection(COLLECTION, new JsonObject().put("_id", updateJob.getId()),
+/*                                                    mongo.updateCollection(COLLECTION, new JsonObject().put("_id", updateJob.getId()),
                                                             // The update syntax: {$set, the json object containing the fields to update}
                                                             new JsonObject().put("$set", updateJob.toJson()), v -> {
                                                                 if (v.failed()) {
@@ -2387,23 +2312,11 @@ public class DFDataProcessor extends AbstractVerticle {
                                                                     LOG.info(DFAPIMessage.logResponseMessage(1021, taskId));
                                                                 }
                                                             }
-                                                    );
+                                                    );*/
                                                 });
 
                                     } else {
-                                        updateJob.setJobConfig(ConstantApp.PK_LIVY_SESSION_STATE, "closed");
-                                        // update status finally
-                                        mongo.updateCollection(COLLECTION, new JsonObject().put("_id", updateJob.getId()),
-                                                // The update syntax: {$set, the json object containing the fields to update}
-                                                new JsonObject().put("$set", updateJob.toJson()), v -> {
-                                                    if (v.failed()) {
-                                                        LOG.error(DFAPIMessage.logResponseMessage(9003,
-                                                                taskId + "cause:" + v.cause()));
-                                                    } else {
-                                                        LOG.info(DFAPIMessage.logResponseMessage(1021, taskId));
-                                                    }
-                                                }
-                                        );
+                                        HelpFunc.updateRepoWithLogging(mongo, COLLECTION, updateJob.setJobConfig(ConstantApp.PK_LIVY_SESSION_STATE, ConstantApp.DF_STATUS.LOST.name()), LOG);
                                     }
 
                                 });
