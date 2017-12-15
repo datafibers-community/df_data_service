@@ -13,6 +13,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import io.vertx.ext.mongo.FindOptions;
 import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.client.WebClient;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -631,7 +632,6 @@ public class HelpFunc {
      * @return
      */
     public static String livyTableResultToAvroFields(JsonObject livyStatementResult, String subject) {
-        String dataRow = "";
 
         if (livyStatementResult.getJsonObject("output").containsKey("data")) {
             JsonObject dataJason = livyStatementResult.getJsonObject("output").getJsonObject("data");
@@ -639,25 +639,19 @@ public class HelpFunc {
             if (livyStatementResult.getString("code").contains("%table")) { //livy magic word %json
                 JsonObject output = dataJason.getJsonObject("application/vnd.livy.table.v1+json");
                 JsonArray header = output.getJsonArray("headers");
-                JsonObject schema = new JsonObject().put("type", "record").put("name", subject);
 
-                String separator = "</th><th>";
                 for (int i = 0; i < header.size(); i++) {
-                    header = headerRow + header.getJsonObject(i).getString("name") + separator;
+                    header.getJsonObject(i).put("type", typeHive2Avro(header.getJsonObject(i).getString("type")));
                 }
 
-                headerRow = headerRow + "</th></tr>";
+                JsonObject schema = new JsonObject().put("type", "record").put("name", subject).put("fields", header);
 
-                for (int i = 0; i < data.size(); i++) {
-                    dataRow = dataRow + arrayToString(data.getJsonArray(i),
-                            "<tr><td>", "</td><td>", "</td></tr>");
-                }
-
-                return tableHeader + headerRow + dataRow + tableTrailer;
+                return schema.toString();
             }
         } else {
             return "";
         }
+        return "";
     }
 
     /**
@@ -685,11 +679,9 @@ public class HelpFunc {
             case "DOUBLE_TYPE":
                 avroType = "double";
                 break;
+            case "FLOAT_TYPE":
             case "DECIMAL_TYPE":
-                avroType = "double";
-                break;
-            case "CANCELLED":
-                returnState = ConstantApp.DF_STATUS.CANCELED.name();
+                avroType = "float";
                 break;
             default:
                 avroType = "string";

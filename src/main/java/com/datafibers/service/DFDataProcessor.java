@@ -24,6 +24,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import io.vertx.ext.web.handler.TimeoutHandler;
 import io.vertx.kafka.client.common.PartitionInfo;
+import io.vertx.kafka.client.common.impl.Helper;
 import io.vertx.kafka.client.consumer.KafkaConsumer;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -68,6 +69,8 @@ public class DFDataProcessor extends AbstractVerticle {
     private static String df_jar_path;
     private static String df_jar_name;
     private static String flink_jar_id;
+
+    private static Integer df_rest_port;
 
     // Connects attributes
     private static Boolean kafka_connect_enabled;
@@ -120,6 +123,8 @@ public class DFDataProcessor extends AbstractVerticle {
         this.repo_conn_str = config().getString("repo.connection.string", "mongodb://localhost:27017");
         this.repo_hostname = repo_conn_str.replace("//", "").split(":")[1];
         this.repo_port = repo_conn_str.replace("//", "").split(":")[2];
+
+        this.df_rest_port = config().getInteger("rest.port.df.processor", 8080);
 
         // Get Connects config
         this.kafka_connect_enabled = config().getBoolean("kafka.connect.enable", Boolean.TRUE);
@@ -2168,7 +2173,6 @@ public class DFDataProcessor extends AbstractVerticle {
                                                         LOG.debug("repoFullCode = " + repoFullCode + " resStatement = " + resFullCode);
 
                                                         /*
-                                                        TODO
                                                         Here, we'll regular check connectConfig to see if we need to
                                                         stream the result back to Kafka specified topic and
                                                         also kick off the stream back connect
@@ -2261,9 +2265,9 @@ public class DFDataProcessor extends AbstractVerticle {
                                                                         updateJob.getConnectorConfig()
                                                                                 .put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_ID, streambackId);
 
-                                                                        DFJobPOPJ streambackTask = new DFJobPOPJ();
                                                                         String subject = updateJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_STREAM_BACK_TOPIC);
 
+                                                                        // Create a task object of csv sink as avro
                                                                         final HashMap<String, String> connectorConfigMap = new HashMap<>();
                                                                         connectorConfigMap.put(ConstantApp.PK_STREAM_BACK_CONNECT_TASK, "1");
                                                                         connectorConfigMap.put(ConstantApp.PK_STREAM_BACK_CONNECT_SRURI, "http://" + schema_registry_host_and_port);
@@ -2272,24 +2276,7 @@ public class DFDataProcessor extends AbstractVerticle {
                                                                         connectorConfigMap.put(ConstantApp.PK_STREAM_BACK_CONNECT_GLOB, "*.csv");
                                                                         connectorConfigMap.put(ConstantApp.PK_STREAM_BACK_CONNECT_TOPIC, subject);
 
-                                                                        // Create the topic if it asks to create a new topic from ui
-                                                                        if( updateJob
-                                                                                .getConnectorConfig()
-                                                                                .get(ConstantApp.PK_TRANSFORM_STREAM_BACK_TOPIC_CREATION)
-                                                                                .equalsIgnoreCase("true")) {
-                                                                            wc_streamback.post(schema_registry_rest_port, kafka_server_host,
-                                                                                    ConstantApp.SR_REST_URL_SUBJECTS + "/" + subject + ConstantApp.SR_REST_URL_VERSIONS)
-                                                                                    .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
-                                                                                    .sendJsonObject( new JsonObject()
-                                                                                            .put(ConstantApp.SCHEMA_REGISTRY_KEY_SCHEMA, schemaObj.toString()),ar -> {
-                                                                                        if (ar.succeeded()) {
-
-                                                                                        }
-                                                                                    });
-                                                                        }
-
-
-                                                                        streambackTask
+                                                                        DFJobPOPJ streambackTask = new DFJobPOPJ()
                                                                                 .setId(streambackId)
                                                                                 .setName("stream_worker")
                                                                                 .setDescription("stream_worker")
@@ -2297,23 +2284,64 @@ public class DFDataProcessor extends AbstractVerticle {
                                                                                 .setConnectorCategory("source")
                                                                                 .setConnectorConfig(connectorConfigMap); // Populate file connect task config
 
-                                                                        // Use local client to create a source file task from datafibers rest service. Update its status to failed when submission failed
-                                                                        wc_streamback
-                                                                                .post(
-                                                                                        config().getInteger("rest.port.df.processor", 8080),
-                                                                                        "localhost",
-                                                                                        ConstantApp.DF_CONNECTS_REST_URL
-                                                                                )
-                                                                                .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
-                                                                                .sendJsonObject(streambackTask.toKafkaConnectJson(),
-                                                                                        war -> {
-                                                                                            updateJob
-                                                                                                    .getConnectorConfig()
-                                                                                                    .put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE,
-                                                                                                            ar.succeeded()?
-                                                                                                                    ConstantApp.DF_STATUS.RUNNING.name():
-                                                                                                                    ConstantApp.DF_STATUS.FAILED.name()
+                                                                        // Create the topic if it asks to create a new topic from ui
+                                                                        if(updateJob
+                                                                                .getConnectorConfig()
+                                                                                .get(ConstantApp.PK_TRANSFORM_STREAM_BACK_TOPIC_CREATION)
+                                                                                .equalsIgnoreCase("true")) {
+                                                                            wc_streamback.post(schema_registry_rest_port, kafka_server_host,
+                                                                                    ConstantApp.SR_REST_URL_SUBJECTS + "/" + subject + ConstantApp.SR_REST_URL_VERSIONS)
+                                                                                    .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
+                                                                                    .sendJsonObject( new JsonObject()
+                                                                                            .put(ConstantApp.SCHEMA_REGISTRY_KEY_SCHEMA,
+                                                                                                    HelpFunc.livyTableResultToAvroFields(resultJo, subject)), schemar -> {
+                                                                                        if (schemar.succeeded()) {
+                                                                                            // Use local client to create a source file task from datafibers rest service. Update its status to failed when submission failed
+                                                                                            wc_streamback
+                                                                                                    .post(df_rest_port, "localhost", ConstantApp.DF_CONNECTS_REST_URL)
+                                                                                                    .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                                                                                                    .sendJsonObject(streambackTask.toKafkaConnectJson(),
+                                                                                                            war -> {
+                                                                                                                updateJob
+                                                                                                                        .getConnectorConfig()
+                                                                                                                        .put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE,
+                                                                                                                                war.succeeded()?
+                                                                                                                                        ConstantApp.DF_STATUS.RUNNING.name():
+                                                                                                                                        ConstantApp.DF_STATUS.FAILED.name()
+                                                                                                                        );
+
+                                                                                                                // Once REST API forward is successful, add the record to the local repository
+                                                                                                                mongo.updateCollection(COLLECTION, new JsonObject().put("_id", updateJob.getId()), // Select a unique document
+                                                                                                                        // The update syntax: {$set, the json object containing the fields to update}
+                                                                                                                        new JsonObject().put("$set", updateJob.toJson()), v -> {
+                                                                                                                            if (v.failed()) {
+                                                                                                                                LOG.error(DFAPIMessage.logResponseMessage(9003, updateJob.getId()));
+                                                                                                                            } else {
+                                                                                                                                LOG.info(DFAPIMessage.logResponseMessage(1001, updateJob.getId()));
+                                                                                                                            }
+                                                                                                                        }
+                                                                                                                );
+
+                                                                                                            }
                                                                                                     );
+                                                                                        } else {
+                                                                                            LOG.error("Schema creation failed for streaming back worker");
+                                                                                        }
+                                                                                    });
+                                                                        } else { // create the task without create new schema subject
+                                                                            // Use local client to create a source file task from datafibers rest service. Update its status to failed when submission failed
+                                                                            wc_streamback
+                                                                                    .post(df_rest_port, "localhost", ConstantApp.DF_CONNECTS_REST_URL)
+                                                                                    .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                                                                                    .sendJsonObject(streambackTask.toKafkaConnectJson(),
+                                                                                            war -> {
+                                                                                                updateJob
+                                                                                                        .getConnectorConfig()
+                                                                                                        .put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE,
+                                                                                                                war.succeeded()?
+                                                                                                                        ConstantApp.DF_STATUS.RUNNING.name():
+                                                                                                                        ConstantApp.DF_STATUS.FAILED.name()
+                                                                                                        );
 
                                                                                                 // Once REST API forward is successful, add the record to the local repository
                                                                                                 mongo.updateCollection(COLLECTION, new JsonObject().put("_id", updateJob.getId()), // Select a unique document
@@ -2328,7 +2356,8 @@ public class DFDataProcessor extends AbstractVerticle {
                                                                                                 );
 
                                                                                             }
-                                                                                );
+                                                                                    );
+                                                                        }
                                                                     }
                                                                 } else {
                                                                     LOG.debug("PK_TRANSFORM_STREAM_BACK_FLAG=false Ignore Stream Back.");
