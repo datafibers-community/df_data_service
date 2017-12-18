@@ -26,6 +26,7 @@ import io.vertx.ext.web.handler.TimeoutHandler;
 import io.vertx.kafka.client.common.PartitionInfo;
 import io.vertx.kafka.client.common.impl.Helper;
 import io.vertx.kafka.client.consumer.KafkaConsumer;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.bson.types.ObjectId;
@@ -2168,7 +2169,7 @@ public class DFDataProcessor extends AbstractVerticle {
                                                                 "":resultJo.getString("code");
 
                                                         LOG.debug("repoStatus = " + repoStatus + " resStatus = " + resStatus);
-                                                        LOG.debug("repoFullCode = " + repoFullCode + " resStatement = " + resFullCode);
+                                                        LOG.debug("repoFullCode = " + repoFullCode + " resFullCode = " + resFullCode);
 
                                                         /*
                                                         Here, we'll regular check connectConfig to see if we need to
@@ -2181,8 +2182,10 @@ public class DFDataProcessor extends AbstractVerticle {
                                                         // Do change detection on status, but code snip must same
                                                         // Because the livy session/statement id could be reset
                                                         if (repoStatus.compareToIgnoreCase(resStatus) != 0 &&
-                                                                repoFullCode.equalsIgnoreCase(repoFullCode)) { //status changes
+                                                                repoFullCode.equalsIgnoreCase(resFullCode)) { //status changes
 
+                                                            LOG.debug("Change Detected");
+// TODO
                                                             // Set df job status from statement state
                                                             updateJob
                                                                     .setStatus(resStatus)
@@ -2197,7 +2200,7 @@ public class DFDataProcessor extends AbstractVerticle {
                                                                     .setJobConfig(
                                                                             ConstantApp.PK_LIVY_STATEMENT_STATUS,
                                                                             resultJo.getJsonObject("output")
-                                                                            .getString("status"))
+                                                                            .getString("status").toUpperCase())
                                                                     // Set detailed error and traceback in case of failed
                                                                     .setJobConfig(ConstantApp.PK_LIVY_STATEMENT_TRACEBACK,
                                                                             resultJo.getJsonObject("output")
@@ -2209,8 +2212,7 @@ public class DFDataProcessor extends AbstractVerticle {
                                                                             resultJo.getJsonObject("output")
                                                                                     .containsKey("evalue")?
                                                                                     resultJo.getJsonObject("output")
-                                                                                            .getJsonArray("evalue")
-                                                                                            .toString():"")
+                                                                                            .getString("evalue"):"")
                                                                     // Also set result
                                                                     .setJobConfig(ConstantApp.PK_LIVY_STATEMENT_OUTPUT, HelpFunc.livyTableResultToRichText(resultJo));
 
@@ -2218,8 +2220,10 @@ public class DFDataProcessor extends AbstractVerticle {
                                                             // This has to come after above update dfJob since we do not want loose dfJob status
                                                             // when update stream back status in separate thread
                                                             HashMap<String, String> connectConfig = updateJob.getConnectorConfig();
+                                                            String streambackId = updateJob.getId() + "_stream_worker";
 
                                                             if(resStatus.equalsIgnoreCase(ConstantApp.DF_STATUS.FINISHED.name()) &&
+                                                                    connectConfig.containsKey(ConstantApp.PK_TRANSFORM_STREAM_BACK_FLAG) &&
                                                                     connectConfig.get(ConstantApp.PK_TRANSFORM_STREAM_BACK_FLAG).equalsIgnoreCase("true")) {
                                                                     // When stream back is needed, we either check status OR kick off the job
                                                                     // If state is available, the stream back job is already started. Or else, start it.
@@ -2231,12 +2235,63 @@ public class DFDataProcessor extends AbstractVerticle {
                                                                         } else if(connectConfig
                                                                                 .get(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE)
                                                                                 .equalsIgnoreCase(ConstantApp.DF_STATUS.FAILED.name())) {
-                                                                            // Overwrite transform task state as FAILED, but we keep the failed stream worker task for now
+                                                                            // TODO Overwrite transform task state as FAILED, but we keep the failed stream worker task for now
                                                                             HelpFunc.updateRepoWithLogging(mongo, COLLECTION, updateJob.setStatus(ConstantApp.DF_STATUS.FAILED.name()), LOG);
                                                                         } else {
-                                                                            // TODO check stream back task status in repo is failed or lost. If yes, set PK_TRANSFORM_STREAM_BACK_TASK_STATE as failed
+                                                                            // TODO check stream back task status in repo is failed or lost. If yes, set Master PK_TRANSFORM_STREAM_BACK_TASK_STATE and task status as failed
                                                                             // TODO or else check stream back folder to see if all files are processed if yes set PK_TRANSFORM_STREAM_BACK_TASK_STATE as finished
                                                                             // TODO or else, overwrite the transform task/master state to streaming
+                                                                            mongo.findOne(COLLECTION, new JsonObject().put("_id", streambackId),
+                                                                                    new JsonObject().put("status", 1), res -> {
+                                                                                        if (res.succeeded()) {
+                                                                                            String workerStatus = res.result().getString("status");
+                                                                                            if(workerStatus.equalsIgnoreCase(ConstantApp.DF_STATUS.FAILED.name()) ||
+                                                                                                    workerStatus.equalsIgnoreCase(ConstantApp.DF_STATUS.LOST.name()) ) {
+                                                                                                updateJob
+                                                                                                        .setStatus(ConstantApp.DF_STATUS.FAILED.name())
+                                                                                                        .getConnectorConfig()
+                                                                                                        .put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE, ConstantApp.DF_STATUS.FAILED.name());
+
+                                                                                                HelpFunc.updateRepoWithLogging(mongo, COLLECTION, updateJob, LOG);
+                                                                                            } else {
+                                                                                                // Check stream back path to see if all files are processed
+                                                                                                File dir = new File(updateJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_STREAM_BACK_PATH));
+                                                                                                String[] extensions = new String[] {"csv"};
+                                                                                                int csvFileNumber = ((List<File>) FileUtils.listFiles(dir, extensions, false)).size();
+                                                                                                extensions = new String[] {"processed"};
+                                                                                                int processedFileNumber = ((List<File>) FileUtils.listFiles(dir, extensions, false)).size();
+                                                                                                if(csvFileNumber == 0 && processedFileNumber > 0) {
+                                                                                                    // finished stream back
+                                                                                                    updateJob
+                                                                                                            .setStatus(ConstantApp.DF_STATUS.FINISHED.name())
+                                                                                                            .getConnectorConfig()
+                                                                                                            .put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE, ConstantApp.DF_STATUS.FINISHED.name());
+
+                                                                                                }
+
+                                                                                                if(csvFileNumber == 0 && processedFileNumber == 0) {
+                                                                                                    // batch job does not produce any result
+                                                                                                    updateJob
+                                                                                                            .setStatus(ConstantApp.DF_STATUS.FINISHED.name())
+                                                                                                            .getConnectorConfig()
+                                                                                                            .put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE, ConstantApp.DF_STATUS.FINISHED.name());
+
+                                                                                                }
+
+                                                                                                if(csvFileNumber > 0) {
+                                                                                                    // in progress
+                                                                                                    updateJob
+                                                                                                            .setStatus(ConstantApp.DF_STATUS.STREAMING.name())
+                                                                                                            .getConnectorConfig()
+                                                                                                            .put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE, ConstantApp.DF_STATUS.RUNNING.name());
+
+                                                                                                }
+                                                                                                HelpFunc.updateRepoWithLogging(mongo, COLLECTION, updateJob, LOG);
+                                                                                            }
+                                                                                        } else {
+                                                                                            LOG.error("Cannot Found Stream Back Task Id = " + streambackId);
+                                                                                        }
+                                                                                    });
                                                                         }
                                                                     } else {
                                                                         /*
@@ -2248,7 +2303,7 @@ public class DFDataProcessor extends AbstractVerticle {
                                                                          */
 
                                                                         // First, set current job state and stream back state
-                                                                        String streambackId = updateJob.getId() + "_stream_worker";
+
                                                                         updateJob
                                                                                 .setStatus(ConstantApp.DF_STATUS.STREAMING.name())
                                                                                 .getConnectorConfig()
@@ -2291,6 +2346,10 @@ public class DFDataProcessor extends AbstractVerticle {
                                                                 HelpFunc.updateRepoWithLogging(mongo, COLLECTION, updateJob, LOG);
                                                                 LOG.debug("PK_TRANSFORM_STREAM_BACK_FLAG Not Found or equal to FALSE, so update as regular job.");
                                                             }
+
+                                                            LOG.debug("update job json = " + updateJob.toJson());
+
+                                                            HelpFunc.updateRepoWithLogging(mongo, COLLECTION, updateJob, LOG);
                                                         } else {
                                                             // No status changes, do nothing
                                                             LOG.debug(DFAPIMessage.logResponseMessage(1022, taskId));
@@ -2325,8 +2384,7 @@ public class DFDataProcessor extends AbstractVerticle {
                     }
                 }
             } else {
-                LOG.error(DFAPIMessage.logResponseMessage(9002,
-                        "TRANSFORM_STATUS_REFRESH:" + result.cause()));
+                LOG.error(DFAPIMessage.logResponseMessage(9002, "TRANSFORM_STATUS_REFRESH:" + result.cause()));
             }
         });
     }
