@@ -179,8 +179,16 @@ public class DFJobPOPJ {
         return jobConfig;
     }
 
+    public String getJobConfig(String key) {
+        return jobConfig.containsKey(key)? jobConfig.get(key) : "";
+    }
+
     public HashMap<String, String> getConnectorConfig() {
         return connectorConfig;
+    }
+
+    public String getConnectorConfig(String key) {
+        return connectorConfig.containsKey(key) ? connectorConfig.get(key) : "";
     }
 
     public DFJobPOPJ setName(String name) {
@@ -231,6 +239,12 @@ public class DFJobPOPJ {
 
     public DFJobPOPJ setConnectorConfig(HashMap<String, String> connector_config) {
         this.connectorConfig = connector_config;
+        return this;
+    }
+
+    public DFJobPOPJ setConnectorConfig(String key, String value) {
+        if (this.connectorConfig == null) this.connectorConfig = new HashMap<>();
+        this.connectorConfig.put(key, value);
         return this;
     }
 

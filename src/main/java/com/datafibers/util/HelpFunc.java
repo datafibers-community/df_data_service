@@ -168,6 +168,47 @@ public class HelpFunc {
     }
 
     /**
+     * Build program parameters for Flink Jar in rest call
+     * @param dfJob
+     * @param kafkaRestHostName
+     * @param SchemaRegistryRestHostName
+     * @return
+     */
+    public static JsonObject getFlinkJarPara(DFJobPOPJ dfJob, String kafkaRestHostName, String SchemaRegistryRestHostName ) {
+
+        String allowNonRestoredState = "false";
+        String savepointPath = "";
+        String parallelism = "1";
+        String entryClass = "";
+        String programArgs = "";
+
+        if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_SQLA2A.name()) {
+            entryClass = ConstantApp.FLINK_SQL_CLIENT_CLASS_NAME;
+            programArgs = String.join(" ", kafkaRestHostName, SchemaRegistryRestHostName,
+                    dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_INPUT),
+                    dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_OUTPUT),
+                    dfJob.getConnectorConfig().get(ConstantApp.PK_FLINK_TABLE_SINK_KEYS),
+                    HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_CONSUMER_GROURP),
+                            ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
+                    // Use 0 as we only support one query in flink
+                    "\"" + sqlCleaner(dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL))[0] + "\"");
+        } else if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_UDF.name()) {
+            entryClass = dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_JAR_CLASS_NAME);
+            programArgs = dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_JAR_PARA);
+        } else if(dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_Script.name()) {
+            entryClass = dfJob.getConnectorConfig().get(ConstantApp.FLINK_TABLEAPI_CLIENT_CLASS_NAME);
+            programArgs = dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_JAR_PARA);
+        }
+
+        return new JsonObject()
+                .put("allowNonRestoredState", allowNonRestoredState)
+                .put("savepointPath", savepointPath)
+                .put("parallelism", parallelism)
+                .put("entryClass", entryClass)
+                .put("programArgs", programArgs);
+    }
+
+    /**
      * Find mongo sorting options
      * @param routingContext
      * @param sortField
@@ -345,10 +386,108 @@ public class HelpFunc {
 
     }
 
+    /**
+     * Used to format the livy result to better rich text so that it can show in the web ui better
+     * @param livyStatementResult
+     * @return
+     */
+    public static String livyTableResultToRichText(JsonObject livyStatementResult) {
+        String tableHeader =
+                "<style type=\"text/css\">" +
+                        ".myOtherTable { background-color:#FFFFFF;border-collapse:collapse;color:#000}" +
+                        ".myOtherTable th { background-color:#99ceff;color:black;width:50%; }" +
+                        ".myOtherTable td, .myOtherTable th { padding:5px;border:0; }" +
+                        ".myOtherTable td { border-bottom:1px dotted #BDB76B; }" +
+                        "</style><table class=\"myOtherTable\">";
+        //String tableHeader = "<table border=\"1\",cellpadding=\"4\">";
+        String tableTrailer = "</table>";
+        String dataRow = "";
+
+        if (livyStatementResult.getJsonObject("output").containsKey("data")) {
+            JsonObject dataJason = livyStatementResult.getJsonObject("output").getJsonObject("data");
+
+            if (livyStatementResult.getString("code").contains("%table")) { //livy magic word %table
+                JsonObject output = dataJason.getJsonObject("application/vnd.livy.table.v1+json");
+                JsonArray header = output.getJsonArray("headers");
+                JsonArray data = output.getJsonArray("data");
+                String headerRow = "<tr><th>";
+
+                if (data.size() == 0) return "";
+
+                String separator = "</th><th>";
+                for (int i = 0; i < header.size(); i++) {
+                    if(i == header.size() - 1) separator = "";
+                    headerRow = headerRow + header.getJsonObject(i).getString("name") + separator;
+                }
+
+                headerRow = headerRow + "</th></tr>";
+
+                for (int i = 0; i < data.size(); i++) {
+                    dataRow = dataRow + jsonArrayToString(data.getJsonArray(i),
+                            "<tr><td>", "</td><td>", "</td></tr>");
+                }
+
+                return tableHeader + headerRow + dataRow + tableTrailer;
+
+            } else if (livyStatementResult.getString("code").contains("%json")) { // livy magic word %json
+                JsonArray data = dataJason.getJsonArray("application/json");
+
+                if (data.size() == 0) return "";
+
+                for (int i = 0; i < data.size(); i++) {
+                    dataRow = dataRow + jsonArrayToString(data.getJsonArray(i),
+                            "<tr><td>", "</td><td>", "</td></tr>");
+                }
+
+                return tableHeader + dataRow + tableTrailer;
+
+            } else { // livy no magic word
+                String data = dataJason.getString("text/plain");
+                return data.trim().replaceAll("\\[|]", "")
+                        .replaceAll(",Row", ",</br>Row");
+            }
+        } else {
+            return "";
+        }
+    }
+
+    /**
+     * Used to format Livy statement result to a list a fields and types for schema creation. Only support %table now
+     * @param livyStatementResult
+     * @return string of fields with type
+     */
+    public static String livyTableResultToAvroFields(JsonObject livyStatementResult, String subject) {
+
+        if (livyStatementResult.getJsonObject("output").containsKey("data")) {
+            JsonObject dataJason = livyStatementResult.getJsonObject("output").getJsonObject("data");
+
+            if (livyStatementResult.getString("code").contains("%table")) { //livy magic word %table
+                JsonObject output = dataJason.getJsonObject("application/vnd.livy.table.v1+json");
+                JsonArray header = output.getJsonArray("headers");
+
+                for (int i = 0; i < header.size(); i++) {
+                    header.getJsonObject(i).put("type", typeHive2Avro(header.getJsonObject(i).getString("type")));
+                }
+
+                JsonObject schema = new JsonObject().put("type", "record").put("name", subject).put("fields", header);
+
+                return schema.toString();
+            }
+        } else {
+            return "";
+        }
+        return "";
+    }
+
     public static String mapToJsonStringFromHashMapD2U(HashMap<String, String> hm) {
         return mapToJsonFromHashMapD2U(hm).toString();
     }
 
+    /**
+     * Utility to remove dot from json attribute to underscore for web ui
+     * @param hm
+     * @return
+     */
     public static JsonObject mapToJsonFromHashMapD2U(HashMap<String, String> hm) {
         JsonObject json = new JsonObject();
         for (String key : hm.keySet()) {
@@ -357,10 +496,20 @@ public class HelpFunc {
         return json;
     }
 
+    /**
+     * Utility to replace underscore from json attribute to dot for kafka connect
+     * @param hm
+     * @return
+     */
     public static String mapToJsonStringFromHashMapU2D(HashMap<String, String> hm) {
         return mapToJsonFromHashMapU2D(hm).toString();
     }
 
+    /**
+     * Utility to replace underscore from json attribute to dot for kafka connect
+     * @param hm
+     * @return
+     */
     public static JsonObject mapToJsonFromHashMapU2D(HashMap<String, String> hm) {
         JsonObject json = new JsonObject();
         for (String key : hm.keySet()) {
@@ -369,6 +518,11 @@ public class HelpFunc {
         return json;
     }
 
+    /**
+     * Utility to extract HashMap from json for DFPOPJ
+     * @param jo
+     * @return
+     */
     public static HashMap<String, String> mapToHashMapFromJson( JsonObject jo) {
         HashMap<String, String> hm = new HashMap();
         for (String key : jo.fieldNames()) {
@@ -463,58 +617,6 @@ public class HelpFunc {
         return sortedJsonArray;
     }
 
-    public static String uploadJar(String postURL, String jarFilePath) {
-        HttpResponse<String> jsonResponse = null;
-        try {
-            jsonResponse = Unirest.post(postURL)
-                    .field("file", new File(jarFilePath))
-                    .asString();
-        } catch (UnirestException e) {
-            e.printStackTrace();
-        }
-
-        JsonObject response = new JsonObject(jsonResponse.getBody());
-        if(response.containsKey("filename")) {
-            return response.getString("filename");
-        } else {
-            return "";
-        }
-    }
-
-    public static JsonObject getFlinkJarPara(DFJobPOPJ dfJob, String kafkaRestHostName, String SchemaRegistryRestHostName ) {
-
-        String allowNonRestoredState = "false";
-        String savepointPath = "";
-        String parallelism = "1";
-        String entryClass = "";
-        String programArgs = "";
-
-        if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_SQLA2A.name()) {
-            entryClass = ConstantApp.FLINK_SQL_CLIENT_CLASS_NAME;
-            programArgs = String.join(" ", kafkaRestHostName, SchemaRegistryRestHostName,
-                    dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_INPUT),
-                    dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_OUTPUT),
-                    dfJob.getConnectorConfig().get(ConstantApp.PK_FLINK_TABLE_SINK_KEYS),
-                    HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_CONSUMER_GROURP),
-                            ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
-                    // Use 0 as we only support one query in flink
-                    "\"" + sqlCleaner(dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL))[0] + "\"");
-        } else if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_UDF.name()) {
-            entryClass = dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_JAR_CLASS_NAME);
-            programArgs = dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_JAR_PARA);
-        } else if(dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_Script.name()) {
-            entryClass = dfJob.getConnectorConfig().get(ConstantApp.FLINK_TABLEAPI_CLIENT_CLASS_NAME);
-            programArgs = dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_JAR_PARA);
-        }
-
-        return new JsonObject()
-                .put("allowNonRestoredState", allowNonRestoredState)
-                .put("savepointPath", savepointPath)
-                .put("parallelism", parallelism)
-                .put("entryClass", entryClass)
-                .put("programArgs", programArgs);
-    }
-
     /**
      * Get input of sql statements and remove comments line, extract \n and extra ;
      * @param sqlInput
@@ -555,7 +657,15 @@ public class HelpFunc {
         return pySparkCode;
     }
 
-    public static String arrayToString(JsonArray ja, String begin, String separator, String end) {
+    /**
+     * Convert Json Array to String with proper begin, separator, and end string.
+     * @param ja
+     * @param begin
+     * @param separator
+     * @param end
+     * @return
+     */
+    public static String jsonArrayToString(JsonArray ja, String begin, String separator, String end) {
         for (int i = 0; i < ja.size(); i++) {
             if(i == ja.size() - 1) separator = "";
             begin = begin + ja.getValue(i).toString() + separator;
@@ -564,102 +674,9 @@ public class HelpFunc {
     }
 
     /**
-     * Used to format the livy result to better rich text so that it can show in the web ui better
-     * @param livyStatementResult
-     * @return
-     */
-    public static String livyTableResultToRichText(JsonObject livyStatementResult) {
-        String tableHeader =
-                "<style type=\"text/css\">" +
-                ".myOtherTable { background-color:#FFFFFF;border-collapse:collapse;color:#000}" +
-                ".myOtherTable th { background-color:#99ceff;color:black;width:50%; }" +
-                ".myOtherTable td, .myOtherTable th { padding:5px;border:0; }" +
-                ".myOtherTable td { border-bottom:1px dotted #BDB76B; }" +
-                "</style><table class=\"myOtherTable\">";
-        //String tableHeader = "<table border=\"1\",cellpadding=\"4\">";
-        String tableTrailer = "</table>";
-        String dataRow = "";
-
-        if (livyStatementResult.getJsonObject("output").containsKey("data")) {
-            JsonObject dataJason = livyStatementResult.getJsonObject("output").getJsonObject("data");
-
-            if (livyStatementResult.getString("code").contains("%table")) { //livy magic word %table
-                JsonObject output = dataJason.getJsonObject("application/vnd.livy.table.v1+json");
-                JsonArray header = output.getJsonArray("headers");
-                JsonArray data = output.getJsonArray("data");
-                String headerRow = "<tr><th>";
-
-                if (data.size() == 0) return "";
-
-                String separator = "</th><th>";
-                for (int i = 0; i < header.size(); i++) {
-                    if(i == header.size() - 1) separator = "";
-                    headerRow = headerRow + header.getJsonObject(i).getString("name") + separator;
-                }
-
-                headerRow = headerRow + "</th></tr>";
-
-                for (int i = 0; i < data.size(); i++) {
-                    dataRow = dataRow + arrayToString(data.getJsonArray(i),
-                            "<tr><td>", "</td><td>", "</td></tr>");
-                }
-
-                return tableHeader + headerRow + dataRow + tableTrailer;
-
-            } else if (livyStatementResult.getString("code").contains("%json")) { // livy magic word %json
-                JsonArray data = dataJason.getJsonArray("application/json");
-
-                if (data.size() == 0) return "";
-
-                for (int i = 0; i < data.size(); i++) {
-                    dataRow = dataRow + arrayToString(data.getJsonArray(i),
-                            "<tr><td>", "</td><td>", "</td></tr>");
-                }
-
-                return tableHeader + dataRow + tableTrailer;
-
-            } else { // livy no magic word
-                String data = dataJason.getString("text/plain");
-                return data.trim().replaceAll("\\[|]", "")
-                        .replaceAll(",Row", ",</br>Row");
-            }
-        } else {
-            return "";
-        }
-    }
-
-    /**
-     * Used to format Livy statement result to a list a fields and types for schema creation. Only support %table now
-     * @param livyStatementResult
-     * @return string of fields with type
-     */
-    public static String livyTableResultToAvroFields(JsonObject livyStatementResult, String subject) {
-
-        if (livyStatementResult.getJsonObject("output").containsKey("data")) {
-            JsonObject dataJason = livyStatementResult.getJsonObject("output").getJsonObject("data");
-
-            if (livyStatementResult.getString("code").contains("%table")) { //livy magic word %table
-                JsonObject output = dataJason.getJsonObject("application/vnd.livy.table.v1+json");
-                JsonArray header = output.getJsonArray("headers");
-
-                for (int i = 0; i < header.size(); i++) {
-                    header.getJsonObject(i).put("type", typeHive2Avro(header.getJsonObject(i).getString("type")));
-                }
-
-                JsonObject schema = new JsonObject().put("type", "record").put("name", subject).put("fields", header);
-
-                return schema.toString();
-            }
-        } else {
-            return "";
-        }
-        return "";
-    }
-
-    /**
      * Map hive type (from Livy statement result) to avro schema type
      * @param hiveType
-     * @return type in avro
+     * @return type in Avro
      */
     private static String typeHive2Avro(String hiveType) {
 
@@ -699,6 +716,29 @@ public class HelpFunc {
     }
 
     /**
+     * Upload Flink client to flink rest server
+     * @param postURL
+     * @param jarFilePath
+     * @return
+     */
+    public static String uploadJar(String postURL, String jarFilePath) {
+        HttpResponse<String> jsonResponse = null;
+        try {
+            jsonResponse = Unirest.post(postURL)
+                    .field("file", new File(jarFilePath))
+                    .asString();
+        } catch (UnirestException e) {
+            e.printStackTrace();
+        }
+
+        JsonObject response = new JsonObject(jsonResponse.getBody());
+        if(response.containsKey("filename")) {
+            return response.getString("filename");
+        } else {
+            return "";
+        }
+    }
+    /**
      * Helper class to update mongodb status
      * @param mongo
      * @param COLLECTION
@@ -716,103 +756,5 @@ public class HelpFunc {
                     }
                 }
         );
-    }
-
-    /**
-     * Help class to add a stream back task. Will check to add a new or update existing one.
-     * @param wc_streamback
-     * @param mongo
-     * @param COLLECTION
-     * @param schema_registry_rest_port
-     * @param kafka_server_host
-     * @param df_rest_port
-     * @param df_rest_host
-     * @param createNewSchema
-     * @param subject
-     * @param schemaFields
-     * @param streamBackMaster
-     * @param streamBackWorker
-     * @param LOG
-     */
-    public static void addStreamBackTask(WebClient wc_streamback, MongoClient mongo, String COLLECTION,
-                                         int schema_registry_rest_port, String kafka_server_host,
-                                         int df_rest_port, String df_rest_host,
-                                         Boolean createNewSchema,
-                                         String subject, String schemaFields,
-                                         DFJobPOPJ streamBackMaster, DFJobPOPJ streamBackWorker, Logger LOG) {
-        if(createNewSchema) {
-            wc_streamback.post(schema_registry_rest_port, kafka_server_host,
-                    ConstantApp.SR_REST_URL_SUBJECTS + "/" + subject + ConstantApp.SR_REST_URL_VERSIONS)
-                    .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
-                    .sendJsonObject( new JsonObject().put(ConstantApp.SCHEMA_REGISTRY_KEY_SCHEMA, schemaFields), schemar -> {
-                        if (schemar.succeeded()) {
-                            // Use local client to create a stream back worker source file task from datafibers rest service.
-                            // Update stream back master status to failed when submission failed
-                            // Then, check if the taskId already in repo, if yes update instead of create
-                            LOG.error("Stream Back Schema is created with version " + schemar.result().bodyAsString());
-                            mongo.findOne(COLLECTION, new JsonObject().put("_id", streamBackWorker.getId()),
-                                    new JsonObject().put("connectorConfig", 1), res -> {
-                                        if (res.succeeded() &&
-                                                res.result().getJsonObject("connectorConfig").toString() != null) {
-                                            // found in repo, update
-                                            wc_streamback
-                                                    .put(df_rest_port, df_rest_host, ConstantApp.DF_CONNECTS_REST_URL + "/" + streamBackWorker.getId())
-                                                    .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
-                                                    .sendJsonObject(streamBackWorker.toKafkaConnectJson(),
-                                                            war -> {
-                                                                streamBackMaster.getConnectorConfig().put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE,
-                                                                        war.succeeded() ? ConstantApp.DF_STATUS.RUNNING.name() : ConstantApp.DF_STATUS.FAILED.name());
-                                                                updateRepoWithLogging(mongo, COLLECTION, streamBackMaster, LOG);
-                                                            }
-                                                    );
-                                        } else {
-                                            // create a new task
-                                            wc_streamback
-                                                    .post(df_rest_port, df_rest_host, ConstantApp.DF_CONNECTS_REST_URL)
-                                                    .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
-                                                    .sendJsonObject(streamBackWorker.toKafkaConnectJson(),
-                                                            war -> {
-                                                                streamBackMaster.getConnectorConfig().put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE,
-                                                                        war.succeeded() ? ConstantApp.DF_STATUS.RUNNING.name() : ConstantApp.DF_STATUS.FAILED.name());
-                                                                updateRepoWithLogging(mongo, COLLECTION, streamBackMaster, LOG);
-                                                            }
-                                                    );
-                                        }
-                                    });
-                        } else {
-                            LOG.error("Schema creation failed for streaming back worker");
-                        }
-                    });
-        } else {
-            mongo.findOne(COLLECTION, new JsonObject().put("_id", streamBackWorker.getId()),
-                    new JsonObject().put("connectorConfig", 1), res -> {
-                        if (res.succeeded() &&
-                                res.result().getJsonObject("connectorConfig").toString() != null) {
-                            // found in repo, update
-                            wc_streamback
-                                    .put(df_rest_port, df_rest_host, ConstantApp.DF_CONNECTS_REST_URL + "/" + streamBackWorker.getId())
-                                    .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
-                                    .sendJsonObject(streamBackWorker.toKafkaConnectJson(),
-                                            war -> {
-                                                streamBackMaster.getConnectorConfig().put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE,
-                                                        war.succeeded() ? ConstantApp.DF_STATUS.RUNNING.name() : ConstantApp.DF_STATUS.FAILED.name());
-                                                updateRepoWithLogging(mongo, COLLECTION, streamBackMaster, LOG);
-                                            }
-                                    );
-                        } else {
-                            // create a new task
-                            wc_streamback
-                                    .post(df_rest_port, df_rest_host, ConstantApp.DF_CONNECTS_REST_URL)
-                                    .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
-                                    .sendJsonObject(streamBackWorker.toKafkaConnectJson(),
-                                            war -> {
-                                                streamBackMaster.getConnectorConfig().put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE,
-                                                        war.succeeded() ? ConstantApp.DF_STATUS.RUNNING.name() : ConstantApp.DF_STATUS.FAILED.name());
-                                                updateRepoWithLogging(mongo, COLLECTION, streamBackMaster, LOG);
-                                            }
-                                    );
-                        }
-                    });
-        }
     }
 }

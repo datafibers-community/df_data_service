@@ -20,8 +20,8 @@ import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
 
-public class SchemaRegisterProcessor {
-    private static final Logger LOG = Logger.getLogger(SchemaRegisterProcessor.class);
+public class ProcessorTopicSchemaRegistry {
+    private static final Logger LOG = Logger.getLogger(ProcessorTopicSchemaRegistry.class);
 
     /**
      * Retrieve all subjects first; and then retrieve corresponding subject's schema information.

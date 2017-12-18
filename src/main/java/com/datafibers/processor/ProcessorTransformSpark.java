@@ -22,8 +22,8 @@ import org.apache.log4j.Logger;
  * This is the utility class to communicate with Spark through Apache Livy Rest Service
  */
 
-public class SparkTransformProcessor {
-    private static final Logger LOG = Logger.getLogger(SparkTransformProcessor.class);
+public class ProcessorTransformSpark {
+    private static final Logger LOG = Logger.getLogger(ProcessorTransformSpark.class);
 
     /**
      * forwardPostAsAddJar is a generic function to submit any spark jar to the livy.
@@ -403,11 +403,11 @@ public class SparkTransformProcessor {
 
     /**
      * This is to get live job status for spark. Since spark now only has batch, we do not use it in web UI.
-     * @param routingContext
-     * @param webClient
-     * @param dfJob
-     * @param sparkRestHost
-     * @param sparkRestPort
+     * @param routingContext route context
+     * @param webClient vertx web client for rest
+     * @param dfJob jd job object
+     * @param sparkRestHost spark/livy rest hostname
+     * @param sparkRestPort spark/livy rest port number
      */
     @Deprecated
     public static void forwardGetAsJobStatusFromRepo(RoutingContext routingContext, WebClient webClient, DFJobPOPJ dfJob,
