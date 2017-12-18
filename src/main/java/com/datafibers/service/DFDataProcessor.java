@@ -77,7 +77,6 @@ public class DFDataProcessor extends AbstractVerticle {
     // Transforms attributes flink
     public static Boolean transform_engine_flink_enabled;
     private static String flink_server_host;
-    private static Integer flink_server_port;
     private static Integer flink_rest_server_port;
     private static String flink_rest_server_host_port;
 
@@ -132,7 +131,6 @@ public class DFDataProcessor extends AbstractVerticle {
         // Check Flink Transforms config
         this.transform_engine_flink_enabled = config().getBoolean("transform.engine.flink.enable", Boolean.TRUE);
         this.flink_server_host = config().getString("flink.servers.host", "localhost");
-        this.flink_server_port = config().getInteger("flink.servers.port", 6123);
         this.flink_rest_server_port = config().getInteger("flink.rest.server.port", 8001); // Same to Flink Web Dashboard
         this.flink_rest_server_host_port = (this.flink_server_host.contains("http")?
                 this.flink_server_host : "http://" + this.flink_server_host) + ":" + this.flink_rest_server_port;
