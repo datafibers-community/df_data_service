@@ -1,8 +1,6 @@
 package com.datafibers.util;
 
-import com.datafibers.processor.ProcessorTopicSchemaRegistry;
-import com.datafibers.processor.ProcessorTransformFlink;
-import com.datafibers.processor.ProcessorConnectKafka;
+import com.datafibers.processor.*;
 import com.datafibers.service.DFDataProcessor;
 import com.datafibers.service.DFInitService;
 import com.datafibers.service.DFWebUI;
@@ -56,9 +54,11 @@ public class CLIParser {
                 LogManager.getLogger(DFInitService.class).setLevel(Level.DEBUG);
                 LogManager.getLogger(DFWebUI.class).setLevel(Level.DEBUG);
                 LogManager.getLogger(DFDataProcessor.class).setLevel(Level.DEBUG);
-                LogManager.getLogger(ProcessorTransformFlink.class).setLevel(Level.DEBUG);
                 LogManager.getLogger(ProcessorConnectKafka.class).setLevel(Level.DEBUG);
+                LogManager.getLogger(ProcessorStreamBack.class).setLevel(Level.DEBUG);
                 LogManager.getLogger(ProcessorTopicSchemaRegistry.class).setLevel(Level.DEBUG);
+                LogManager.getLogger(ProcessorTransformFlink.class).setLevel(Level.DEBUG);
+                LogManager.getLogger(ProcessorTransformSpark.class).setLevel(Level.DEBUG);
             }
 
             if (cmd.hasOption("m")) {

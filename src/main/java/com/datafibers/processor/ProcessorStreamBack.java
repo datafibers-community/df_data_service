@@ -42,6 +42,7 @@ public class ProcessorStreamBack {
                                          String subject, String schemaFields,
                                          DFJobPOPJ streamBackMaster, DFJobPOPJ streamBackWorker, Logger LOG) {
         if(createNewSchema) {
+            LOG.debug("create schema ...");
             wc_streamback.post(schema_registry_rest_port, schema_registry_rest_host,
                     ConstantApp.SR_REST_URL_SUBJECTS + "/" + subject + ConstantApp.SR_REST_URL_VERSIONS)
                     .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.AVRO_REGISTRY_CONTENT_TYPE)
@@ -59,7 +60,7 @@ public class ProcessorStreamBack {
                                             wc_streamback
                                                     .put(df_rest_port, df_rest_host, ConstantApp.DF_CONNECTS_REST_URL + "/" + streamBackWorker.getId())
                                                     .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
-                                                    .sendJsonObject(streamBackWorker.toKafkaConnectJson(),
+                                                    .sendJsonObject(streamBackWorker.toJson(),
                                                             war -> {
                                                                 streamBackMaster.getConnectorConfig().put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE,
                                                                         war.succeeded() ? ConstantApp.DF_STATUS.RUNNING.name() : ConstantApp.DF_STATUS.FAILED.name());
@@ -68,13 +69,15 @@ public class ProcessorStreamBack {
                                                     );
                                         } else {
                                             // create a new task
+                                            LOG.debug("create schema then create a new stream back task");
                                             wc_streamback
                                                     .post(df_rest_port, df_rest_host, ConstantApp.DF_CONNECTS_REST_URL)
                                                     .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
-                                                    .sendJsonObject(streamBackWorker.toKafkaConnectJson(),
+                                                    .sendJsonObject(streamBackWorker.toJson(),
                                                             war -> {
                                                                 streamBackMaster.getConnectorConfig().put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE,
                                                                         war.succeeded() ? ConstantApp.DF_STATUS.RUNNING.name() : ConstantApp.DF_STATUS.FAILED.name());
+                                                                LOG.debug("response from create stream back tsdk = " + war.result().bodyAsString());
                                                                 HelpFunc.updateRepoWithLogging(mongo, COLLECTION, streamBackMaster, LOG);
                                                             }
                                                     );
@@ -85,15 +88,17 @@ public class ProcessorStreamBack {
                         }
                     });
         } else {
+            LOG.debug("use old schema ...");
             mongo.findOne(COLLECTION, new JsonObject().put("_id", streamBackWorker.getId()),
                     new JsonObject().put("connectorConfig", 1), res -> {
-                        if (res.succeeded() &&
-                                res.result().getJsonObject("connectorConfig").toString() != null) {
+                        LOG.debug("res.succeeded() = " + res.succeeded());
+                        LOG.debug("res.result() = " + res.result());
+                        if (res.succeeded() && res.result() != null) {
                             // found in repo, update
                             wc_streamback
                                     .put(df_rest_port, df_rest_host, ConstantApp.DF_CONNECTS_REST_URL + "/" + streamBackWorker.getId())
                                     .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
-                                    .sendJsonObject(streamBackWorker.toKafkaConnectJson(),
+                                    .sendJsonObject(streamBackWorker.toJson(),
                                             war -> {
                                                 streamBackMaster.getConnectorConfig().put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE,
                                                         war.succeeded() ? ConstantApp.DF_STATUS.RUNNING.name() : ConstantApp.DF_STATUS.FAILED.name());
@@ -102,10 +107,11 @@ public class ProcessorStreamBack {
                                     );
                         } else {
                             // create a new task
+                            LOG.debug("use old schema then create a new stream back task");
                             wc_streamback
                                     .post(df_rest_port, df_rest_host, ConstantApp.DF_CONNECTS_REST_URL)
                                     .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
-                                    .sendJsonObject(streamBackWorker.toKafkaConnectJson(),
+                                    .sendJsonObject(streamBackWorker.toJson(),
                                             war -> {
                                                 streamBackMaster.getConnectorConfig().put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE,
                                                         war.succeeded() ? ConstantApp.DF_STATUS.RUNNING.name() : ConstantApp.DF_STATUS.FAILED.name());
@@ -137,14 +143,16 @@ public class ProcessorStreamBack {
                                         MongoClient mongo, String COLLECTION,
                                         int schema_registry_rest_port, String schema_registry_rest_host,
                                         int df_rest_port, String df_rest_host, String schemaFields) {
-
+        LOG.debug("Enter stream back call");
         // When stream back is needed, we either monitoring status OR kicking off the job
         // If state is available, the stream back job is already started. Or else, start it.
         String streamBackTaskId = updateJob.getId() + "_stream_worker";
         String streamBackFilePath = updateJob.getConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_PATH);
         String streamBackTopic = updateJob.getConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_TOPIC);
 
-        if (updateJob.getConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE).equalsIgnoreCase("")) {
+        if (!updateJob.getConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE).equalsIgnoreCase("")) {
+            LOG.debug("Found stream back state");
+
             String streamBackTaskState = updateJob.getConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE);
 
             if (streamBackTaskState.equalsIgnoreCase(ConstantApp.DF_STATUS.FINISHED.name())) {
@@ -211,6 +219,7 @@ public class ProcessorStreamBack {
             */
 
             // First, set current job state and stream back state
+            LOG.debug("Will create a new stream back job");
             updateJob
                     .setStatus(ConstantApp.DF_STATUS.STREAMING.name())
                     .setConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE, ConstantApp.DF_STATUS.UNASSIGNED.name())

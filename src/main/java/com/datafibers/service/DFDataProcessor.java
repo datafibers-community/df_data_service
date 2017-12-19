@@ -2171,6 +2171,8 @@ public class DFDataProcessor extends AbstractVerticle {
                                                         if (repoStatus.compareToIgnoreCase(resStatus) != 0 &&
                                                                 repoFullCode.equalsIgnoreCase(resFullCode)) { //status changes
 
+                                                            LOG.debug("Change Detected");
+
                                                             // Set df job status from statement state
                                                             updateJob
                                                                     .setStatus(resStatus)
@@ -2205,7 +2207,9 @@ public class DFDataProcessor extends AbstractVerticle {
                                                             // This has to come after above update dfJob since we do not want loose dfJob status
                                                             // when update stream back status in separate thread
                                                             if(resStatus.equalsIgnoreCase(ConstantApp.DF_STATUS.FINISHED.name()) &&
-                                                                    updateJob.getConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_FLAG).equalsIgnoreCase("true")) {
+                                                                    updateJob.getConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_FLAG)
+                                                                            .equalsIgnoreCase("true")) {
+                                                                LOG.debug("Stream Back Enabled");
                                                                 // Update repo for stream back job
                                                                 ProcessorStreamBack.enableStreamBack(
                                                                         wc_streamback,

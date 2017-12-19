@@ -645,7 +645,7 @@ public class HelpFunc {
                 // Check if we need to stream the result set
                 if(streamBackFlag) {
                     pySparkCode = pySparkCode + "sqlContext.sql(\"" + sqlList[i] +
-                            "\").write.format(\"com.databricks.spark.csv\").save(\"" + streamPath + "\")\n";
+                            "\").coalesce(1).write.format(\"com.databricks.spark.csv\").save(\"" + streamPath + "\")\n";
                 }
                 // Keep result only for the last query and only top 10 rows
                 pySparkCode = pySparkCode + "a = sqlContext.sql(\"" + sqlList[i] + "\").take(10)\n%table a";
