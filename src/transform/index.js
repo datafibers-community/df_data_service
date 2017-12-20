@@ -90,7 +90,7 @@ export const TransformEdit = (props) => (
 		        </DependentInput>
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_SPARK_SQL">
                     <BooleanInput source="connectorConfig.stream_back_flag" label="Stream Back the Result?" defaultValue={false} style={{ width: 500 }} />
-                    <BooleanInput source="connectorConfig.choose_or_create" label="New or Choose Topic?" defaultValue={false} style={{ width: 500 }} />
+                    <BooleanInput source="connectorConfig.choose_or_create" label="Choose/Create Topic?" defaultValue={false} style={{ width: 500 }} />
                     <LongTextInput source="connectorConfig.stream_back_topic" label="Stream Back Topic" style={{ width: 500 }}/>
 		            <LongTextInput source="connectorConfig.trans_sql" label="Spark SQL over Hive Queries, such as select * from ..." validate={[ required ]} style={{ width: 500 }} />
 		        </DependentInput>
@@ -173,7 +173,7 @@ export const TransformCreate = (props) => (
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_SPARK_SQL">
                     <BooleanInput source="connectorConfig.stream_back_flag" label="Stream Back the Result?" defaultValue={false} style={{ width: 500 }} />
                     <DependentInput dependsOn="connectorConfig.stream_back_flag" value={true}>
-                        <BooleanInput source="connectorConfig.choose_or_create" label="New or Choose Topic?" defaultValue={false} style={{ width: 500 }} />
+                        <BooleanInput source="connectorConfig.choose_or_create" label="Choose/Create Topic?" defaultValue={false} style={{ width: 500 }} />
                         <DependentInput dependsOn="connectorConfig.choose_or_create" value={true}>
                             <LongTextInput source="connectorConfig.stream_back_topic" label="Auto Create a Write Topic" style={{ width: 500 }}/>
                         </DependentInput>
