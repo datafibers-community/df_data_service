@@ -125,10 +125,10 @@ export const TransformEdit = (props) => (
                     <DisabledInput source="jobConfig.livy_statement_state" label="Livy Statement State" style={{ display: 'inline-block', marginLeft: 32 }} />
                     <ChipField source="jobConfig.livy_statement_status" label="Query Status" />
                     <DependentInput dependsOn="status" value="FINISHED">
-                        <RichTextField source="jobConfig.livy_statement_output" label="Last Query Result Top 20 Rows Preview"/>
+                        <RichTextField source="jobConfig.livy_statement_output" label="Last Query Result Set Preview - top 10 rows "/>
                     </DependentInput>
                     <DependentInput dependsOn="status" value="FAILED">
-                        <RichTextField source="jobConfig.livy_statement_exception" label="Exceptions"/>
+                        <RichTextField source="jobConfig.livy_statement_exception" label="Query Exceptions"/>
                     </DependentInput>
 		        </DependentInput>
             </FormTab>
@@ -168,7 +168,7 @@ export const TransformCreate = (props) => (
                     </DependentInput>
                     <LongTextInput source="connectorConfig.group_id" label="Consumer ID to Read Data. (Optional)" style={{ width: 500 }} />
 		            <LongTextInput source="connectorConfig.sink_key_fields" label="Key Columns in Sink (separated by ,)" style={{ width: 500 }} />
-		            <LongTextInput source="connectorConfig.trans_sql" label="Stream SQL Query" defaultValue="--This is comments and only single sql statement is supported" validate={[ required ]} style={{ width: 500 }} />
+		            <LongTextInput source="connectorConfig.trans_sql" label="Stream SQL Query (Comments --)" defaultValue="--Only single sql statement is supported" validate={[ required ]} style={{ width: 500 }} />
 		        </DependentInput>
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_SPARK_SQL">
                     <BooleanInput source="connectorConfig.stream_back_flag" label="Stream Back the Result?" defaultValue={false} style={{ width: 500 }} />
@@ -183,7 +183,7 @@ export const TransformCreate = (props) => (
                             </ReferenceInput>
                         </DependentInput>
                     </DependentInput>
-		            <LongTextInput source="connectorConfig.trans_sql" label="Batch SQL Queries (Comments --, Queries separate by ;)" defaultValue="--Result preview (top 10 rows) is only available for the last query." validate={[ required ]} style={{ width: 500 }} />
+		            <LongTextInput source="connectorConfig.trans_sql" label="Batch SQL Queries (Comments --, Queries separate by ;)" defaultValue="--Result preview is only available for the last query." validate={[ required ]} style={{ width: 500 }} />
 		        </DependentInput>
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_FLINK_Script">
                     <TextInput source="connectorConfig.topic_in" label="A Topic to Read Data" style={{ display: 'inline-block' }} validate={[ required ]} />
