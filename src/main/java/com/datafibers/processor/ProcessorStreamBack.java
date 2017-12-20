@@ -54,14 +54,14 @@ public class ProcessorStreamBack {
                             LOG.error("Stream Back Schema is created with version " + schemar.result().bodyAsString());
                             mongo.findOne(COLLECTION, new JsonObject().put("_id", streamBackWorker.getId()),
                                     new JsonObject().put("connectorConfig", 1), res -> {
-                                        if (res.succeeded() &&
-                                                res.result().getJsonObject("connectorConfig").toString() != null) {
+                                        if (res.succeeded() && res.result() != null) {
                                             // found in repo, update
                                             wc_streamback
                                                     .put(df_rest_port, df_rest_host, ConstantApp.DF_CONNECTS_REST_URL + "/" + streamBackWorker.getId())
                                                     .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
                                                     .sendJsonObject(streamBackWorker.toJson(),
                                                             war -> {
+                                                                LOG.debug("rest put result = " + war.result().bodyAsString());
                                                                 streamBackMaster.getConnectorConfig().put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE,
                                                                         war.succeeded() ? ConstantApp.DF_STATUS.RUNNING.name() : ConstantApp.DF_STATUS.FAILED.name());
                                                                 HelpFunc.updateRepoWithLogging(mongo, COLLECTION, streamBackMaster, LOG);
@@ -75,6 +75,7 @@ public class ProcessorStreamBack {
                                                     .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
                                                     .sendJsonObject(streamBackWorker.toJson(),
                                                             war -> {
+                                                                LOG.debug("rest post result = " + war.result().bodyAsString());
                                                                 streamBackMaster.getConnectorConfig().put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE,
                                                                         war.succeeded() ? ConstantApp.DF_STATUS.RUNNING.name() : ConstantApp.DF_STATUS.FAILED.name());
                                                                 LOG.debug("response from create stream back tsdk = " + war.result().bodyAsString());
@@ -100,6 +101,7 @@ public class ProcessorStreamBack {
                                     .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
                                     .sendJsonObject(streamBackWorker.toJson(),
                                             war -> {
+                                                LOG.debug("rest put result = " + war.result().bodyAsString());
                                                 streamBackMaster.getConnectorConfig().put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE,
                                                         war.succeeded() ? ConstantApp.DF_STATUS.RUNNING.name() : ConstantApp.DF_STATUS.FAILED.name());
                                                 HelpFunc.updateRepoWithLogging(mongo, COLLECTION, streamBackMaster, LOG);
@@ -107,12 +109,13 @@ public class ProcessorStreamBack {
                                     );
                         } else {
                             // create a new task
-                            LOG.debug("use old schema then create a new stream back task");
+                            LOG.debug("use old schema then create a new stream back task streamBackWorker.toJson() = " + streamBackWorker.toJson());
                             wc_streamback
                                     .post(df_rest_port, df_rest_host, ConstantApp.DF_CONNECTS_REST_URL)
                                     .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
                                     .sendJsonObject(streamBackWorker.toJson(),
                                             war -> {
+                                                LOG.debug("rest post result = " + war.result().bodyAsString());
                                                 streamBackMaster.getConnectorConfig().put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE,
                                                         war.succeeded() ? ConstantApp.DF_STATUS.RUNNING.name() : ConstantApp.DF_STATUS.FAILED.name());
                                                 HelpFunc.updateRepoWithLogging(mongo, COLLECTION, streamBackMaster, LOG);
@@ -150,10 +153,12 @@ public class ProcessorStreamBack {
         String streamBackFilePath = updateJob.getConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_PATH);
         String streamBackTopic = updateJob.getConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_TOPIC);
 
-        if (!updateJob.getConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE).equalsIgnoreCase("")) {
-            LOG.debug("Found stream back state");
+        if (!updateJob.getConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE).equalsIgnoreCase("") ||
+                !updateJob.getConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE)
+                        .equalsIgnoreCase(ConstantApp.DF_STATUS.UNASSIGNED.name())) {
 
             String streamBackTaskState = updateJob.getConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE);
+            LOG.debug("Found stream back state = " + streamBackTaskState);
 
             if (streamBackTaskState.equalsIgnoreCase(ConstantApp.DF_STATUS.FINISHED.name())) {
                 // TODO delete the stream back file source task If not implement, the task will keep not impact
@@ -173,6 +178,8 @@ public class ProcessorStreamBack {
                         new JsonObject().put("status", 1), res -> {
                             if (res.succeeded()) {
                                 String workerStatus = res.result().getString("status");
+                                LOG.debug("Stream back worker status = " + workerStatus);
+
                                 if (workerStatus.equalsIgnoreCase(ConstantApp.DF_STATUS.FAILED.name()) ||
                                         workerStatus.equalsIgnoreCase(ConstantApp.DF_STATUS.LOST.name())) {
                                     updateJob

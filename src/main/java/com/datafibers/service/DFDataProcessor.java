@@ -1487,14 +1487,21 @@ public class DFDataProcessor extends AbstractVerticle {
                                         dfJob.getConnectorType().contains("SPARK") &&
                                         connectorConfigString.compareTo(before_update_connectorConfigString) != 0) {
 
-                                    ProcessorTransformSpark.forwardPutAsUpdateOne(
-                                            vertx, wc_spark,
-                                            dfJob, mongo, COLLECTION,
-                                            spark_livy_server_host, spark_livy_server_port
-                                    );
+                                //update df status properly before response
+                                dfJob.setStatus(ConstantApp.DF_STATUS.UNASSIGNED.name());
 
-                                    //update df status properly before response
-                                    dfJob.setStatus(ConstantApp.DF_STATUS.UNASSIGNED.name());
+                                if(dfJob.getConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_FLAG)
+                                        .equalsIgnoreCase("true")) {
+                                    dfJob.setConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE,
+                                            ConstantApp.DF_STATUS.UNASSIGNED.name());
+                                }
+
+                                ProcessorTransformSpark.forwardPutAsUpdateOne(
+                                        vertx, wc_spark,
+                                        dfJob, mongo, COLLECTION,
+                                        spark_livy_server_host, spark_livy_server_port
+                                );
+
                             } else {
                                 LOG.info(DFAPIMessage.logResponseMessage(1007, id));
                             }
@@ -2226,7 +2233,7 @@ public class DFDataProcessor extends AbstractVerticle {
                                                             } else {
                                                                 // Update repo for regular job
                                                                 HelpFunc.updateRepoWithLogging(mongo, COLLECTION, updateJob, LOG);
-                                                                LOG.debug("PK_TRANSFORM_STREAM_BACK_FLAG Not Found or equal to FALSE, so update as regular job.");
+                                                                LOG.debug("PK_TRANSFORM_STREAM_BACK_FLAG Not Found or equal to FALSE or Master Status Not FINISHED, so update as regular job.");
                                                             }
 
                                                         } else {
