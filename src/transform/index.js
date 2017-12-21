@@ -2,7 +2,7 @@
 import React from 'react';
 import { Filter, List, Edit, Create } from 'admin-on-rest';
 import { ReferenceField, Datagrid, SelectField, UrlField, FunctionField, ChipField, LongTextField, TextField, DateField, RichTextField, ImageField } from 'admin-on-rest';
-import { SelectArrayInput, AutocompleteInput, NumberInput, DisabledInput, BooleanInput, LongTextInput, SelectInput, TextInput, ReferenceInput, ReferenceArrayInput, ReferenceManyField } from 'admin-on-rest';
+import { RadioButtonGroupInput, NullableBooleanInput, SelectArrayInput, AutocompleteInput, NumberInput, DisabledInput, BooleanInput, LongTextInput, SelectInput, TextInput, ReferenceInput, ReferenceArrayInput, ReferenceManyField } from 'admin-on-rest';
 import { EditButton, ShowButton } from 'admin-on-rest';
 import { Show, SimpleShowLayout, SimpleForm, TabbedForm, FormTab } from 'admin-on-rest';
 import RichTextInput from 'aor-rich-text-input';
@@ -78,6 +78,7 @@ export const TransformEdit = (props) => (
   		        { id: 'TRANSFORM_EXCHANGE_FLINK_UDF',  name: 'Stream UDF on Queue' },
   		        { id: 'TRANSFORM_EXCHANGE_SPARK_UDF',  name: 'Batch UDF on Queue' },
 		        ]} />
+
             </FormTab>
             <FormTab label="Setting">
                 <DisabledInput source="connectorConfig.cuid" label="ID or CUID or Name"/>
@@ -89,10 +90,16 @@ export const TransformEdit = (props) => (
 		            <LongTextInput source="connectorConfig.trans_sql" label="Stream SQL Query, such as select * from ..." validate={[ required ]} style={{ width: 500 }} />
 		        </DependentInput>
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_SPARK_SQL">
-                    <BooleanInput source="connectorConfig.stream_back_flag" label="Stream Back the Result?" style={{ width: 500 }} />
-                    <BooleanInput source="connectorConfig.choose_or_create" label="Choose/Create Topic?" style={{ width: 500 }} />
+                    <RadioButtonGroupInput source="connectorConfig.stream_back_flag" label="Stream Back" style={{ display: 'inline-block', width: 400}} choices={[
+                                                        { id: 'true', name: 'Enable Stream back batch result to queue' },
+                                                        { id: 'false', name: 'Disable stream back' },
+                    ]} />
+                    <RadioButtonGroupInput source="connectorConfig.choose_or_create" label="Topic and Schema" style={{ display: 'inline-block', marginLeft: 32, width: 400}} choices={[
+                                        { id: 'false', name: 'Create a new topic with result schema' },
+                                        { id: 'true', name: 'Choose an existing topic ' },
+                    ]} />
                     <LongTextInput source="connectorConfig.stream_back_topic" label="Stream Back Topic" style={{ width: 500 }}/>
-		            <LongTextInput source="connectorConfig.trans_sql" label="Spark SQL over Hive Queries, such as select * from ..." validate={[ required ]} style={{ width: 500 }} />
+		            <LongTextInput source="connectorConfig.trans_sql" label="Spark SQL over Hive Queries (Comments --, Queries separate by ;)" validate={[ required ]} style={{ width: 500 }} />
 		        </DependentInput>
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_FLINK_Script">
                     <TextInput source="connectorConfig.topic_in" label="A Topic to Read Data" style={{ display: 'inline-block' }} validate={[ required ]} />
