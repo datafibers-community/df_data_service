@@ -59,7 +59,7 @@ public class ProcessorStreamBack {
                                             wc_streamback
                                                     .put(df_rest_port, df_rest_host, ConstantApp.DF_CONNECTS_REST_URL + "/" + streamBackWorker.getId())
                                                     .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
-                                                    .sendJsonObject(streamBackWorker.toJson(),
+                                                    .sendJsonObject(streamBackWorker.toPostJson(),
                                                             war -> {
                                                                 LOG.debug("rest put result = " + war.result().bodyAsString());
                                                                 streamBackMaster.getConnectorConfig().put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE,
@@ -73,7 +73,7 @@ public class ProcessorStreamBack {
                                             wc_streamback
                                                     .post(df_rest_port, df_rest_host, ConstantApp.DF_CONNECTS_REST_URL)
                                                     .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
-                                                    .sendJsonObject(streamBackWorker.toJson(),
+                                                    .sendJsonObject(streamBackWorker.toPostJson(),
                                                             war -> {
                                                                 LOG.debug("rest post result = " + war.result().bodyAsString());
                                                                 streamBackMaster.getConnectorConfig().put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE,
@@ -99,7 +99,7 @@ public class ProcessorStreamBack {
                             wc_streamback
                                     .put(df_rest_port, df_rest_host, ConstantApp.DF_CONNECTS_REST_URL + "/" + streamBackWorker.getId())
                                     .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
-                                    .sendJsonObject(streamBackWorker.toJson(),
+                                    .sendJsonObject(streamBackWorker.toPostJson(),
                                             war -> {
                                                 LOG.debug("rest put result = " + war.result().bodyAsString());
                                                 streamBackMaster.getConnectorConfig().put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE,
@@ -113,7 +113,7 @@ public class ProcessorStreamBack {
                             wc_streamback
                                     .post(df_rest_port, df_rest_host, ConstantApp.DF_CONNECTS_REST_URL)
                                     .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
-                                    .sendJsonObject(streamBackWorker.toJson(),
+                                    .sendJsonObject(streamBackWorker.toPostJson(),
                                             war -> {
                                                 LOG.debug("rest post result = " + war.result().bodyAsString());
                                                 streamBackMaster.getConnectorConfig().put(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE,
@@ -153,9 +153,9 @@ public class ProcessorStreamBack {
         String streamBackFilePath = updateJob.getConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_PATH);
         String streamBackTopic = updateJob.getConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_TOPIC);
 
-        if (!updateJob.getConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE).equalsIgnoreCase("") ||
-                !updateJob.getConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE)
-                        .equalsIgnoreCase(ConstantApp.DF_STATUS.UNASSIGNED.name())) {
+        if (!(updateJob.getConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE).equalsIgnoreCase("") ||
+                updateJob.getConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE)
+                        .equalsIgnoreCase(ConstantApp.DF_STATUS.UNASSIGNED.name()))) {
 
             String streamBackTaskState = updateJob.getConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE);
             LOG.debug("Found stream back state = " + streamBackTaskState);

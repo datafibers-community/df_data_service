@@ -119,6 +119,27 @@ public class DFJobPOPJ {
         return json;
     }
 
+    public JsonObject toPostJson() {
+
+        JsonObject json = new JsonObject()
+                .put("name", name)
+                .put("taskSeq", taskSeq)
+                .put("connectUid", connectUid)
+                .put("jobUid", jobUid)
+                .put("connectorType", connectorType)
+                .put("connectorCategory", connectorCategory)
+                .put("description", description)
+                .put("status", status)
+                .put("jobConfig", jobConfig == null ? null : HelpFunc.mapToJsonFromHashMapD2U(jobConfig))
+                .put("connectorConfig", HelpFunc.mapToJsonFromHashMapD2U(connectorConfig))
+                .put("udfUpload", udfUpload);
+
+        if (id != null && !id.isEmpty()) {
+            json.put("id", id);
+        }
+        return json;
+    }
+
     /**
      * Kafka connectUid use name and config as json attribute name. Which maps to connect and connectConfig
      *
