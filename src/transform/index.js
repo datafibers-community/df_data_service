@@ -89,8 +89,8 @@ export const TransformEdit = (props) => (
 		            <LongTextInput source="connectorConfig.trans_sql" label="Stream SQL Query, such as select * from ..." validate={[ required ]} style={{ width: 500 }} />
 		        </DependentInput>
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_SPARK_SQL">
-                    <BooleanInput source="connectorConfig.stream_back_flag" label="Stream Back the Result?" defaultValue={false} style={{ width: 500 }} />
-                    <BooleanInput source="connectorConfig.choose_or_create" label="Choose/Create Topic?" defaultValue={false} style={{ width: 500 }} />
+                    <BooleanInput source="connectorConfig.stream_back_flag" label="Stream Back the Result?" style={{ width: 500 }} />
+                    <BooleanInput source="connectorConfig.choose_or_create" label="Choose/Create Topic?" style={{ width: 500 }} />
                     <LongTextInput source="connectorConfig.stream_back_topic" label="Stream Back Topic" style={{ width: 500 }}/>
 		            <LongTextInput source="connectorConfig.trans_sql" label="Spark SQL over Hive Queries, such as select * from ..." validate={[ required ]} style={{ width: 500 }} />
 		        </DependentInput>
