@@ -1177,8 +1177,9 @@ public class DFDataProcessor extends AbstractVerticle {
                 HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()), DFJobPOPJ.class);
         // Set initial status for the job
         dfJob.setStatus(ConstantApp.DF_STATUS.UNASSIGNED.name());
-        String mongoId = (dfJob.getId() != null)? dfJob.getId() : new ObjectId().toString();
+        String mongoId = (dfJob.getId() != null && !dfJob.getId().isEmpty())? dfJob.getId() : new ObjectId().toString();
         dfJob.setConnectUid(mongoId).setId(mongoId).getConnectorConfig().put("cuid", mongoId);
+        LOG.debug("newly added connect is " + dfJob.toJson());
         // Find and set default connector.class
         if(!dfJob.getConnectorConfig().containsKey(ConstantApp.PK_KAFKA_CONNECTOR_CLASS) ||
                 dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_CONNECTOR_CLASS) == null) {
@@ -1238,7 +1239,7 @@ public class DFDataProcessor extends AbstractVerticle {
                 HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()), DFJobPOPJ.class);
 
         dfJob.setStatus(ConstantApp.DF_STATUS.UNASSIGNED.name());
-        String mongoId = (dfJob.getId() != null)? dfJob.getId() : new ObjectId().toString();
+        String mongoId = (dfJob.getId() != null && !dfJob.getId().isEmpty())? dfJob.getId() : new ObjectId().toString();
         dfJob.setConnectUid(mongoId).setId(mongoId).getConnectorConfig().put(ConstantApp.PK_TRANSFORM_CUID, mongoId);
 
         if(dfJob.getConnectorType().equalsIgnoreCase(ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_SPARK_SQL.name())) {

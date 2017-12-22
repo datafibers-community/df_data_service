@@ -51,11 +51,14 @@ public class ProcessorStreamBack {
                             // Use local client to create a stream back worker source file task from datafibers rest service.
                             // Update stream back master status to failed when submission failed
                             // Then, check if the taskId already in repo, if yes update instead of create
-                            LOG.error("Stream Back Schema is created with version " + schemar.result().bodyAsString());
+                            LOG.debug("Stream Back Schema is created with version " + schemar.result().bodyAsString());
+                            LOG.debug("The schema fields are " + schemaFields);
+
                             mongo.findOne(COLLECTION, new JsonObject().put("_id", streamBackWorker.getId()),
                                     new JsonObject().put("connectorConfig", 1), res -> {
                                         if (res.succeeded() && res.result() != null) {
                                             // found in repo, update
+                                            LOG.debug("found stream back task, update it");
                                             wc_streamback
                                                     .put(df_rest_port, df_rest_host, ConstantApp.DF_CONNECTS_REST_URL + "/" + streamBackWorker.getId())
                                                     .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
@@ -69,7 +72,7 @@ public class ProcessorStreamBack {
                                                     );
                                         } else {
                                             // create a new task
-                                            LOG.debug("create schema then create a new stream back task");
+                                            LOG.debug("not found stram back task, create it");
                                             wc_streamback
                                                     .post(df_rest_port, df_rest_host, ConstantApp.DF_CONNECTS_REST_URL)
                                                     .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
@@ -95,6 +98,7 @@ public class ProcessorStreamBack {
                         LOG.debug("res.succeeded() = " + res.succeeded());
                         LOG.debug("res.result() = " + res.result());
                         if (res.succeeded() && res.result() != null) {
+                            LOG.debug("Use old schema and update the stream back task");
                             // found in repo, update
                             wc_streamback
                                     .put(df_rest_port, df_rest_host, ConstantApp.DF_CONNECTS_REST_URL + "/" + streamBackWorker.getId())
@@ -109,7 +113,7 @@ public class ProcessorStreamBack {
                                     );
                         } else {
                             // create a new task
-                            LOG.debug("use old schema then create a new stream back task streamBackWorker.toJson() = " + streamBackWorker.toJson());
+                            LOG.debug("use old schema to create a new stream back task streamBackWorker.toJson() = " + streamBackWorker.toJson());
                             wc_streamback
                                     .post(df_rest_port, df_rest_host, ConstantApp.DF_CONNECTS_REST_URL)
                                     .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
@@ -188,11 +192,11 @@ public class ProcessorStreamBack {
                                 } else {
                                     // Check stream back path to see if all files are processed
                                     File dir = new File(streamBackFilePath);
-                                    int csvFileNumber = ((List<File>) FileUtils.listFiles(dir, new String[]{"csv"}, false)).size();
+                                    int jsonFileNumber = ((List<File>) FileUtils.listFiles(dir, new String[]{"json"}, false)).size();
                                     int processedFileNumber = ((List<File>) FileUtils.listFiles(dir, new String[]{"processed"}, false)).size();
 
-                                    LOG.debug("csvFileNumber =" + csvFileNumber + " processedFileNumber = " + processedFileNumber);
-                                    if (csvFileNumber == 0 && processedFileNumber >= 0) {
+                                    LOG.debug("jsonFileNumber =" + jsonFileNumber + " processedFileNumber = " + processedFileNumber);
+                                    if (jsonFileNumber == 0 && processedFileNumber >= 0) {
                                         // When processedFileNumber = 0 means batch job does not produce any result
                                         // When processedFileNumber > 0 means stream back is finished
                                         updateJob
@@ -234,6 +238,7 @@ public class ProcessorStreamBack {
 
             DFJobPOPJ streamBackTask = new DFJobPOPJ()
                     .setId(streamBackTaskId)
+                    .setTaskSeq("1")
                     .setName("stream_worker")
                     .setDescription("stream_worker")
                     .setConnectorType(ConstantApp.DF_CONNECT_TYPE.CONNECT_SOURCE_KAFKA_AvroFile.name())
@@ -241,8 +246,8 @@ public class ProcessorStreamBack {
                     .setConnectorConfig(ConstantApp.PK_STREAM_BACK_CONNECT_TASK, "1")
                     .setConnectorConfig(ConstantApp.PK_STREAM_BACK_CONNECT_SRURI, "http://" + schema_registry_rest_host + ":" + schema_registry_rest_port)
                     .setConnectorConfig(ConstantApp.PK_STREAM_BACK_CONNECT_OW, "true")
-                    .setConnectorConfig(ConstantApp.PK_STREAM_BACK_CONNECT_LOC, streamBackFilePath)
-                    .setConnectorConfig(ConstantApp.PK_STREAM_BACK_CONNECT_GLOB, "*.csv")
+                    .setConnectorConfig(ConstantApp.PK_STREAM_BACK_CONNECT_LOC, streamBackFilePath.replaceAll("file://", ""))
+                    .setConnectorConfig(ConstantApp.PK_STREAM_BACK_CONNECT_GLOB, "*.json")
                     .setConnectorConfig(ConstantApp.PK_STREAM_BACK_CONNECT_TOPIC, streamBackTopic)
                     ; // Populate file connect task config
 
