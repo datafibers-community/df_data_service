@@ -153,7 +153,7 @@ public class ProcessorStreamBack {
         LOG.debug("Enter stream back call");
         // When stream back is needed, we either monitoring status OR kicking off the job
         // If state is available, the stream back job is already started. Or else, start it.
-        String streamBackTaskId = updateJob.getId() + "_stream_worker";
+        String streamBackTaskId = updateJob.getId() + "sw";
         String streamBackFilePath = updateJob.getConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_PATH);
         String streamBackTopic = updateJob.getConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_TOPIC);
 
