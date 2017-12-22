@@ -639,6 +639,7 @@ public class HelpFunc {
     public static String sqlToPySpark(String[] sqlList, boolean streamBackFlag, String streamPath) {
 
         String pySparkCode = "";
+        if(!streamPath.startsWith("file://")) streamPath = "file://" + streamPath;
 
         for(int i = 0; i < sqlList.length; i++) {
             if(i == sqlList.length - 1) { // This is the last query
