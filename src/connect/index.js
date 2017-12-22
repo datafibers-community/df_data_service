@@ -191,7 +191,7 @@ export const ConnectCreate = (props) => (
                     </ReferenceInput>
                     <LongTextInput source="connectorConfig.schema_registry_uri" label="Schema Registry URI" defaultValue="http://localhost:8081" validate={[ required ]} style={{ width: 500 }} />
                     <BooleanInput source="connectorConfig.file_overwrite" label="Allow File Overwrite ?" defaultValue={true} />
-                    <TextInput source="connectorConfig.file_location" label="Path where to load the files" style={{ display: 'inline-block' }} defaultValue={"/home/vagrant/df_data"} validate={[ required ]} />
+                    <TextInput source="connectorConfig.file_location" label="Path where to load the files" style={{ display: 'inline-block' }} defaultValue={"/home/vagrant/df_data/"} validate={[ required ]} />
                     <TextInput source="connectorConfig.file_glob" label="Pattern/Glob to match the files" style={{ display: 'inline-block', marginLeft: 32 }} defaultValue="*.{json,csv}" validate={[ required ]} />
                 </DependentInput>
                 <DependentInput dependsOn="connectorType" value="CONNECT_SOURCE_STOCK_AvroFile">
