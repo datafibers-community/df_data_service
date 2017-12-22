@@ -358,11 +358,11 @@ public class ProcessorTransformSpark {
                         .contentEquals("true")) {
             streamBackFlag = true;
             // export path format, such as "file:///tmp/data"
-            streamBackBasePath = "file://" + ConstantApp.TRANSFORM_STREAM_BACK_PATH + "/" + dfJob.getId() + "/";
+            streamBackBasePath = ConstantApp.TRANSFORM_STREAM_BACK_PATH + "/" + dfJob.getId() + "/";
             dfJob.getConnectorConfig().put(ConstantApp.PK_TRANSFORM_STREAM_BACK_PATH, streamBackBasePath); //set full path
         }
 
-        String pySparkCode = HelpFunc.sqlToPySpark(sqlList, streamBackFlag, streamBackBasePath);
+        String pySparkCode = HelpFunc.sqlToPySpark(sqlList, streamBackFlag, "file://" + streamBackBasePath);
 
         webClient.post(sparkRestPort, sparkRestHost,
                 ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId +

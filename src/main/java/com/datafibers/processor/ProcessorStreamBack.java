@@ -191,11 +191,12 @@ public class ProcessorStreamBack {
                                             .setConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE, ConstantApp.DF_STATUS.FAILED.name());
                                 } else {
                                     // Check stream back path to see if all files are processed
+                                    LOG.debug("Checking streaming process result ...");
                                     File dir = new File(streamBackFilePath);
                                     int jsonFileNumber = ((List<File>) FileUtils.listFiles(dir, new String[]{"json"}, false)).size();
                                     int processedFileNumber = ((List<File>) FileUtils.listFiles(dir, new String[]{"processed"}, false)).size();
 
-                                    LOG.debug("jsonFileNumber =" + jsonFileNumber + " processedFileNumber = " + processedFileNumber);
+                                    LOG.debug("jsonFileNumber = " + jsonFileNumber + " processedFileNumber = " + processedFileNumber);
                                     if (jsonFileNumber == 0 && processedFileNumber >= 0) {
                                         // When processedFileNumber = 0 means batch job does not produce any result
                                         // When processedFileNumber > 0 means stream back is finished
@@ -246,7 +247,7 @@ public class ProcessorStreamBack {
                     .setConnectorConfig(ConstantApp.PK_STREAM_BACK_CONNECT_TASK, "1")
                     .setConnectorConfig(ConstantApp.PK_STREAM_BACK_CONNECT_SRURI, "http://" + schema_registry_rest_host + ":" + schema_registry_rest_port)
                     .setConnectorConfig(ConstantApp.PK_STREAM_BACK_CONNECT_OW, "true")
-                    .setConnectorConfig(ConstantApp.PK_STREAM_BACK_CONNECT_LOC, streamBackFilePath.replaceAll("file://", ""))
+                    .setConnectorConfig(ConstantApp.PK_STREAM_BACK_CONNECT_LOC, streamBackFilePath)
                     .setConnectorConfig(ConstantApp.PK_STREAM_BACK_CONNECT_GLOB, "*.json")
                     .setConnectorConfig(ConstantApp.PK_STREAM_BACK_CONNECT_TOPIC, streamBackTopic)
                     ; // Populate file connect task config
