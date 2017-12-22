@@ -95,8 +95,8 @@ export const TransformEdit = (props) => (
                                                         { id: 'false', name: 'Disable stream back' },
                     ]} />
                     <RadioButtonGroupInput source="connectorConfig.choose_or_create" label="Topic and Schema" style={{ display: 'inline-block', marginLeft: 32, width: 400}} choices={[
-                                        { id: 'false', name: 'Create a new topic with result schema' },
-                                        { id: 'true', name: 'Choose an existing topic ' },
+                                        { id: 'true', name: 'Create a new topic with result schema' },
+                                        { id: 'false', name: 'Choose an existing topic ' },
                     ]} />
                     <LongTextInput source="connectorConfig.stream_back_topic" label="Stream Back Topic" style={{ width: 500 }}/>
 		            <LongTextInput source="connectorConfig.trans_sql" label="Spark SQL over Hive Queries (Comments --, Queries separate by ;)" validate={[ required ]} style={{ width: 500 }} />
