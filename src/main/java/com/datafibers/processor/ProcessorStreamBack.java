@@ -195,15 +195,15 @@ public class ProcessorStreamBack {
                                     File dir = new File(streamBackFilePath);
                                     int jsonFileNumber = ((List<File>) FileUtils.listFiles(dir, new String[]{"json"}, false)).size();
                                     int processedFileNumber = ((List<File>) FileUtils.listFiles(dir, new String[]{"processed"}, false)).size();
+                                    int processingFileNumber = ((List<File>) FileUtils.listFiles(dir, new String[]{"processing"}, false)).size();
 
                                     LOG.debug("jsonFileNumber = " + jsonFileNumber + " processedFileNumber = " + processedFileNumber);
-                                    if (jsonFileNumber == 0 && processedFileNumber >= 0) {
+                                    if (jsonFileNumber == 0 && processedFileNumber >= 0 && processingFileNumber == 0) {
                                         // When processedFileNumber = 0 means batch job does not produce any result
                                         // When processedFileNumber > 0 means stream back is finished
                                         updateJob
                                                 .setStatus(ConstantApp.DF_STATUS.FINISHED.name())
                                                 .setConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE, ConstantApp.DF_STATUS.FINISHED.name());
-                                        // TODO delete the folder and files processed
                                     } else { // in progress when csvFileNumber > 0
                                         updateJob
                                                 .setStatus(ConstantApp.DF_STATUS.STREAMING.name())

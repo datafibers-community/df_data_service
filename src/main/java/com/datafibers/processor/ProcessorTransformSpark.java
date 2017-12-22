@@ -358,7 +358,7 @@ public class ProcessorTransformSpark {
                         .contentEquals("true")) {
             streamBackFlag = true;
             streamBackBasePath = ConstantApp.TRANSFORM_STREAM_BACK_PATH + "/" + dfJob.getId() + "/";
-            dfJob.setConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_PATH, streamBackBasePath); //set full path
+            dfJob.getConnectorConfig().put(ConstantApp.PK_TRANSFORM_STREAM_BACK_PATH, streamBackBasePath); //set full path
         }
 
         String pySparkCode = HelpFunc.sqlToPySpark(sqlList, streamBackFlag, streamBackBasePath);
