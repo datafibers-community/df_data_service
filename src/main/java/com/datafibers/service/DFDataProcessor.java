@@ -1,7 +1,7 @@
 package com.datafibers.service;
 
 import com.datafibers.model.DFLogPOPJ;
-import com.datafibers.processor.SchemaRegisterProcessor;
+import com.datafibers.processor.*;
 import com.datafibers.util.*;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.vertx.core.*;
@@ -10,12 +10,12 @@ import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.MongoClient;
-import io.vertx.ext.mongo.UpdateOptions;
 import io.vertx.ext.web.FileUpload;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.handler.BodyHandler;
+import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
@@ -24,27 +24,15 @@ import java.util.stream.Collectors;
 import io.vertx.ext.web.handler.TimeoutHandler;
 import io.vertx.kafka.client.common.PartitionInfo;
 import io.vertx.kafka.client.consumer.KafkaConsumer;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.log4j.Level;
 import org.bson.types.ObjectId;
 import org.json.JSONObject;
 import org.apache.log4j.Logger;
-import com.datafibers.flinknext.DFRemoteStreamEnvironment;
 import com.datafibers.model.DFJobPOPJ;
-import com.datafibers.processor.FlinkTransformProcessor;
-import com.datafibers.processor.KafkaConnectProcessor;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.ImmutableList;
-import com.hubrick.vertx.rest.MediaType;
-import com.hubrick.vertx.rest.RestClient;
-import com.hubrick.vertx.rest.RestClientOptions;
-import com.hubrick.vertx.rest.RestClientRequest;
-import com.hubrick.vertx.rest.converter.FormHttpMessageConverter;
-import com.hubrick.vertx.rest.converter.HttpMessageConverter;
-import com.hubrick.vertx.rest.converter.JacksonJsonHttpMessageConverter;
-import com.hubrick.vertx.rest.converter.StringHttpMessageConverter;
 import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
@@ -69,11 +57,17 @@ public class DFDataProcessor extends AbstractVerticle {
     private static String repo_db;
     private MongoClient mongo;
     private MongoAdminClient mongoDFInstalled;
-    private RestClient rc;
-    private RestClient rc_schema;
-    private RestClient rc_flink;
+    private WebClient wc_schema;
+    private WebClient wc_connect;
     private WebClient wc_flink;
+    private WebClient wc_spark;
+    private WebClient wc_refresh;
+    private WebClient wc_streamback;
     private static String df_jar_path;
+    private static String df_jar_name;
+    private static String flink_jar_id;
+
+    private static Integer df_rest_port;
 
     // Connects attributes
     private static Boolean kafka_connect_enabled;
@@ -81,13 +75,17 @@ public class DFDataProcessor extends AbstractVerticle {
     private static Integer kafka_connect_rest_port;
     private static Boolean kafka_connect_import_start;
 
-    // Transforms attributes
+    // Transforms attributes flink
     public static Boolean transform_engine_flink_enabled;
     private static String flink_server_host;
-    private static Integer flink_server_port;
     private static Integer flink_rest_server_port;
     private static String flink_rest_server_host_port;
-    public static DFRemoteStreamEnvironment env;
+
+    // Transforms attributes spark
+    public static Boolean transform_engine_spark_enabled;
+    private static String spark_livy_server_host;
+    private static Integer spark_livy_server_port;
+    private static String spark_livy_server_host_port;
 
     // Kafka attributes
     private static String kafka_server_host;
@@ -97,18 +95,18 @@ public class DFDataProcessor extends AbstractVerticle {
     // Schema Registry attributes
     private static String schema_registry_host_and_port;
     private static Integer schema_registry_rest_port;
-
-    // Flink Rest API
-    private static String flink_jar_id;
+    private static String schema_registry_rest_hostname;
 
     private static final Logger LOG = Logger.getLogger(DFDataProcessor.class);
 
     @Override
     public void start(Future<Void> fut) {
-        // Turn off
-        Logger.getLogger("io.vertx.core.impl.BlockedThreadChecker").setLevel(Level.OFF);
+
+//        VertxOptions options = new VertxOptions();
+//        options.setBlockedThreadCheckInterval(1000*60*60);
 
         this.df_jar_path = getClass().getProtectionDomain().getCodeSource().getLocation().getPath();
+        this.df_jar_name = new File(df_jar_path).getName();
 
         /**
          * Get all application configurations
@@ -123,19 +121,28 @@ public class DFDataProcessor extends AbstractVerticle {
         this.repo_hostname = repo_conn_str.replace("//", "").split(":")[1];
         this.repo_port = repo_conn_str.replace("//", "").split(":")[2];
 
+        this.df_rest_port = config().getInteger("rest.port.df.processor", 8080);
+
         // Get Connects config
         this.kafka_connect_enabled = config().getBoolean("kafka.connect.enable", Boolean.TRUE);
         this.kafka_connect_rest_host = config().getString("kafka.connect.rest.host", "localhost");
         this.kafka_connect_rest_port = config().getInteger("kafka.connect.rest.port", 8083);
         this.kafka_connect_import_start = config().getBoolean("kafka.connect.import.start", Boolean.TRUE);
 
-        // Check Transforms config
+        // Check Flink Transforms config
         this.transform_engine_flink_enabled = config().getBoolean("transform.engine.flink.enable", Boolean.TRUE);
         this.flink_server_host = config().getString("flink.servers.host", "localhost");
-        this.flink_server_port = config().getInteger("flink.servers.port", 6123);
         this.flink_rest_server_port = config().getInteger("flink.rest.server.port", 8001); // Same to Flink Web Dashboard
         this.flink_rest_server_host_port = (this.flink_server_host.contains("http")?
                 this.flink_server_host : "http://" + this.flink_server_host) + ":" + this.flink_rest_server_port;
+
+        // Check Spark Transforms config
+        this.transform_engine_spark_enabled = config().getBoolean("transform.engine.spark.enable", Boolean.TRUE);
+        this.spark_livy_server_host = config().getString("spark.livy.servers.host", "localhost");
+        this.spark_livy_server_port = config().getInteger("spark.livy.servers.port", 8998);
+        this.spark_livy_server_host_port = (this.flink_server_host.contains("http")?
+                this.spark_livy_server_host : "http://" + this.spark_livy_server_host) + ":" +
+                this.spark_livy_server_port;
 
         // Kafka config
         this.kafka_server_host = this.kafka_connect_rest_host;
@@ -143,107 +150,114 @@ public class DFDataProcessor extends AbstractVerticle {
         this.kafka_server_host_and_port = this.kafka_server_host + ":" + this.kafka_server_port.toString();
 
         // Schema Registry
+        this.schema_registry_rest_hostname = kafka_connect_rest_host;
         this.schema_registry_rest_port = config().getInteger("kafka.schema.registry.rest.port", 8081);
-        this.schema_registry_host_and_port = this.kafka_server_host + ":" + this.schema_registry_rest_port;
+        this.schema_registry_host_and_port = this.schema_registry_rest_hostname + ":" + this.schema_registry_rest_port;
 
+        // Application init in separate thread and report complete once done
+        vertx.executeBlocking(future -> {
 
-        /**
-         * Create all application client
-         **/
-        // MongoDB client for metadata repository
-        JsonObject mongoConfig = new JsonObject().put("connection_string", repo_conn_str).put("db_name", repo_db);
-        mongo = MongoClient.createShared(vertx, mongoConfig);
+            /**
+             * Create all application client
+             **/
+            // MongoDB client for metadata repository
+            JsonObject mongoConfig = new JsonObject().put("connection_string", repo_conn_str).put("db_name", repo_db);
+            mongo = MongoClient.createShared(vertx, mongoConfig);
 
-        // df_meta mongo client to find default connector.class
-        mongoDFInstalled = new MongoAdminClient(repo_hostname, repo_port, repo_db, COLLECTION_INSTALLED);
+            // df_meta mongo client to find default connector.class
+            mongoDFInstalled = new MongoAdminClient(repo_hostname, repo_port, repo_db, COLLECTION_INSTALLED);
 
-        // Cleanup Log in mongodb
-        if (config().getBoolean("db.log.cleanup.on.start", Boolean.TRUE))
-            new MongoAdminClient(repo_hostname, repo_port, repo_db).truncateCollection(COLLECTION_LOG).close();
+            // Cleanup Log in mongodb
+            if (config().getBoolean("db.log.cleanup.on.start", Boolean.TRUE))
+                new MongoAdminClient(repo_hostname, repo_port, repo_db).truncateCollection(COLLECTION_LOG).close();
 
-        // Set dynamic logging to MongoDB
-        MongoDbAppender mongoAppender = new MongoDbAppender();
-        mongoAppender.setDatabaseName(repo_db);
-        mongoAppender.setCollectionName(COLLECTION_LOG);
-        mongoAppender.setHostname(repo_hostname);
-        mongoAppender.setPort(repo_port);
-        mongoAppender.activateOptions();
-        Logger.getRootLogger().addAppender(mongoAppender);
+            // Set dynamic logging to MongoDB
+            MongoDbAppender mongoAppender = new MongoDbAppender();
+            mongoAppender.setDatabaseName(repo_db);
+            mongoAppender.setCollectionName(COLLECTION_LOG);
+            mongoAppender.setHostname(repo_hostname);
+            mongoAppender.setPort(repo_port);
+            mongoAppender.activateOptions();
+            Logger.getRootLogger().addAppender(mongoAppender);
 
-        // Common rest client properties
-        final List<HttpMessageConverter> httpMessageConverters = ImmutableList.of(
-                new FormHttpMessageConverter(),
-                new StringHttpMessageConverter(),
-                new JacksonJsonHttpMessageConverter(new ObjectMapper())
-        );
+            LOG.info(DFAPIMessage.logResponseMessage(1029, "Mongo Client & Log Shipping Setup Complete"));
 
-        final RestClientOptions restClientOptions = new RestClientOptions()
-                .setConnectTimeout(ConstantApp.REST_CLIENT_CONNECT_TIMEOUT)
-                .setGlobalRequestTimeout(ConstantApp.REST_CLIENT_GLOBAL_REQUEST_TIMEOUT)
-                .setKeepAlive(ConstantApp.REST_CLIENT_KEEP_LIVE)
-                .setMaxPoolSize(ConstantApp.REST_CLIENT_MAX_POOL_SIZE);
-
-        // Non-blocking Vertx Rest API Client to talk to Kafka Connect when needed
-        if (this.kafka_connect_enabled) {
-
-            this.rc = RestClient.create(vertx, restClientOptions.setDefaultHost(this.kafka_connect_rest_host)
-                    .setDefaultPort(this.kafka_connect_rest_port), httpMessageConverters);
-
-            this.rc_schema = RestClient.create(vertx, restClientOptions.setDefaultHost(this.kafka_connect_rest_host)
-                    .setDefaultPort(this.schema_registry_rest_port), httpMessageConverters);
-
-        }
-        
-        // Non-blocking Vertx Rest API Client to talk toFlink Rest when needed
-        if (this.transform_engine_flink_enabled) {
-            this.rc_flink = RestClient.create(vertx, restClientOptions.setDefaultHost(this.flink_server_host)
-                    .setDefaultPort(this.flink_rest_server_port), httpMessageConverters);
-            this.wc_flink = WebClient.create(vertx);
-
-            if (config().getBoolean("debug.mode", Boolean.FALSE)) {
-                // TODO Add DF LocalExecutionEnvironment Support
-            } else {
-                LOG.debug("Flink resource manager is started at " + this.flink_server_host + ":" + this.flink_server_port);
-                LOG.debug("Distributed below Jar to above Flink resource manager.");
-                LOG.debug(this.df_jar_path);
-                env = new DFRemoteStreamEnvironment(this.flink_server_host, this.flink_server_port, this.df_jar_path)
-                        .setParallelism(config().getInteger("flink.job.parallelism", 1));
+            // Non-blocking Rest API Client to talk to Kafka Connect when needed
+            if (this.kafka_connect_enabled) {
+                this.wc_connect = WebClient.create(vertx);
+                this.wc_schema = WebClient.create(vertx);
             }
 
-            // upload df jar to flink rest server and keep the latest jar_id in mongo
-            vertx.executeBlocking(future -> {
-                //TODO delete all df jars already uploaded
-                String df_jar_info =
-                        HelpFunc.uploadJar(flink_rest_server_host_port + ConstantApp.FLINK_REST_URL_JARS_UPLOAD,
-                                this.df_jar_path);
-                // Mongo insert or else update
-                mongo.updateCollectionWithOptions(COLLECTION_INSTALLED,
-                        new JsonObject().put("_id", ConstantApp.FLINK_JAR_ID_IN_MONGO),
-                        new JsonObject().put("$set", new JsonObject(df_jar_info)),
-                        new UpdateOptions().setUpsert(true),
-                        r -> LOG.debug(DFAPIMessage.logResponseMessage(1027, "JAR_UPLOAD_TO_COLLECTION_INSTALLED")));
+            // Import from remote server. It is blocking at this point.
+            if (this.kafka_connect_enabled && this.kafka_connect_import_start) {
+                importAllFromKafkaConnect();
+                // importAllFromFlinkTransform();
+                startMetadataSink();
+            }
 
-            }, res -> {
-                LOG.info(DFAPIMessage.logResponseMessage(1027, "JAR_UPLOAD_TO_COLLECTION_INSTALLED"));
-            });
-        }
+            // Non-blocking Rest API Client to talk to Flink Rest when needed
+            if (this.transform_engine_spark_enabled) {
+                this.wc_spark = WebClient.create(vertx);
+            }
 
-        // Import from remote server. It is blocking at this point.
-        if (this.kafka_connect_enabled && this.kafka_connect_import_start) {
-            importAllFromKafkaConnect();
-            // importAllFromFlinkTransform();
-            startMetadataSink();
-        }
+            // Non-blocking Rest API Client to talk to Flink Rest when needed
+            if (this.transform_engine_flink_enabled) {
+                this.wc_flink = WebClient.create(vertx);
+                // Delete all df jars already uploaded
+                wc_flink.get(flink_rest_server_port, flink_server_host, ConstantApp.FLINK_REST_URL_JARS)
+                        .send(ar -> {
+                            if (ar.succeeded()) {
+                                // Obtain response
+                                JsonArray jarArray = ar.result().bodyAsJsonObject().getJsonArray("files");
+                                for (int i = 0; i < jarArray.size(); i++) {
+                                    if(jarArray.getJsonObject(i).getString("name").equalsIgnoreCase(df_jar_name)) {
+                                        // delete it
+                                        wc_flink.delete(flink_rest_server_port, flink_server_host,
+                                                ConstantApp.FLINK_REST_URL_JARS + "/" +
+                                                        jarArray.getJsonObject(i).getString("id"))
+                                                .send(dar -> {});
+                                    }
+                                }
 
-        // Regular update Kafka connects/Flink transform status
+                                // The outer layer executeBlocking does not work when inside a web client api
+                                // TODO Add another executeBlocking for now until Web Client does not support muti file
+                                vertx.executeBlocking(jarfuture -> {
+                                    // Web Client does not support muti file yet, blocking inside
+                                    this.flink_jar_id = HelpFunc.uploadJar(
+                                            flink_rest_server_host_port + ConstantApp.FLINK_REST_URL_JARS_UPLOAD,
+                                            this.df_jar_path
+                                    );
+                                    if (flink_jar_id.isEmpty()) {
+                                        LOG.error(DFAPIMessage.logResponseMessage(9035, flink_jar_id));
+                                    } else {
+                                        LOG.info(DFAPIMessage.logResponseMessage(1028, flink_jar_id));
+                                        LOG.info("********* DataFibers Services is started :) *********");
+                                    }
+                                }, res -> {});
+
+                            } else {
+                                LOG.error(DFAPIMessage.logResponseMessage(9035, flink_jar_id));
+                            }
+                        });
+            }
+
+            if (!this.transform_engine_flink_enabled)
+                LOG.info("********* DataFibers Services is started :) *********");
+
+        }, res -> {});
+
+        // Regular update Kafka connects/Flink transform status through unblocking api
+        this.wc_refresh = WebClient.create(vertx);
+        this.wc_streamback = WebClient.create(vertx);
+
         vertx.setPeriodic(ConstantApp.REGULAR_REFRESH_STATUS_TO_REPO, id -> {
             if(this.kafka_connect_enabled) updateKafkaConnectorStatus();
             if(this.transform_engine_flink_enabled) updateFlinkJobStatus();
+            if(this.transform_engine_spark_enabled) updateSparkJobStatus();
         });
 
         // Start Core application
         startWebApp((http) -> completeStartup(http, fut));
-        LOG.info("********* DataFibers Services is started :) *********");
     }
 
     private void startWebApp(Handler<AsyncResult<HttpServer>> next) {
@@ -275,7 +289,7 @@ public class DFDataProcessor extends AbstractVerticle {
         router.options(ConstantApp.DF_TRANSFORMS_UPLOAD_FILE_REST_URL).handler(this::corsHandle);
         router.get(ConstantApp.DF_TRANSFORMS_REST_URL).handler(this::getAllTransforms);
         router.get(ConstantApp.DF_TRANSFORMS_REST_URL_WITH_ID).handler(this::getOne);
-        router.route(ConstantApp.DF_TRANSFORMS_UPLOAD_FILE_REST_URL_WILD).handler(BodyHandler.create()); //TODO - can we delete this line?
+        router.route(ConstantApp.DF_TRANSFORMS_UPLOAD_FILE_REST_URL_WILD).handler(BodyHandler.create());
         router.post(ConstantApp.DF_TRANSFORMS_UPLOAD_FILE_REST_URL).handler(this::uploadFiles);
         router.route(ConstantApp.DF_TRANSFORMS_REST_URL_WILD).handler(BodyHandler.create());
 
@@ -354,9 +368,9 @@ public class DFDataProcessor extends AbstractVerticle {
     public void stop() throws Exception {
         this.mongo.close();
         this.mongoDFInstalled.close();
-        this.rc.close();
-        this.rc_schema.close();
-        this.rc_flink.close();
+        this.wc_connect.close();
+        this.wc_schema.close();
+        this.wc_flink.close();
     }
 
     /**
@@ -441,7 +455,6 @@ public class DFDataProcessor extends AbstractVerticle {
      * @param routingContext
      */
     private void getAll(RoutingContext routingContext, String connectorCategoryFilter) {
-
         JsonObject searchCondition;
         if (connectorCategoryFilter.equalsIgnoreCase("all")) {
             searchCondition = new JsonObject();
@@ -585,7 +598,7 @@ public class DFDataProcessor extends AbstractVerticle {
      * @apiSampleRequest http://localhost:8080/api/df/schema
      */
     public void getAllSchemas(RoutingContext routingContext) {
-        SchemaRegisterProcessor.forwardGetAllSchemas(vertx, routingContext, schema_registry_host_and_port);
+        ProcessorTopicSchemaRegistry.forwardGetAllSchemas(vertx, routingContext, schema_registry_host_and_port);
     }
 
     /**
@@ -602,49 +615,8 @@ public class DFDataProcessor extends AbstractVerticle {
      * @apiSampleRequest http://localhost:8080/api/df/config
      */
     private void getAllProcessorConfigs(RoutingContext routingContext) {
-
-        // TODO get all installed transforms as well
-        final RestClientRequest postRestClientRequest =
-                rc.get(
-                        ConstantApp.KAFKA_CONNECT_PLUGIN_REST_URL, List.class, portRestResponse -> {
-                            String search = portRestResponse.getBody().toString().replace("{", "\"").
-                                    replace("}", "\"").replace("class=", "");
-
-
-                            JsonObject query = new JsonObject().put("$and", new JsonArray()
-                                    .add(new JsonObject().put("class",
-                                            new JsonObject().put("$in", new JsonArray(search))))
-                                    .add(new JsonObject().put("meta_type", "installed_connect"))
-                            );
-
-                            mongo.findWithOptions(COLLECTION_INSTALLED, query,
-                                    HelpFunc.getMongoSortFindOption(routingContext), res -> {
-                                if(res.result().toString().equalsIgnoreCase("[]")) {
-                                    LOG.warn("RUN_BELOW_CMD_TO_SEE_FULL_METADATA");
-                                    LOG.warn("mongoimport -c df_installed -d DEFAULT_DB --file df_installed.json");
-                                }
-
-                                if (res.succeeded()) {
-                                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                                            .setStatusCode(ConstantApp.STATUS_CODE_OK)
-                                            .end(Json.encodePrettily(
-                                                    res.result().toString()=="[]"?
-                                                            portRestResponse.getBody():res.result()
-                                                    )
-                                            );
-                                }
-                            });
-                        });
-
-        postRestClientRequest.exceptionHandler(exception -> {
-            HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                    .setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                    .end(DFAPIMessage.getResponseMessage(9006));
-        });
-
-        postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
-        postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
-        postRestClientRequest.end();
+        ProcessorConnectKafka.forwardGetAsGetConfig(routingContext, wc_connect, mongo, COLLECTION_INSTALLED,
+                kafka_connect_rest_host, kafka_connect_rest_port);
     }
 
     /**
@@ -684,8 +656,8 @@ public class DFDataProcessor extends AbstractVerticle {
                                         .put("status", new JsonObject().put("$min", "$status"))
                         )).add(
                         new JsonObject().put("$project", new JsonObject()
-                                .put("_id", 0)
-                                .put("uid", new JsonObject().put("$concat",
+                                .put("_id", 1)
+                                .put("id", new JsonObject().put("$concat",
                                         new JsonArray().add("$cuid").add("$file_name")))
                                 .put("cuid", 1)
                                 .put("file_name", 1)
@@ -1037,7 +1009,8 @@ public class DFDataProcessor extends AbstractVerticle {
      * @apiSampleRequest http://localhost:8080/api/df/schema/:subject
      */
     private void getOneSchema(RoutingContext routingContext) {
-        SchemaRegisterProcessor.forwardGetOneSchema(vertx, routingContext, schema_registry_host_and_port);
+        ProcessorTopicSchemaRegistry.forwardGetOneSchema(routingContext, wc_schema,
+                kafka_server_host, schema_registry_rest_port);
     }
 
     /**
@@ -1117,7 +1090,7 @@ public class DFDataProcessor extends AbstractVerticle {
     }
 
     /**
-     * Get one task status with task id specified
+     * Get one task LIVE status with task id specified
      *
      * @api {get} /status/:taskId   2. Get a task status
      * @apiVersion 0.1.1
@@ -1149,12 +1122,25 @@ public class DFDataProcessor extends AbstractVerticle {
                     DFJobPOPJ dfJob = new DFJobPOPJ(ar.result());
                     if(dfJob.getConnectorCategory().equalsIgnoreCase("CONNECT")) {
                         // Find status from Kafka Connect
-                        KafkaConnectProcessor.forwardGetAsGetOne(routingContext, rc, id);
+                        ProcessorConnectKafka.forwardGetAsGetOne(routingContext, wc_connect,
+                                kafka_connect_rest_host, kafka_connect_rest_port, id);
                     }
                     if(dfJob.getConnectorCategory().equalsIgnoreCase("TRANSFORM")) {
-                        // Find status from Flink API
-                        FlinkTransformProcessor.forwardGetAsGetOne(routingContext, rc_flink, id,
-                                dfJob.getFlinkIDFromJobConfig());
+
+                        if(dfJob.getConnectorType().contains("FLINK"))
+                            ProcessorTransformFlink.forwardGetAsJobStatus(
+                                    routingContext, wc_flink,
+                                    flink_server_host,
+                                    flink_rest_server_port,
+                                    id, dfJob.getFlinkIDFromJobConfig()
+                            );
+
+                        if(dfJob.getConnectorType().contains("SPARK"))
+                            ProcessorTransformSpark.forwardGetAsJobStatus(
+                                    routingContext, wc_spark, dfJob,
+                                    spark_livy_server_host, spark_livy_server_port
+                            );
+
                     }
                 } else {
                     routingContext.response()
@@ -1192,10 +1178,9 @@ public class DFDataProcessor extends AbstractVerticle {
                 HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()), DFJobPOPJ.class);
         // Set initial status for the job
         dfJob.setStatus(ConstantApp.DF_STATUS.UNASSIGNED.name());
-        // TODO Set default registry url for DF Generic connect for Avro
-        // Set MongoId to _id, connect, cid in connectConfig
-        String mongoId = new ObjectId().toString();
+        String mongoId = (dfJob.getId() != null && !dfJob.getId().isEmpty())? dfJob.getId() : new ObjectId().toString();
         dfJob.setConnectUid(mongoId).setId(mongoId).getConnectorConfig().put("cuid", mongoId);
+        LOG.debug("newly added connect is " + dfJob.toJson());
         // Find and set default connector.class
         if(!dfJob.getConnectorConfig().containsKey(ConstantApp.PK_KAFKA_CONNECTOR_CLASS) ||
                 dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_CONNECTOR_CLASS) == null) {
@@ -1218,7 +1203,8 @@ public class DFDataProcessor extends AbstractVerticle {
                 dfJob.getConnectorConfig().put("name", dfJob.getConnectUid());
                 LOG.info(DFAPIMessage.logResponseMessage(1004, dfJob.getId()));
             }
-            KafkaConnectProcessor.forwardPOSTAsAddOne(routingContext, rc, mongo, COLLECTION, dfJob);
+            ProcessorConnectKafka.forwardPOSTAsAddOne(routingContext, wc_connect, mongo, COLLECTION,
+                    kafka_connect_rest_host, kafka_connect_rest_port, dfJob);
         } else {
             mongo.insert(COLLECTION, dfJob.toJson(), r ->
                     HelpFunc.responseCorsHandleAddOn(routingContext.response())
@@ -1227,7 +1213,7 @@ public class DFDataProcessor extends AbstractVerticle {
             LOG.warn(DFAPIMessage.logResponseMessage(9008, mongoId));
         }
     }
-    
+
     /**
      * Transforms specific addOne End Point for Rest API
      * @param routingContext
@@ -1254,33 +1240,28 @@ public class DFDataProcessor extends AbstractVerticle {
                 HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()), DFJobPOPJ.class);
 
         dfJob.setStatus(ConstantApp.DF_STATUS.UNASSIGNED.name());
-        String mongoId = new ObjectId().toString();
+        String mongoId = (dfJob.getId() != null && !dfJob.getId().isEmpty())? dfJob.getId() : new ObjectId().toString();
         dfJob.setConnectUid(mongoId).setId(mongoId).getConnectorConfig().put(ConstantApp.PK_TRANSFORM_CUID, mongoId);
 
-        String allowNonRestoredState = "false";
-        String savepointPath = "";
-        String parallelism = "1";
-        String entryClass = ConstantApp.PK_TRANSFORM_JAR_CLASS_NAME;
-        String programArgs = "";
+        if(dfJob.getConnectorType().equalsIgnoreCase(ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_SPARK_SQL.name())) {
+            LOG.info("calling spark add = " + dfJob.toJson());
+            ProcessorTransformSpark.forwardPostAsAddOne(vertx, wc_spark, dfJob, mongo, COLLECTION,
+                    spark_livy_server_host, spark_livy_server_port
+            );
+        } else {
+            // Flink refers to KafkaServerHostPort.java
+            JsonObject para = HelpFunc.getFlinkJarPara(dfJob,
+                    this.kafka_server_host_and_port,
+                    this.schema_registry_host_and_port);
 
-        if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_SQLA2A.name()) {
-            entryClass = ConstantApp.FLINK_SQL_CLIENT_CLASS_NAME;
-            programArgs = String.join(" ",
-                            this.kafka_server_host_and_port, this.schema_registry_host_and_port,
-                            dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_INPUT),
-                            dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_OUTPUT),
-                            dfJob.getConnectorConfig().get(ConstantApp.PK_FLINK_TABLE_SINK_KEYS),
-                            HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_CONSUMER_GROURP),
-                                    ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
-                            "\"" + dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL) + "\"");
-        } else
-            if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_UDF.name()) {
-            programArgs = ConstantApp.PK_TRANSFORM_JAR_PARA;
+            ProcessorTransformFlink.forwardPostAsSubmitJar(wc_flink, dfJob, mongo, COLLECTION,
+                    flink_server_host, flink_rest_server_port, flink_jar_id,
+                    para.getString("allowNonRestoredState"),
+                    para.getString("savepointPath"),
+                    para.getString("entryClass"),
+                    para.getString("parallelism"),
+                    para.getString("programArgs"));
         }
-
-        FlinkTransformProcessor.submitFlinkJar(wc_flink, dfJob, mongo, COLLECTION_INSTALLED, COLLECTION,
-                flink_server_host, flink_rest_server_port,
-                allowNonRestoredState, savepointPath, entryClass, parallelism, programArgs);
 
         mongo.insert(COLLECTION, dfJob.toJson(), r ->
                 HelpFunc.responseCorsHandleAddOn(routingContext.response())
@@ -1309,16 +1290,51 @@ public class DFDataProcessor extends AbstractVerticle {
      *     }
      */
     private void addOneSchema(RoutingContext routingContext) {
-        SchemaRegisterProcessor.forwardAddOneSchema(routingContext, rc_schema, schema_registry_host_and_port);
+        ProcessorTopicSchemaRegistry.forwardAddOneSchema(routingContext, wc_schema,
+                kafka_server_host, schema_registry_rest_port);
 
-        JSONObject jsonObj = new JSONObject(routingContext.getBodyAsString());
-        String topic = jsonObj.getString("id");
-        int partitions = 1;
-        int replicaFactor = 1;
-        if(jsonObj.has(ConstantApp.PARTITIONS)) partitions = jsonObj.getInt(ConstantApp.PARTITIONS);
-        if(jsonObj.has(ConstantApp.REPLICATION_FACTOR)) replicaFactor = jsonObj.getInt(ConstantApp.REPLICATION_FACTOR);
-        // Since vertx kafka admin still need zookeeper, we now use kafka native admin api until vertx version get updated
-        KafkaAdminClient.createTopic(kafka_server_host_and_port, topic, partitions, replicaFactor);
+        JsonObject jsonObj = routingContext.getBodyAsJson();
+        // Since Vertx kafka admin still need zookeeper, we now use kafka native admin api until vertx version get updated
+        KafkaAdminClient.createTopic(kafka_server_host_and_port,
+                jsonObj.getString("id"),
+                jsonObj.containsKey(ConstantApp.TOPIC_KEY_PARTITIONS)?
+                        jsonObj.getInteger(ConstantApp.TOPIC_KEY_PARTITIONS) : 1,
+                jsonObj.containsKey(ConstantApp.TOPIC_KEY_REPLICATION_FACTOR)?
+                        jsonObj.getInteger(ConstantApp.TOPIC_KEY_REPLICATION_FACTOR) : 1
+        );
+    }
+
+    /**
+     * Connects specific pause or resume End Point for Rest API
+     * @param routingContext
+     *
+     * @api {put} /ps/:id   5.Pause or resume a connect task
+     * @apiVersion 0.1.1
+     * @apiName updateOneConnects
+     * @apiGroup Connect
+     * @apiPermission none
+     * @apiDescription This is how we pause or resume a connect task.
+     * @apiParam    {String}    id  task Id (_id in mongodb).
+     * @apiSuccess  {String}    message     OK.
+     * @apiError    code        The error code.
+     * @apiError    message     The error message.
+     * @apiErrorExample {json} Error-Response:
+     *     HTTP/1.1 404 Not Found
+     *     {
+     *       "code" : "409",
+     *       "message" : "PUT Request exception - Not Found."
+     *     }
+     */
+    private void putOneConnect(RoutingContext routingContext) {
+        final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(),DFJobPOPJ.class);
+        String status = dfJob.getStatus();
+        if(status.equalsIgnoreCase(ConstantApp.KAFKA_CONNECT_ACTION_PAUSE) ||
+                status.equalsIgnoreCase(ConstantApp.KAFKA_CONNECT_ACTION_RESUME)) {
+            ProcessorConnectKafka.forwardPUTAsPauseOrResumeOne(routingContext, wc_connect, mongo, COLLECTION,
+                    kafka_connect_rest_host, kafka_connect_rest_port, dfJob, status);
+        } else {
+            updateOneConnects(routingContext, status.equalsIgnoreCase("restart") ? true : false);
+        }
     }
 
     /**
@@ -1342,17 +1358,6 @@ public class DFDataProcessor extends AbstractVerticle {
      *       "message" : "PUT Request exception - Not Found."
      *     }
      */
-    private void putOneConnect(RoutingContext routingContext) {
-        final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(),DFJobPOPJ.class);
-        String status = dfJob.getStatus();
-        if(status.equalsIgnoreCase(ConstantApp.KAFKA_CONNECT_ACTION_PAUSE) ||
-                status.equalsIgnoreCase(ConstantApp.KAFKA_CONNECT_ACTION_RESUME)) {
-            KafkaConnectProcessor.forwardPUTAsPauseOrResumeOne(routingContext, rc, mongo, COLLECTION, dfJob, status);
-        } else {
-            updateOneConnects(routingContext, status.equalsIgnoreCase("restart") ? true : false);
-        }
-    }
-
     private void updateOneConnects(RoutingContext routingContext, Boolean enforceSubmit) {
         final String id = routingContext.request().getParam("id");
         final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(),DFJobPOPJ.class);
@@ -1374,7 +1379,8 @@ public class DFDataProcessor extends AbstractVerticle {
                     // Detect changes in connectConfig
                     if (enforceSubmit || (this.kafka_connect_enabled && dfJob.getConnectorType().contains("CONNECT") &&
                             connectorConfigString.compareTo(before_update_connectorConfigString) != 0)) {
-                       KafkaConnectProcessor.forwardPUTAsUpdateOne(routingContext, rc, mongo, COLLECTION, dfJob);
+                       ProcessorConnectKafka.forwardPUTAsUpdateOne(routingContext, wc_connect,
+                               mongo, COLLECTION, kafka_connect_rest_host, kafka_connect_rest_port ,dfJob);
                     } else { // Where there is no change detected
                         LOG.info(DFAPIMessage.logResponseMessage(1007, id));
                         mongo.updateCollection(COLLECTION, new JsonObject().put("_id", id), // Select a unique document
@@ -1441,47 +1447,81 @@ public class DFDataProcessor extends AbstractVerticle {
                             String before_update_connectorConfigString = res.result()
                                     .getJsonObject("connectorConfig").toString();
                             // Detect changes in connectConfig
-                            if (this.transform_engine_flink_enabled && dfJob.getConnectorType().contains("FLINK") &&
+                            if (this.transform_engine_flink_enabled &&
+                                    dfJob.getConnectorType().contains("FLINK") &&
                                     connectorConfigString.compareTo(before_update_connectorConfigString) != 0) {
 
-                                // TODO - if running then cancel and resubmit, else resubmit for flink UDF/JAR
-
-                                //here update is to cancel exiting job and submit a new one
-                                FlinkTransformProcessor.updateFlinkSQL(dfJob, vertx,
-                                        config().getInteger("flink.trans.client.timeout", 8000), env,
+                                JsonObject para = HelpFunc.getFlinkJarPara(dfJob,
                                         this.kafka_server_host_and_port,
-                                        HelpFunc.coalesce(dfJob.getConnectorConfig()
-                                                .get(ConstantApp.PK_KAFKA_CONSUMER_GROURP),
-                                                ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
-                                        dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_INPUT),
-                                        dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_OUTPUT),
-                                        dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL),
-                                        mongo, COLLECTION, this.flink_server_host + ":" + this.flink_server_port,
-                                        routingContext, this.schema_registry_host_and_port,
-                                        HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_SCHEMA_SUB_INPUT),
-                                                dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_INPUT)),
-                                        HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_SCHEMA_SUB_OUTPUT),
-                                                dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_OUTPUT)),
-                                        dfJob.getConnectorConfig().get(ConstantApp.PK_FLINK_TABLE_SINK_KEYS),
-                                        rc_flink);
-
-                            } else { // Where there is no change detected
-                                LOG.info(DFAPIMessage.logResponseMessage(1007, id));
-                                mongo.updateCollection(COLLECTION, new JsonObject().put("_id", id), // Select a unique document
-                                        // The update syntax: {$set, the json object containing the fields to update}
-                                        new JsonObject().put("$set", dfJob.toJson()), v -> {
-                                            if (v.failed()) {
-                                                routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
-                                                        .end(DFAPIMessage.getResponseMessage(9003));
-                                                LOG.error(DFAPIMessage.logResponseMessage(9003, id));
-                                            } else {
-                                                HelpFunc.responseCorsHandleAddOn(routingContext.response())
-                                                        .end(DFAPIMessage.getResponseMessage(1001));
-                                                LOG.info(DFAPIMessage.logResponseMessage(1001, id));
-                                            }
-                                        }
+                                        this.schema_registry_host_and_port
                                 );
+
+                                //if task is running then cancel and resubmit, else resubmit
+                                if(dfJob.getStatus().equalsIgnoreCase(ConstantApp.DF_STATUS.RUNNING.name())) {
+                                    ProcessorTransformFlink.forwardPutAsRestartJob(
+                                            routingContext,
+                                            wc_flink,
+                                            mongo, COLLECTION_INSTALLED, COLLECTION,
+                                            flink_server_host, flink_rest_server_port, flink_jar_id,
+                                            dfJob.getJobConfig().get(ConstantApp.PK_FLINK_SUBMIT_JOB_ID), dfJob,
+                                            para.getString("allowNonRestoredState"),
+                                            para.getString("savepointPath"),
+                                            para.getString("entryClass"),
+                                            para.getString("parallelism"),
+                                            para.getString("programArgs")
+                                    );
+                                } else {
+                                    ProcessorTransformFlink.forwardPostAsSubmitJar(
+                                            wc_flink, dfJob, mongo, COLLECTION,
+                                            flink_server_host, flink_rest_server_port, flink_jar_id,
+                                            para.getString("allowNonRestoredState"),
+                                            para.getString("savepointPath"),
+                                            para.getString("entryClass"),
+                                            para.getString("parallelism"),
+                                            para.getString("programArgs"));
+                                }
+
+                                //update df status properly before response
+                                dfJob.setStatus(ConstantApp.DF_STATUS.UNASSIGNED.name());
+
+                            } else if (this.transform_engine_spark_enabled &&
+                                        dfJob.getConnectorType().contains("SPARK") &&
+                                        connectorConfigString.compareTo(before_update_connectorConfigString) != 0) {
+
+                                //update df status properly before response
+                                dfJob.setStatus(ConstantApp.DF_STATUS.UNASSIGNED.name());
+
+                                if(dfJob.getConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_FLAG)
+                                        .equalsIgnoreCase("true")) {
+                                    dfJob.setConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE,
+                                            ConstantApp.DF_STATUS.UNASSIGNED.name());
+                                }
+
+                                ProcessorTransformSpark.forwardPutAsUpdateOne(
+                                        vertx, wc_spark,
+                                        dfJob, mongo, COLLECTION,
+                                        spark_livy_server_host, spark_livy_server_port
+                                );
+
+                            } else {
+                                LOG.info(DFAPIMessage.logResponseMessage(1007, id));
                             }
+                            // Where there is no change detected or detected changes, always update repo right away
+                            // The only difference is whether to update status. Either way, do not remove tasks.
+                            mongo.updateCollection(COLLECTION, new JsonObject().put("_id", id), // Select a unique document
+                                    // The update syntax: {$set, the json object containing the fields to update}
+                                    new JsonObject().put("$set", dfJob.toJson()), v -> {
+                                        if (v.failed()) {
+                                            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
+                                                    .end(DFAPIMessage.getResponseMessage(9003));
+                                            LOG.error(DFAPIMessage.logResponseMessage(9003, id));
+                                        } else {
+                                            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                                    .end(DFAPIMessage.getResponseMessage(1001));
+                                            LOG.info(DFAPIMessage.logResponseMessage(1001, id));
+                                        }
+                                    }
+                            );
                         } else {
                             LOG.error(DFAPIMessage.
                                     logResponseMessage(9014, id + " details - " + res.cause()));
@@ -1510,7 +1550,8 @@ public class DFDataProcessor extends AbstractVerticle {
      *     }
      */
     private void updateOneSchema(RoutingContext routingContext) {
-        SchemaRegisterProcessor.forwardUpdateOneSchema(routingContext, rc_schema, schema_registry_host_and_port);
+        ProcessorTopicSchemaRegistry.forwardUpdateOneSchema(routingContext, wc_schema,
+                kafka_server_host, schema_registry_rest_port);
     }
 
     /**
@@ -1553,7 +1594,8 @@ public class DFDataProcessor extends AbstractVerticle {
                     DFJobPOPJ dfJob = new DFJobPOPJ(ar.result());
                     if (this.kafka_connect_enabled &&
                             (dfJob.getConnectorType().contains("CONNECT"))){
-                        KafkaConnectProcessor.forwardDELETEAsDeleteOne(routingContext, rc, mongo, COLLECTION, dfJob);
+                        ProcessorConnectKafka.forwardDELETEAsDeleteOne(routingContext, wc_connect, mongo, COLLECTION,
+                                kafka_connect_rest_host, kafka_connect_rest_port, dfJob);
                     } else {
                         mongo.removeDocument(COLLECTION, new JsonObject().put("_id", id),
                                 remove -> routingContext.response()
@@ -1588,6 +1630,7 @@ public class DFDataProcessor extends AbstractVerticle {
      */
     private void deleteOneTransforms(RoutingContext routingContext) {
         String id = routingContext.request().getParam("id");
+
         if (id == null) {
             routingContext.response()
                     .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
@@ -1596,38 +1639,86 @@ public class DFDataProcessor extends AbstractVerticle {
         } else {
             mongo.findOne(COLLECTION, new JsonObject().put("_id", id), null, ar -> {
                 if (ar.succeeded()) {
-                    if (ar.result() == null) {
-                        routingContext.response()
-                                .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
-                                .end(DFAPIMessage.getResponseMessage(9001));
-                        LOG.error(DFAPIMessage.logResponseMessage(9001, id));
-                        return;
-                    }
-                    DFJobPOPJ dfJob = new DFJobPOPJ(ar.result());
 
-                    String jobId = null;
-                    if(dfJob.getJobConfig() != null &&
+                    DFJobPOPJ dfJob = new DFJobPOPJ(ar.result());
+                    String jobId;
+                    // delete stream back files if exist
+                    if(dfJob.getConnectorConfig().containsKey(ConstantApp.PK_TRANSFORM_STREAM_BACK_PATH)) {
+                        File streamBackFolder =
+                                new File(dfJob.getConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_PATH));
+                        try {
+                            FileUtils.deleteDirectory(streamBackFolder);
+                            LOG.info("STREAM_BACK_FOLDER_DELETED " + streamBackFolder.toString());
+                        } catch (IOException ioe) {
+                            LOG.error("DELETE_STREAM_BACK_FOLDER_FAILED " + ioe.getCause());
+                        }
+                    }
+
+                    // When jobConfig is null, we can remove task with canceling the underlying service job
+                    if (dfJob.getJobConfig() == null) {
+                        mongo.removeDocument(COLLECTION, new JsonObject().put("_id", id),
+                                remove -> HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                        .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                        .end(DFAPIMessage.getResponseMessage(1002)));
+                        LOG.info(DFAPIMessage.logResponseMessage(1002, id + "- service job info not found"));
+
+                    } else if (dfJob.getJobConfig() != null &&
+                            this.transform_engine_flink_enabled &&
+                            dfJob.getConnectorType().contains("FLINK") &&
                             dfJob.getJobConfig().containsKey(ConstantApp.PK_FLINK_SUBMIT_JOB_ID)) {
+
                         jobId = dfJob.getJobConfig().get(ConstantApp.PK_FLINK_SUBMIT_JOB_ID);
-                        if (this.transform_engine_flink_enabled &&
-                                dfJob.getConnectorType().contains("FLINK") &&
-                                dfJob.getStatus().equalsIgnoreCase("RUNNING")) {
-                            FlinkTransformProcessor.cancelFlinkJob(jobId, mongo, COLLECTION, routingContext, rc_flink);
+                        if (dfJob.getStatus().equalsIgnoreCase("RUNNING")) {
+                            // For cancel a running job, we want remove tasks from repo only when cancel is done
+                            ProcessorTransformFlink.forwardDeleteAsCancelJob(
+                                    routingContext, wc_flink,
+                                    mongo, COLLECTION,
+                                    this.flink_server_host, this.flink_rest_server_port,
+                                    jobId);
                             LOG.info(DFAPIMessage.logResponseMessage(1006, id));
                         } else {
                             mongo.removeDocument(COLLECTION, new JsonObject().put("_id", id),
                                     remove -> HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                             .setStatusCode(ConstantApp.STATUS_CODE_OK)
                                             .end(DFAPIMessage.getResponseMessage(1002)));
-                            LOG.info(DFAPIMessage.logResponseMessage(1002, id + "- FLINK_JOB_NOT_RUNNING"));
+                            LOG.info(DFAPIMessage.logResponseMessage(1002,
+                                    id + "- FLINK_JOB_NOT_RUNNING"));
+                        }
+
+                    } else if (dfJob.getJobConfig() != null &&
+                            this.transform_engine_spark_enabled &&
+                            dfJob.getConnectorType().contains("SPARK") &&
+                            dfJob.getJobConfig().containsKey(ConstantApp.PK_LIVY_SESSION_ID)) {
+
+                        jobId = dfJob.getJobConfig().get(ConstantApp.PK_LIVY_SESSION_ID);
+                        if (dfJob.getStatus().equalsIgnoreCase("RUNNING")) {
+                            // For cancel a running job, we want remove tasks from repo only when cancel is done
+                            ProcessorTransformSpark.forwardDeleteAsCancelOne(
+                                    routingContext, wc_spark,
+                                    mongo, COLLECTION,
+                                    this.spark_livy_server_host, this.spark_livy_server_port,
+                                    jobId);
+                            LOG.info(DFAPIMessage.logResponseMessage(1006, id));
+                        } else {
+                            mongo.removeDocument(COLLECTION, new JsonObject().put("_id", id),
+                                    remove -> HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                            .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                            .end(DFAPIMessage.getResponseMessage(1002)));
+                            LOG.info(DFAPIMessage.logResponseMessage(1002,
+                                    id + "- SPARK_JOB_NOT_RUNNING"));
                         }
                     } else {
                         mongo.removeDocument(COLLECTION, new JsonObject().put("_id", id),
                                 remove -> HelpFunc.responseCorsHandleAddOn(routingContext.response())
                                         .setStatusCode(ConstantApp.STATUS_CODE_OK)
                                         .end(DFAPIMessage.getResponseMessage(1002)));
-                        LOG.info(DFAPIMessage.logResponseMessage(1002, id + "- FLINK_JOB_ID_NULL"));
+                        LOG.info(DFAPIMessage.logResponseMessage(1002, id + "- Has jobConfig but missing service job id."));
                     }
+                } else {
+                    routingContext.response()
+                            .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
+                            .end(DFAPIMessage.getResponseMessage(9001));
+                    LOG.error(DFAPIMessage.logResponseMessage(9001, id));
                 }
             });
         }
@@ -1655,7 +1746,8 @@ public class DFDataProcessor extends AbstractVerticle {
      *     }
      */
     private void deleteOneSchema(RoutingContext routingContext) {
-        SchemaRegisterProcessor.forwardDELETEAsDeleteOne(routingContext, rc_schema, schema_registry_host_and_port);
+        ProcessorTopicSchemaRegistry.forwardDELETEAsDeleteOne(routingContext, wc_schema,
+                kafka_server_host, schema_registry_rest_port);
         KafkaAdminClient.deleteTopics(kafka_server_host_and_port, routingContext.request().getParam("id"));
     }
 
@@ -1699,7 +1791,7 @@ public class DFDataProcessor extends AbstractVerticle {
                         .body(metaSinkConnect).asString();
             }
 
-            // Add the avro schema for metadata as well
+            // Add the avro schema for metadata as well since df_meta-value maybe added only
             String dfMetaSchemaSubject = config().getString("kafka.topic.df.metadata", "df_meta");
             String schemaRegistryRestURL = "http://" + this.schema_registry_host_and_port + "/subjects/" +
                     dfMetaSchemaSubject + "/versions";
@@ -1761,8 +1853,7 @@ public class DFDataProcessor extends AbstractVerticle {
             HttpResponse<String> res = Unirest.get(restURI)
                     .header("accept", "application/json").asString();
             String resStr = res.getBody();
-            LOG.debug(DFAPIMessage.logResponseMessage(1011, resStr));
-
+            //LOG.debug(DFAPIMessage.logResponseMessage(1011, resStr));
             if (resStr.compareToIgnoreCase("[]") != 0 && !resStr.equalsIgnoreCase("[null]")) { //Has active connectors
                 for (String connectName: resStr.substring(2,resStr.length()-2).split("\",\"")) {
                     if (connectName.equalsIgnoreCase("null")) continue;
@@ -1842,7 +1933,7 @@ public class DFDataProcessor extends AbstractVerticle {
                                                                 "CONNECT_IMPORT - " + updateJob.getId()
                                                                         + "-" + v.cause()));
                                                     } else {
-                                                        LOG.info(DFAPIMessage.logResponseMessage(1001,
+                                                        LOG.debug(DFAPIMessage.logResponseMessage(1001,
                                                                 "CONNECT_IMPORT - " + updateJob.getId()));
                                                     }
                                                 }
@@ -1881,46 +1972,56 @@ public class DFDataProcessor extends AbstractVerticle {
         HelpFunc.addSpecifiedConnectTypetoList(list, "(?i:.*connect.*)"); // case insensitive matching
         list.add(ConstantApp.DF_CONNECT_TYPE.INTERNAL_METADATA_COLLECT.name()); // update metadata sink as well
 
-        String restURI = "http://" + this.kafka_connect_rest_host+ ":" + this.kafka_connect_rest_port +
-                ConstantApp.KAFKA_CONNECT_REST_URL;
-
         mongo.find(COLLECTION, new JsonObject().put("connectorType", new JsonObject().put("$in", list)), result -> {
             if (result.succeeded()) {
                 for (JsonObject json : result.result()) {
                     String connectName = json.getString("connectUid");
                     String statusRepo = json.getString("status");
                     String taskId = json.getString("_id");
-                    // Get task status
-                    try {
-                        String resStatus;
-                        HttpResponse<JsonNode> resConnectorStatus =
-                                Unirest.get(restURI + "/" + connectName + "/status")
-                                        .header("accept", "application/json").asJson();
-                        resStatus = resConnectorStatus.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND ?
-                                ConstantApp.DF_STATUS.LOST.name():// Not find - Mark status as LOST
-                                HelpFunc.getTaskStatusKafka(resConnectorStatus.getBody().getObject());
 
-                        // Do change detection on status
-                        if (statusRepo.compareToIgnoreCase(resStatus) != 0) { //status changes
-                            DFJobPOPJ updateJob = new DFJobPOPJ(json);
-                            updateJob.setStatus(resStatus);
+                    wc_refresh.get(kafka_connect_rest_port, kafka_connect_rest_host,
+                            ConstantApp.KAFKA_CONNECT_REST_URL + "/" + connectName + "/status")
+                            .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                            .send(ar -> {
+                                        if (ar.succeeded()) {
+                                            String resStatus =
+                                                    (ar.result().statusCode() == ConstantApp.STATUS_CODE_NOT_FOUND) ?
+                                                    ConstantApp.DF_STATUS.LOST.name():// Not find - Mark status as LOST
+                                                    HelpFunc.getTaskStatusKafka(ar.result().bodyAsJsonObject());
 
-                            mongo.updateCollection(COLLECTION, new JsonObject().put("_id", taskId),
-                                    // The update syntax: {$set, the json object containing the fields to update}
-                                    new JsonObject().put("$set", updateJob.toJson()), v -> {
-                                        if (v.failed()) {
-                                            LOG.error(DFAPIMessage.logResponseMessage(9003, taskId+ "cause:" + v.cause()));
+                                            // Do change detection on status
+                                            /*
+                                            We detect that when adding new connect, some exiting running connect will
+                                            become UNASSIGNED within short time from RUNNING, then it goes back to normal.
+                                            In this case, we do not want to show it if the coming status is UNASSIGNED and
+                                            status in repo is RUNNING.
+                                             */
+                                            if (statusRepo.compareToIgnoreCase(resStatus) != 0 &&
+                                                    !(resStatus.equalsIgnoreCase(ConstantApp.DF_STATUS.UNASSIGNED.name())
+                                                    && statusRepo.equalsIgnoreCase(ConstantApp.DF_STATUS.RUNNING.name()))
+                                                ) { //status changes
+                                                DFJobPOPJ updateJob = new DFJobPOPJ(json);
+                                                updateJob.setStatus(resStatus);
+                                                mongo.updateCollection(COLLECTION, new JsonObject().put("_id", taskId),
+                                                        new JsonObject().put("$set", updateJob.toJson()), v -> {
+                                                            if (v.failed()) {
+                                                                LOG.error(DFAPIMessage.
+                                                                        logResponseMessage(9003,
+                                                                                taskId+ "cause:" + v.cause()));
+                                                            } else {
+                                                                LOG.info(DFAPIMessage.logResponseMessage(1019, taskId));
+                                                            }
+                                                        }
+                                                );
+                                            } else {
+                                                LOG.debug(DFAPIMessage.logResponseMessage(1020, taskId));
+                                            }
+
                                         } else {
-                                            LOG.info(DFAPIMessage.logResponseMessage(1019, taskId));
+                                            LOG.error(DFAPIMessage.logResponseMessage(9006, ar.cause().getMessage()));
                                         }
                                     }
                             );
-                        } else {
-                            LOG.debug(DFAPIMessage.logResponseMessage(1020, taskId));
-                        }
-                    } catch (UnirestException ue) {
-                        LOG.error(DFAPIMessage.logResponseMessage(9006, ue.getCause().getMessage()));
-                    }
                 }
             } else {
                 LOG.error(DFAPIMessage.logResponseMessage(9002, result.cause().getMessage()));
@@ -1933,10 +2034,8 @@ public class DFDataProcessor extends AbstractVerticle {
      */
     private void updateFlinkJobStatus() {
         List<String> list = new ArrayList<>();
-        // Add all Kafka connect
-        HelpFunc.addSpecifiedConnectTypetoList(list, "(?i:.*transform.*)") ;
-        String restURI = "http://" + this.flink_server_host + ":" + this.flink_rest_server_port +
-                ConstantApp.FLINK_REST_URL;
+        // Add all transform
+        HelpFunc.addSpecifiedConnectTypetoList(list, "(?i:.*transform_exchange_flink.*)") ;
 
         mongo.find(COLLECTION, new JsonObject().put("connectorType", new JsonObject().put("$in", list)), result -> {
             if (result.succeeded()) {
@@ -1944,52 +2043,234 @@ public class DFDataProcessor extends AbstractVerticle {
                     String statusRepo = json.getString("status");
                     String taskId = json.getString("_id");
                     String jobId = ConstantApp.FLINK_DUMMY_JOB_ID;
-                    String resStatus;
-                    if(json.getValue("jobConfig") == null) {
-                        resStatus = ConstantApp.DF_STATUS.LOST.name();
-                    } else if (json.getJsonObject("jobConfig").containsKey(ConstantApp.PK_FLINK_SUBMIT_JOB_ID)) {
-                        jobId = json.getJsonObject("jobConfig").getString(ConstantApp.PK_FLINK_SUBMIT_JOB_ID);
+                    DFJobPOPJ updateJob = new DFJobPOPJ(json);
 
-                        // Get task status when flink job id is available
-                        try {
-                            HttpResponse<JsonNode> resConnectorStatus =
-                                    Unirest.get(restURI + "/" + jobId).header("accept", "application/json").asJson();
-                            resStatus = resConnectorStatus.getStatus() == ConstantApp.STATUS_CODE_NOT_FOUND ?
-                                    ConstantApp.DF_STATUS.LOST.name():// Not find - Mark status as LOST
-                                    HelpFunc.getTaskStatusFlink(resConnectorStatus.getBody().getObject());
-                        } catch (UnirestException ue) {
-                            // When jobId not found, set status LOST with error message.
-                            LOG.info(DFAPIMessage.logResponseMessage(9006,
-                                    "TRANSFORM_STATUS_REFRESH_FOUND " + taskId + " LOST"));
-                            resStatus = ConstantApp.DF_STATUS.LOST.name();
-                        }
-
-                    } else {
-                        resStatus = ConstantApp.DF_STATUS.LOST.name();
-                    }
-
-                    // Do change detection on status
-                    if (statusRepo.compareToIgnoreCase(resStatus) != 0) { //status changes
-                        DFJobPOPJ updateJob = new DFJobPOPJ(json);
-                        updateJob.setStatus(resStatus);
-
+                    if (json.getValue("jobConfig") == null ||
+                            !json.getJsonObject("jobConfig").containsKey(ConstantApp.PK_FLINK_SUBMIT_JOB_ID)) {
+                        updateJob.setStatus(ConstantApp.DF_STATUS.LOST.name());
                         mongo.updateCollection(COLLECTION, new JsonObject().put("_id", updateJob.getId()),
                                 // The update syntax: {$set, the json object containing the fields to update}
                                 new JsonObject().put("$set", updateJob.toJson()), v -> {
                                     if (v.failed()) {
                                         LOG.error(DFAPIMessage.logResponseMessage(9003, taskId + "cause:" + v.cause()));
                                     } else {
-                                        LOG.info(DFAPIMessage.logResponseMessage(1021, taskId));
+                                        LOG.info(DFAPIMessage.logResponseMessage(1022, taskId));
                                     }
                                 }
                         );
+
+                    } else {
+                        jobId = json.getJsonObject("jobConfig").getString(ConstantApp.PK_FLINK_SUBMIT_JOB_ID);
+                        wc_refresh.get(flink_rest_server_port, flink_server_host,
+                                ConstantApp.FLINK_REST_URL + "/" + jobId)
+                                .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                                .send(ar -> {
+                                    if (ar.succeeded()) {
+                                        String resStatus = ar.result().statusCode() == ConstantApp.STATUS_CODE_NOT_FOUND ?
+                                                ConstantApp.DF_STATUS.LOST.name() :// Not find - Mark status as LOST
+                                                HelpFunc.getTaskStatusFlink(ar.result().bodyAsJsonObject());
+
+                                        // Do change detection on status
+                                        if (statusRepo.compareToIgnoreCase(resStatus) != 0) { //status changes
+                                            updateJob.setStatus(resStatus);
+                                            LOG.info(DFAPIMessage.logResponseMessage(1021, "Flink " + taskId));
+                                        } else {
+                                            LOG.debug(DFAPIMessage.logResponseMessage(1022, "Flink " + taskId));
+                                        }
+                                    } else {
+                                        // When jobId not found, set status LOST with error message.
+                                        LOG.info(DFAPIMessage.logResponseMessage(9006,
+                                                "TRANSFORM_STATUS_REFRESH_FOUND " + taskId + " LOST"));
+                                        updateJob.setStatus(ConstantApp.DF_STATUS.LOST.name());
+                                    }
+
+                                    // update status finally
+                                    mongo.updateCollection(COLLECTION, new JsonObject().put("_id", updateJob.getId()),
+                                            // The update syntax: {$set, the json object containing the fields to update}
+                                            new JsonObject().put("$set", updateJob.toJson()), v -> {
+                                                if (v.failed()) {
+                                                    LOG.error(DFAPIMessage.logResponseMessage(9003, taskId + "cause:" + v.cause()));
+                                                } else {
+                                                    LOG.debug(DFAPIMessage.logResponseMessage(1001, taskId));
+                                                }
+                                            }
+                                    );
+                                });
+                    }
+                }
+            } else {
+                LOG.error(DFAPIMessage.logResponseMessage(9002, "TRANSFORM_STATUS_REFRESH:" + result.cause()));
+            }
+        });
+    }
+
+    /**
+     * Keep refreshing the active Spark transforms/jobs' status in repository against remote Livy REST Server
+     * We need to find out three type of information
+     * * session status
+     * * statement status
+     * * last query result in rich text format at "livy_statement_output"
+     *
+     * In addition, this function will trigger batch spark sql result set stream back when it is needed.
+     */
+    private void updateSparkJobStatus() {
+        List<String> list = new ArrayList<>();
+        // Add all transform
+        HelpFunc.addSpecifiedConnectTypetoList(list, "(?i:.*transform_exchange_spark.*)") ;
+
+        mongo.find(COLLECTION, new JsonObject().put("connectorType", new JsonObject().put("$in", list)), result -> {
+            if (result.succeeded()) {
+                for (JsonObject json : result.result()) {
+                    String repoStatus = json.getString("status");
+                    String taskId = json.getString("_id");
+                    DFJobPOPJ updateJob = new DFJobPOPJ(json);
+
+                    if (json.getValue("jobConfig") == null ||
+                            !json.getJsonObject("jobConfig").containsKey(ConstantApp.PK_LIVY_SESSION_ID) ||
+                            !json.getJsonObject("jobConfig").containsKey(ConstantApp.PK_LIVY_STATEMENT_ID)) {
+                        updateJob.setStatus(ConstantApp.DF_STATUS.LOST.name());
+                        mongo.updateCollection(COLLECTION, new JsonObject().put("_id", updateJob.getId()),
+                                new JsonObject().put("$set", updateJob.toJson()), v -> {
+                                    if (v.failed()) {
+                                        LOG.error(DFAPIMessage.logResponseMessage(9003,
+                                                taskId + "cause:" + v.cause()));
+                                    } else {
+                                        LOG.debug(DFAPIMessage
+                                                .logResponseMessage(1001,
+                                                        "Missing Livy session/statement with task Id " + taskId));
+                                    }
+                                }
+                        );
+
+                    } else if( // update status in repo when it is in running or unassigned
+                        // TODO may need to remove LOST later
+                            updateJob.getStatus().equalsIgnoreCase(ConstantApp.DF_STATUS.RUNNING.name()) ||
+                            updateJob.getStatus().equalsIgnoreCase(ConstantApp.DF_STATUS.STREAMING.name()) ||
+                            updateJob.getStatus().equalsIgnoreCase(ConstantApp.DF_STATUS.UNASSIGNED.name()) ||
+                            updateJob.getStatus().equalsIgnoreCase(ConstantApp.DF_STATUS.LOST.name())) {
+                        String sessionId = json.getJsonObject("jobConfig").getString(ConstantApp.PK_LIVY_SESSION_ID);
+                        String statementId = json.getJsonObject("jobConfig").getString(ConstantApp.PK_LIVY_STATEMENT_ID);
+                        String repoFullCode = json.getJsonObject("jobConfig").getString(ConstantApp.PK_LIVY_STATEMENT_CODE);
+
+                        // 1. Check if session is available
+                        wc_refresh.get(spark_livy_server_port, spark_livy_server_host,
+                                ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId + "/state")
+                                .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE,
+                                        ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                                .send(sar -> {
+                                    if (sar.succeeded() && sar.result().statusCode() == ConstantApp.STATUS_CODE_OK) {
+                                        updateJob.setJobConfig(ConstantApp.PK_LIVY_SESSION_STATE, sar.result().bodyAsJsonObject().getString("state"));
+
+                                        LOG.debug("session info response = " + sar.result().bodyAsJsonObject());
+
+                                        // 1. Check if statement is available
+                                        wc_refresh
+                                                .get(spark_livy_server_port, spark_livy_server_host,
+                                                        ConstantApp.LIVY_REST_URL_SESSIONS + "/" + sessionId + ConstantApp.LIVY_REST_URL_STATEMENTS + "/" + statementId)
+                                                .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE,
+                                                        ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                                                .send(ar -> {
+                                                    if (ar.succeeded() &&
+                                                            ar.result().statusCode() == ConstantApp.STATUS_CODE_OK) {
+
+                                                        JsonObject resultJo = ar.result().bodyAsJsonObject();
+                                                        LOG.debug("statement info response = " + resultJo);
+                                                        String resStatus = ar.result().statusCode() == ConstantApp.STATUS_CODE_NOT_FOUND ?
+                                                                ConstantApp.DF_STATUS.LOST.name() :// Not find - Mark status as LOST
+                                                                HelpFunc.getTaskStatusSpark(resultJo);
+
+                                                        String resFullCode = ar.result().statusCode() == ConstantApp.STATUS_CODE_NOT_FOUND ?
+                                                                "":resultJo.getString("code");
+
+                                                        LOG.debug("repoStatus = " + repoStatus + " resStatus = " + resStatus);
+                                                        LOG.debug("repoFullCode = " + repoFullCode + " resFullCode = " + resFullCode);
+
+                                                        // Do change detection on status, but code snip must same
+                                                        // Because the livy session/statement id could be reset
+                                                        if (repoStatus.compareToIgnoreCase(resStatus) != 0 &&
+                                                                repoFullCode.equalsIgnoreCase(resFullCode)) { //status changes
+
+                                                            LOG.debug("Change Detected");
+
+                                                            // Set df job status from statement state
+                                                            updateJob
+                                                                    .setStatus(resStatus)
+                                                                    // Set statement state and progress
+                                                                    .setJobConfig(
+                                                                            ConstantApp.PK_LIVY_STATEMENT_STATE,
+                                                                            resultJo.getString("state"))
+                                                                    .setJobConfig(
+                                                                            ConstantApp.PK_LIVY_STATEMENT_PROGRESS,
+                                                                            resultJo.getValue("progress").toString())
+                                                                    // Set statement status
+                                                                    .setJobConfig(
+                                                                            ConstantApp.PK_LIVY_STATEMENT_STATUS,
+                                                                            resultJo.getJsonObject("output")
+                                                                            .getString("status").toUpperCase())
+                                                                    // Set detailed error and traceback in case of failed
+                                                                    .setJobConfig(ConstantApp.PK_LIVY_STATEMENT_TRACEBACK,
+                                                                            resultJo.getJsonObject("output")
+                                                                            .containsKey("traceback")?
+                                                                            resultJo.getJsonObject("output")
+                                                                                    .getJsonArray("traceback")
+                                                                                    .toString():"")
+                                                                    .setJobConfig(ConstantApp.PK_LIVY_STATEMENT_EXCEPTION,
+                                                                            resultJo.getJsonObject("output")
+                                                                                    .containsKey("evalue")?
+                                                                                    resultJo.getJsonObject("output")
+                                                                                            .getString("evalue"):"")
+                                                                    // Also set result
+                                                                    .setJobConfig(ConstantApp.PK_LIVY_STATEMENT_OUTPUT, HelpFunc.livyTableResultToRichText(resultJo));
+
+                                                            // Check if stream back is needed. If yes, enable it when batch is FINISHED.
+                                                            // This has to come after above update dfJob since we do not want loose dfJob status
+                                                            // when update stream back status in separate thread
+                                                            if(resStatus.equalsIgnoreCase(ConstantApp.DF_STATUS.FINISHED.name()) &&
+                                                                    updateJob.getConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_FLAG)
+                                                                            .equalsIgnoreCase("true")) {
+                                                                LOG.debug("Stream Back Enabled");
+                                                                // Update repo for stream back job
+                                                                ProcessorStreamBack.enableStreamBack(
+                                                                        wc_streamback,
+                                                                        updateJob,
+                                                                        mongo, COLLECTION,
+                                                                        schema_registry_rest_port, schema_registry_rest_hostname,
+                                                                        df_rest_port, "localhost",
+                                                                        HelpFunc.livyTableResultToAvroFields(
+                                                                                resultJo,
+                                                                                updateJob.getConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_TOPIC)
+                                                                        )
+                                                                );
+
+                                                            } else {
+                                                                // Update repo for regular job
+                                                                HelpFunc.updateRepoWithLogging(mongo, COLLECTION, updateJob, LOG);
+                                                                LOG.debug("PK_TRANSFORM_STREAM_BACK_FLAG Not Found or equal to FALSE or Master Status Not FINISHED, so update as regular job.");
+                                                            }
+
+                                                        } else {
+                                                            // No status changes, do nothing
+                                                            LOG.debug(DFAPIMessage.logResponseMessage(1022, taskId));
+                                                        }
+                                                    } else {
+                                                        // When statement not found, set status LOST with error message.
+                                                        HelpFunc.updateRepoWithLogging(mongo, COLLECTION, updateJob.setStatus(ConstantApp.DF_STATUS.LOST.name()), LOG);
+                                                        LOG.info(DFAPIMessage.logResponseMessage(9006,"TRANSFORM_STATUS_REFRESH_FOUND SPARK " + taskId + " LOST STATEMENT"));
+                                                    }
+                                                });
+
+                                    } else {
+                                        // When session not found, set status LOST with error message.
+                                        HelpFunc.updateRepoWithLogging(mongo, COLLECTION, updateJob.setJobConfig(ConstantApp.PK_LIVY_SESSION_STATE, ConstantApp.DF_STATUS.LOST.name()), LOG);
+                                        LOG.info(DFAPIMessage.logResponseMessage(9006,"TRANSFORM_STATUS_REFRESH_FOUND SPARK " + taskId + " LOST SESSION"));
+                                    }
+                                });
                     } else {
                         LOG.debug(DFAPIMessage.logResponseMessage(1022, taskId));
                     }
                 }
             } else {
-                LOG.error(DFAPIMessage.logResponseMessage(9002, "TRANSFORM_STATUS_REFRESH:" +
-                        result.cause()));
+                LOG.error(DFAPIMessage.logResponseMessage(9002, "TRANSFORM_STATUS_REFRESH:" + result.cause()));
             }
         });
     }

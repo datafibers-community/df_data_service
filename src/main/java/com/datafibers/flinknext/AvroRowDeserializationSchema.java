@@ -3,7 +3,6 @@ package com.datafibers.flinknext;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Properties;
-
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
@@ -16,9 +15,7 @@ import org.apache.flink.streaming.util.serialization.DeserializationSchema;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.Preconditions;
 import org.apache.log4j.Logger;
-
 import com.datafibers.util.ConstantApp;
-import com.datafibers.util.SchemaRegistryClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 

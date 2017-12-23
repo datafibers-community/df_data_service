@@ -19,16 +19,17 @@ import org.apache.flink.client.program.JobWithJars;
 import org.apache.flink.client.program.ProgramInvocationException;
 import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.JobManagerOptions;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.graph.StreamGraph;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * For Unit Test Only
  * This is customized remote stream flink environment derived from RemoteStreamEnvironment class in Flink
  * executeRemotely is tailored to accept DFPOPJ as parameter so that DFClusterClient.runWithDFObj can use it.
  */
-
 @Public
 public class DFRemoteStreamEnvironment extends StreamExecutionEnvironment {
 
@@ -202,8 +203,8 @@ public class DFRemoteStreamEnvironment extends StreamExecutionEnvironment {
         Configuration configuration = new Configuration();
         configuration.addAll(this.clientConfiguration);
 
-        configuration.setString(ConfigConstants.JOB_MANAGER_IPC_ADDRESS_KEY, host);
-        configuration.setInteger(ConfigConstants.JOB_MANAGER_IPC_PORT_KEY, port);
+        configuration.setString(JobManagerOptions.ADDRESS, host);
+        configuration.setInteger(JobManagerOptions.PORT, port);
 
         DFCusterClient client;
         try {

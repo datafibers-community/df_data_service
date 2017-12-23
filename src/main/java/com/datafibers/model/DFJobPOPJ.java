@@ -119,6 +119,27 @@ public class DFJobPOPJ {
         return json;
     }
 
+    public JsonObject toPostJson() {
+
+        JsonObject json = new JsonObject()
+                .put("name", name)
+                .put("taskSeq", taskSeq)
+                .put("connectUid", connectUid)
+                .put("jobUid", jobUid)
+                .put("connectorType", connectorType)
+                .put("connectorCategory", connectorCategory)
+                .put("description", description)
+                .put("status", status)
+                .put("jobConfig", jobConfig == null ? null : HelpFunc.mapToJsonFromHashMapD2U(jobConfig))
+                .put("connectorConfig", HelpFunc.mapToJsonFromHashMapD2U(connectorConfig))
+                .put("udfUpload", udfUpload);
+
+        if (id != null && !id.isEmpty()) {
+            json.put("id", id);
+        }
+        return json;
+    }
+
     /**
      * Kafka connectUid use name and config as json attribute name. Which maps to connect and connectConfig
      *
@@ -179,8 +200,16 @@ public class DFJobPOPJ {
         return jobConfig;
     }
 
+    public String getJobConfig(String key) {
+        return jobConfig.containsKey(key)? jobConfig.get(key) : "";
+    }
+
     public HashMap<String, String> getConnectorConfig() {
         return connectorConfig;
+    }
+
+    public String getConnectorConfig(String key) {
+        return connectorConfig.containsKey(key) ? connectorConfig.get(key) : "";
     }
 
     public DFJobPOPJ setName(String name) {
@@ -234,22 +263,32 @@ public class DFJobPOPJ {
         return this;
     }
 
+    public DFJobPOPJ setConnectorConfig(String key, String value) {
+        if (this.connectorConfig == null) this.connectorConfig = new HashMap<>();
+        this.connectorConfig.put(key, value);
+        return this;
+    }
+
     public DFJobPOPJ setJobConfig(HashMap<String, String> job_config) {
         this.jobConfig = job_config;
         return this;
     }
 
-    public DFJobPOPJ setFlinkIDToJobConfig(String jobID) {
+    public DFJobPOPJ setJobConfig(String key, String value) {
         if (this.jobConfig == null) this.jobConfig = new HashMap<>();
-        this.jobConfig.put(ConstantApp.PK_FLINK_SUBMIT_JOB_ID, jobID);
+        this.jobConfig.put(key, value);
         return this;
+    }
+
+    public DFJobPOPJ setFlinkIDToJobConfig(String jobID) {
+        return setJobConfig(ConstantApp.PK_FLINK_SUBMIT_JOB_ID, jobID);
     }
 
     @JsonIgnore
     public String getFlinkIDFromJobConfig() {
-        if (this.jobConfig != null)
+        if (this.jobConfig != null && this.jobConfig.containsKey(ConstantApp.PK_FLINK_SUBMIT_JOB_ID))
             return this.jobConfig.get(ConstantApp.PK_FLINK_SUBMIT_JOB_ID);
-        return ConstantApp.PK_FLINK_SUBMIT_JOB_ID + "_IS_NULL";
+        return "";
     }
 
     public void setUdfUpload(String tmpUDFUpload) {

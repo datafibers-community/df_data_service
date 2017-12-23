@@ -10,12 +10,9 @@ import org.apache.avro.SchemaParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.table.api.Table;
-import org.apache.sling.commons.json.JSONArray;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.apache.log4j.Logger;
-import org.json.JSONObject;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -29,8 +26,6 @@ import static org.apache.avro.Schema.Type.RECORD;
 public class SchemaRegistryClient {
 
     private static final Logger LOG = Logger.getLogger(SchemaRegistryClient.class);
-    public static final String KEY_FIELD = "symbol";
-    public static final String VALUE_FIELD = "refresh_time";
     public static final String HTTP_HEADER_APPLICATION_JSON_CHARSET = "application/json; charset=utf-8";
     public static final String AVRO_REGISTRY_CONTENT_TYPE = "application/vnd.schemaregistry.v1+json";
 
@@ -551,7 +546,7 @@ public class SchemaRegistryClient {
                 schemaRes = Unirest.post(schemaRegistryRestURL)
                         .header("accept", HTTP_HEADER_APPLICATION_JSON_CHARSET)
                         .header("Content-Type", AVRO_REGISTRY_CONTENT_TYPE)
-                        .body(tableAPIToAvroSchema(result, subject))
+                        .body(tableAPIToAvroSchema(result, subject.replaceAll("-value", ""))) //name in body cannot use -value
                         .asString();
 
                 LOG.info("Subject - " + subject + " Not Found, so create it." + schemaRes.getStatus());

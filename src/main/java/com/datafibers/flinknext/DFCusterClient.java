@@ -27,7 +27,8 @@ import scala.concurrent.Future;
 import com.datafibers.model.DFJobPOPJ;
 
 /**
- * This is customized DF cluster client for communication with an Flink standalone (on-premise) cluster or an existing cluster that has been
+ * For Unit Test Only
+ * This is customized DF cluster client for TESTING communication with an Flink standalone (on-premise) cluster or an existing cluster that has been
  * brought up independently of a specific job. The runWithDFObj is added to pass DFPOPJ into job execution. The jobId is set to the jobConfig
  * immediately before submit Flink job.
  */

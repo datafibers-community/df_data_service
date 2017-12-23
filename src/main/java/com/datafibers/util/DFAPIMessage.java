@@ -2,7 +2,6 @@ package com.datafibers.util;
 
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -46,6 +45,9 @@ public final class DFAPIMessage {
         messageMap.put(1026, "SCHEMA_IS_DELETED");
         messageMap.put(1027, "TOPIC_IS_SUBSCRIBED");
         messageMap.put(1028, "DF_JAR_IS_UPLOADED_FOR_FLINK");
+        messageMap.put(1029, "DF_MONGO_CLIENT_SETUP_COMPLETED");
+        messageMap.put(1030, "SCHEMA_IS_RETURNED");
+        messageMap.put(1031, "STREAM_BACK_WORKER_IS_DELETED");
         messageMap.put(9000, "ID_IS_NULL_IN_REQUEST");
         messageMap.put(9001, "ID_NOT_FOUND_IN_REPO");
         messageMap.put(9002, "ID_SEARCH_EXCEPTION_IN_REPO");
@@ -73,7 +75,7 @@ public final class DFAPIMessage {
         messageMap.put(9024, "DF_INSTALLED_DATA_NOT_FOUND");
         messageMap.put(9025, "ID_UPDATE_EXCEPTION_IN_FLINK_REST");
         messageMap.put(9026, "ID_DELETE_EXCEPTION_IN_FLINK_REST");
-        messageMap.put(9027, "FORWARD_GET_ALL_SCHEMA");
+        messageMap.put(9027, "FORWARD_GET_ALL_SCHEMA_FAILED");
         messageMap.put(9028, "REST_CLIENT_EXCEPTION");
         messageMap.put(9029, "REST_CLIENT_RESPONSE_EXCEPTION");
         messageMap.put(9030, "AVRO_CONSUMER_TOPIC_SUBSCRIBE_ERROR");
@@ -81,20 +83,41 @@ public final class DFAPIMessage {
         messageMap.put(9032, "NOT_VALID_STATUS_TO_PAUSE_OR_RESUME");
         messageMap.put(9033, "TASK_PAUSE_OR_RESUME_FAILED_REVERTED_PRE-STATUS");
         messageMap.put(9034, "FAILED_TO_REVERT_PRE-STATUS");
-        messageMap.put(9035, "FAILED_TO_GET_DF_JAR_ID_FROM_REPO");
+        messageMap.put(9035, "DF_JAR_UPLOAD_FAILED_FOR_FLINK");
+        messageMap.put(9036, "GET_CONNECT_STATUS_REQUEST_FAILED");
+        messageMap.put(9037, "POST_TO_ADD_CONNECT_REQUEST_FAILED");
+        messageMap.put(9038, "PUT_TO_UPDATE_CONNECT_REQUEST_FAILED");
+        messageMap.put(9039, "SCHEMA_CREATION_FAILED");
+        messageMap.put(9040, "SCHEMA_SUBJECT_MISSING");
+        messageMap.put(9041, "SCHEMA_NOT_FOUND");
+        messageMap.put(9042, "SCHEMA_COMPAT_REQUEST_FAILED");
+        messageMap.put(9043, "STREAM_BACK_WORKER_DELETE_FAILED");
+    }
 
+    public static JsonObject getResponseJsonObj(int responseCode, String comments, String message) {
+        String messageType = responseCode >= 9000 ? "ERROR" : "INFO";
+        JsonObject response = new JsonObject();
+        response.put("info", messageType + " " + String.format("%04d", responseCode) + "-" + messageMap.get(responseCode));
+        if (!comments.equalsIgnoreCase("")) response.put("comments", comments);
+        //message can be show from web ui directly
+        if (!message.equalsIgnoreCase("")) response.put("message", message);
+        return response;
+    }
+
+    public static String getResponseMessage(int responseCode, String comments, String message) {
+        return Json.encodePrettily(getResponseJsonObj(responseCode, comments, message));
     }
 
     public static String getResponseMessage(int responseCode, String comments) {
-        String messageType = responseCode >= 9000 ? "ERROR" : "INFO";
-        JsonObject response = new JsonObject();
-        response.put("message", messageType + " " + String.format("%04d", responseCode) + " - " + messageMap.get(responseCode));
-        if (!comments.equalsIgnoreCase("")) response.put("comments", comments);
-        return Json.encodePrettily(response);
+        return Json.encodePrettily(getResponseJsonObj(responseCode, comments, ""));
     }
 
     public static String getResponseMessage(int responseCode) {
         return getResponseMessage(responseCode, "");
+    }
+
+    public static JsonObject getResponseJsonObj(int responseCode) {
+        return getResponseJsonObj(responseCode, "", "");
     }
 
     public static String logResponseMessage(int responseCode, String comments) {

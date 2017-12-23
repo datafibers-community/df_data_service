@@ -8,8 +8,6 @@ import com.mongodb.client.MongoIterable;
 import static com.mongodb.client.model.Filters.ne;
 import static com.mongodb.client.model.Filters.eq;
 import static com.mongodb.client.model.Filters.exists;
-import static com.mongodb.client.model.Filters.gte;
-
 import com.mongodb.client.model.BulkWriteOptions;
 import com.mongodb.client.model.InsertOneModel;
 import io.vertx.core.json.JsonObject;
