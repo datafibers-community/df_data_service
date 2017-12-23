@@ -340,16 +340,6 @@ public class ProcessorTransformSpark {
         String sql = dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL);
         // Support multiple sql statement separated by ; and comments by --
         String[] sqlList = HelpFunc.sqlCleaner(sql);
-/*        String pySparkCode = "";
-        for(int i = 0; i < sqlList.length; i++) {
-            if(i == sqlList.length - 1) {
-                // Keep result only for the last query and only top 10 rows
-                pySparkCode = "a = sqlContext.sql(\"" + sqlList[i] + "\").take(10)\n%table a";
-            } else {
-                pySparkCode = "sqlContext.sql(\"" + sqlList[i] + "\")\n";
-            }
-        }*/
-
         // Here set stream back information. Later, the spark job status checker will upload the file to kafka
         Boolean streamBackFlag = false;
         String streamBackBasePath = "";

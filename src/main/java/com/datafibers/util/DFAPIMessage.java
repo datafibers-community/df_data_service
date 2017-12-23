@@ -47,6 +47,7 @@ public final class DFAPIMessage {
         messageMap.put(1028, "DF_JAR_IS_UPLOADED_FOR_FLINK");
         messageMap.put(1029, "DF_MONGO_CLIENT_SETUP_COMPLETED");
         messageMap.put(1030, "SCHEMA_IS_RETURNED");
+        messageMap.put(1031, "STREAM_BACK_WORKER_IS_DELETED");
         messageMap.put(9000, "ID_IS_NULL_IN_REQUEST");
         messageMap.put(9001, "ID_NOT_FOUND_IN_REPO");
         messageMap.put(9002, "ID_SEARCH_EXCEPTION_IN_REPO");
@@ -90,6 +91,7 @@ public final class DFAPIMessage {
         messageMap.put(9040, "SCHEMA_SUBJECT_MISSING");
         messageMap.put(9041, "SCHEMA_NOT_FOUND");
         messageMap.put(9042, "SCHEMA_COMPAT_REQUEST_FAILED");
+        messageMap.put(9043, "STREAM_BACK_WORKER_DELETE_FAILED");
     }
 
     public static JsonObject getResponseJsonObj(int responseCode, String comments, String message) {

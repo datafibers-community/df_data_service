@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 import io.vertx.ext.web.handler.TimeoutHandler;
 import io.vertx.kafka.client.common.PartitionInfo;
 import io.vertx.kafka.client.consumer.KafkaConsumer;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.bson.types.ObjectId;
@@ -655,8 +656,8 @@ public class DFDataProcessor extends AbstractVerticle {
                                         .put("status", new JsonObject().put("$min", "$status"))
                         )).add(
                         new JsonObject().put("$project", new JsonObject()
-                                .put("_id", 0)
-                                .put("uid", new JsonObject().put("$concat",
+                                .put("_id", 1)
+                                .put("id", new JsonObject().put("$concat",
                                         new JsonArray().add("$cuid").add("$file_name")))
                                 .put("cuid", 1)
                                 .put("file_name", 1)
@@ -1641,6 +1642,17 @@ public class DFDataProcessor extends AbstractVerticle {
 
                     DFJobPOPJ dfJob = new DFJobPOPJ(ar.result());
                     String jobId;
+                    // delete stream back files if exist
+                    if(dfJob.getConnectorConfig().containsKey(ConstantApp.PK_TRANSFORM_STREAM_BACK_PATH)) {
+                        File streamBackFolder =
+                                new File(dfJob.getConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_PATH));
+                        try {
+                            FileUtils.deleteDirectory(streamBackFolder);
+                            LOG.info("STREAM_BACK_FOLDER_DELETED " + streamBackFolder.toString());
+                        } catch (IOException ioe) {
+                            LOG.error("DELETE_STREAM_BACK_FOLDER_FAILED " + ioe.getCause());
+                        }
+                    }
 
                     // When jobConfig is null, we can remove task with canceling the underlying service job
                     if (dfJob.getJobConfig() == null) {

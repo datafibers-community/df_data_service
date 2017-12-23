@@ -2,6 +2,7 @@ package com.datafibers.processor;
 
 import com.datafibers.model.DFJobPOPJ;
 import com.datafibers.util.ConstantApp;
+import com.datafibers.util.DFAPIMessage;
 import com.datafibers.util.HelpFunc;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.MongoClient;
@@ -165,8 +166,8 @@ public class ProcessorStreamBack {
             LOG.debug("Found stream back state = " + streamBackTaskState);
 
             if (streamBackTaskState.equalsIgnoreCase(ConstantApp.DF_STATUS.FINISHED.name())) {
-                // TODO delete the stream back file source task If not implement, the task will keep not impact
-                // When stream worker is finished, we do not need to overwrite the master status anymore.
+                // This is never reach. Since status = FINISH will not by pass regular status checker
+
             } else if (streamBackTaskState.equalsIgnoreCase(ConstantApp.DF_STATUS.FAILED.name())) {
                 // TODO Overwrite transform task state as FAILED, but we keep the failed stream worker task for now
                 HelpFunc.updateRepoWithLogging(
@@ -204,6 +205,21 @@ public class ProcessorStreamBack {
                                         updateJob
                                                 .setStatus(ConstantApp.DF_STATUS.FINISHED.name())
                                                 .setConnectorConfig(ConstantApp.PK_TRANSFORM_STREAM_BACK_TASK_STATE, ConstantApp.DF_STATUS.FINISHED.name());
+
+                                        // Delete the stream back worker task. If not implement, the task will keep not impact
+                                        // When stream worker is finished, we do not need to overwrite the master status anymore.
+                                        wc_streamback.delete(df_rest_port, df_rest_host,
+                                                ConstantApp.DF_CONNECTS_REST_URL + "/" + streamBackTaskId)
+                                                .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                                                .send(ar -> {
+                                                    if (ar.succeeded()) {
+                                                        LOG.info(DFAPIMessage.logResponseMessage(1031, updateJob.getId()));
+                                                    } else {
+                                                        LOG.error(DFAPIMessage.logResponseMessage(9043,
+                                                                updateJob.getId() + " has error " + ar.result().bodyAsString()));
+                                                    }
+                                        });
+
                                     } else { // in progress when csvFileNumber > 0
                                         updateJob
                                                 .setStatus(ConstantApp.DF_STATUS.STREAMING.name())
