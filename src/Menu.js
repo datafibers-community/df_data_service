@@ -18,7 +18,6 @@ const items = [
     { name: 'processor', icon: <ProcessorIcon /> },
     { name: 'ps', icon: <ConnectIcon /> },
     { name: 'tr', icon: <TransformIcon /> },
-    { name: 'insight', icon: <InsightIcon /> },
     { name: 'schema', icon: <SchemaIcon /> },
     { name: 'model', icon: <ModelIcon /> },
     { name: 'hist', icon: <HistIcon /> },
