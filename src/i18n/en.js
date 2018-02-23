@@ -86,6 +86,26 @@ export default {
                     },
 
         },
+        insight: {
+                    name: 'Insight |||| Insight',
+                            fields: {
+                                commands: 'Orders',
+                                groups: 'Segments',
+                                last_seen_gte: 'Visited Since',
+                                name: 'Name',
+                            },
+                            tabs: {
+                                identity: 'Identity',
+                                address: 'Address',
+                                orders: 'Orders',
+                                reviews: 'Reviews',
+                                stats: 'Stats',
+                            },
+                            page: {
+                                delete: 'Delete Customer',
+                            },
+
+        },
         schema: {
             name: 'Topic |||| Topic',
                     fields: {
@@ -107,6 +127,29 @@ export default {
                     card: {
                         title: 'Please well understand the schema compatibility before editing.'
                     },
+
+        },
+        model: {
+                    name: 'Model |||| Model',
+                            fields: {
+                                commands: 'Orders',
+                                groups: 'Segments',
+                                last_seen_gte: 'Visited Since',
+                                name: 'Name',
+                            },
+                            tabs: {
+                                identity: 'Identity',
+                                address: 'Address',
+                                orders: 'Orders',
+                                reviews: 'Reviews',
+                                stats: 'Stats',
+                            },
+                            page: {
+                                delete: 'Delete Customer',
+                            },
+                            card: {
+                                title: 'Please well understand the schema compatibility before editing.'
+                            },
 
         },
         logs: {

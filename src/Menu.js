@@ -8,7 +8,9 @@ import { translate, DashboardMenuItem, MenuItemLink } from 'admin-on-rest';
 import { ProcessorIcon } from './processor';
 import { ConnectIcon } from './connect';
 import { TransformIcon } from './transform';
+import { InsightIcon } from './insight';
 import { SchemaIcon } from './schema';
+import { ModelIcon } from './model';
 import { HistIcon } from './history';
 import { LoggingIcon } from './logging';
 
@@ -16,7 +18,9 @@ const items = [
     { name: 'processor', icon: <ProcessorIcon /> },
     { name: 'ps', icon: <ConnectIcon /> },
     { name: 'tr', icon: <TransformIcon /> },
+    { name: 'insight', icon: <InsightIcon /> },
     { name: 'schema', icon: <SchemaIcon /> },
+    { name: 'model', icon: <ModelIcon /> },
     { name: 'hist', icon: <HistIcon /> },
     { name: 'logs', icon: <LoggingIcon /> }
 ];

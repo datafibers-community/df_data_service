@@ -86,6 +86,26 @@ export default {
                     },
 
         },
+        insight: {
+                    name: '洞察 |||| 洞察',
+                            fields: {
+                                commands: 'Orders',
+                                groups: 'Segments',
+                                last_seen_gte: 'Visited Since',
+                                name: 'Name',
+                            },
+                            tabs: {
+                                identity: 'Identity',
+                                address: 'Address',
+                                orders: 'Orders',
+                                reviews: 'Reviews',
+                                stats: 'Stats',
+                            },
+                            page: {
+                                delete: 'Delete Customer',
+                            },
+
+        },
         schema: {
             name: '主题 |||| 主题',
                     fields: {
@@ -104,6 +124,26 @@ export default {
                     page: {
                         delete: 'Delete Customer',
                     },
+
+        },
+        model: {
+                    name: '模型 |||| 模型',
+                            fields: {
+                                commands: 'Orders',
+                                groups: 'Segments',
+                                last_seen_gte: 'Visited Since',
+                                name: 'Name',
+                            },
+                            tabs: {
+                                identity: 'Identity',
+                                address: 'Address',
+                                orders: 'Orders',
+                                reviews: 'Reviews',
+                                stats: 'Stats',
+                            },
+                            page: {
+                                delete: 'Delete Customer',
+                            },
 
         },
         logs: {
