@@ -160,6 +160,8 @@ public final class ConstantApp {
         TRANSFORM_EXCHANGE_SPARK_UDF,          // Spark user defined jar/program
         TRANSFORM_EXCHANGE_HIVE_TRANS,         // Hive batch SQL
         TRANSFORM_EXCHANGE_HIVE_JOINS,         // Hive batch join
+        TRANSFORM_MODEL_SPARK_STREAM,          // ML model over spark stream
+        TRANSFORM_MODEL_SPARK_TRAIN,           // ML model training
         INTERNAL_METADATA_COLLECT,             // Reserved metadata sink
         NONE
     }
