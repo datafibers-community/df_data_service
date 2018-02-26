@@ -209,68 +209,75 @@ export const TransformCreate = (props) => (
                     <TextInput source="connectorConfig.trans_jar" label="UDF Jar File Name" validate={[ required ]} />
 		        </DependentInput>
 				<DependentInput dependsOn="connectorType" value="TRANSFORM_MODEL_SPARK_TRAIN">
-					<SelectInput source="connectorConfig.feature_source" label="Feature Source" validate={[ required ]} choices={[
-						{ id: 'FEATURE_SRC_LIBSVM', name: 'File Libsvm' },
-						{ id: 'FEATURE_SRC_CSV', name: 'File Csv' },
-						{ id: 'FEATURE_SRC_HTABLE', name: 'Hive Table' },
-						{ id: 'FEATURE_SRC_HQL', name: 'Hive Query' },
-						]} defaultValue='FEATURE_SRC_LIBSVM' />
-                    <BooleanInput source="connectorConfig.feature_extract_enabled" label="Feature Extract?" defaultValue={false} style={{ width: 500 }} />
-					<DependentInput dependsOn="connectorConfig.feature_extract_enabled" value={true}>
-					<EmbeddedArrayInput source="connectorConfig.feature_extract_method_array" label="">
-					<SelectInput source="method" label="Extract Method" validate={[ required ]} style={{ display: 'inline-block', float: 'left' }} choices={[
-							{ id: 'FEATURE_EXTRACT_TFIDF', name: 'TF-IDF' },
-							{ id: 'FEATURE_EXTRACT_W2V', name: 'Word to Vector' },
-							{ id: 'FEATURE_EXTRACT_CV', name: 'Count Vectorizer' },
-							]} defaultValue='FEATURE_EXTRACT_TFIDF' />
-                    <TextInput source="connectorConfig.feature_extract_para_input" label="Set Input Column"/>
-					</EmbeddedArrayInput>
-                    </DependentInput>
-					<BooleanInput source="connectorConfig.feature_transform_enabled" label="Feature Transform?" defaultValue={false} style={{ width: 500 }} />
-					<DependentInput dependsOn="connectorConfig.feature_transform_enabled" value={true}>
-					<EmbeddedArrayInput source="connectorConfig.feature_transform_method_array" label="">
-					<SelectInput source="method" label="Transform Method" validate={[ required ]} style={{ display: 'inline-block', float: 'left' }} choices={[
-							{ id: 'FEATURE_TRANS_STRINGINDEX', name: 'String Indexer' },
-							{ id: 'FEATURE_TRANS_VA', name: 'Vector Assembler' },
-							]} defaultValue='FEATURE_TRANS_STRINGINDEX' />
-                    <TextInput source="connectorConfig.feature_extract_para_input" label="Set Input Columns (, as separator)"/>
-					</EmbeddedArrayInput>
-                    </DependentInput>
-					<BooleanInput source="connectorConfig.feature_selector_enabled" label="Feature Selector?" defaultValue={false} style={{ width: 500 }} />
-					<SelectInput source="connectorConfig.model_categry" label="Choose Algorithm Category" style={{ display: 'inline-block', float: 'left' }} validate={[ required ]} choices={[
-						{ id: 'ML_CLASS_CLF', name: 'Classification' },
-						{ id: 'ML_CLASS_RES', name: 'Regression' },
-						{ id: 'ML_CLASS_CLS', name: 'Clustering' },
-						{ id: 'ML_CLASS_REC', name: 'Recommendation' },
-						]} defaultValue='ML_CLASS_CLF' />
-					<DependentInput dependsOn="connectorConfig.model_categry" value="ML_CLASS_CLF">
-						<SelectInput source="connectorConfig.model_class_method" label="Choose Algorithm" validate={[ required ]} choices={[
-						{ id: 'ML_CLASS_CLF_NB', name: 'Naive Bayes' },
-						{ id: 'ML_CLASS_CLF_LR', name: 'Logistic Regression' },
-						{ id: 'ML_CLASS_CLF_DTC', name: 'Decision Tree Classifier' },
-						{ id: 'ML_CLASS_CLF_LSVM', name: 'Linear Support Vector Machine' },
-						]} defaultValue='ML_CLASS_CLF_NB' />
+					<BooleanInput source="connectorConfig.ml_guide_enabled" label="Guideline Enabled?" defaultValue={true}/>
+					<DependentInput dependsOn="connectorConfig.ml_guide_enabled" value={true}>
+						<SelectInput source="connectorConfig.feature_source" label="Feature Source" validate={[ required ]} style={{ display: 'inline-block', float: 'left' }} choices={[
+							{ id: 'FEATURE_SRC_LIBSVM', name: 'File Libsvm' },
+							{ id: 'FEATURE_SRC_CSV', name: 'File Csv' },
+							{ id: 'FEATURE_SRC_HTABLE', name: 'Hive Table' },
+							{ id: 'FEATURE_SRC_HQL', name: 'Hive Query' },
+							]} defaultValue='FEATURE_SRC_LIBSVM' />
+						<NumberInput source="connectorConfig.feature_source_sample" label="Training Data Ratio %" defaultValue={100}/>
+						<BooleanInput source="connectorConfig.feature_extract_enabled" label="Feature Extract?" defaultValue={false} style={{ width: 500 }} />
+						<DependentInput dependsOn="connectorConfig.feature_extract_enabled" value={true}>
+						<EmbeddedArrayInput source="connectorConfig.feature_extract_method_array" label="">
+						<SelectInput source="method" label="Extract Method" validate={[ required ]} style={{ display: 'inline-block', float: 'left' }} choices={[
+								{ id: 'FEATURE_EXTRACT_TFIDF', name: 'TF-IDF' },
+								{ id: 'FEATURE_EXTRACT_W2V', name: 'Word to Vector' },
+								{ id: 'FEATURE_EXTRACT_CV', name: 'Count Vectorizer' },
+								]} defaultValue='FEATURE_EXTRACT_TFIDF' />
+						<TextInput source="connectorConfig.feature_extract_para_input" label="Set Input Column"/>
+						</EmbeddedArrayInput>
+						</DependentInput>
+						<BooleanInput source="connectorConfig.feature_transform_enabled" label="Feature Transform?" defaultValue={false} style={{ width: 500 }} />
+						<DependentInput dependsOn="connectorConfig.feature_transform_enabled" value={true}>
+						<EmbeddedArrayInput source="connectorConfig.feature_transform_method_array" label="">
+						<SelectInput source="method" label="Transform Method" validate={[ required ]} style={{ display: 'inline-block', float: 'left' }} choices={[
+								{ id: 'FEATURE_TRANS_STRINGINDEX', name: 'String Indexer' },
+								{ id: 'FEATURE_TRANS_VA', name: 'Vector Assembler' },
+								]} defaultValue='FEATURE_TRANS_STRINGINDEX' />
+						<TextInput source="connectorConfig.feature_extract_para_input" label="Set Input Columns (, as separator)"/>
+						</EmbeddedArrayInput>
+						</DependentInput>
+						<BooleanInput source="connectorConfig.feature_selector_enabled" label="Feature Selector?" defaultValue={false} style={{ width: 500 }} />
+						<SelectInput source="connectorConfig.model_categry" label="Choose Algorithm Category" style={{ display: 'inline-block', float: 'left' }} validate={[ required ]} choices={[
+							{ id: 'ML_CLASS_CLF', name: 'Classification' },
+							{ id: 'ML_CLASS_RES', name: 'Regression' },
+							{ id: 'ML_CLASS_CLS', name: 'Clustering' },
+							{ id: 'ML_CLASS_REC', name: 'Recommendation' },
+							]} defaultValue='ML_CLASS_CLF' />
+						<DependentInput dependsOn="connectorConfig.model_categry" value="ML_CLASS_CLF">
+							<SelectInput source="connectorConfig.model_class_method" label="Choose Algorithm" validate={[ required ]} choices={[
+							{ id: 'ML_CLASS_CLF_NB', name: 'Naive Bayes' },
+							{ id: 'ML_CLASS_CLF_LR', name: 'Logistic Regression' },
+							{ id: 'ML_CLASS_CLF_DTC', name: 'Decision Tree Classifier' },
+							{ id: 'ML_CLASS_CLF_LSVM', name: 'Linear Support Vector Machine' },
+							]} defaultValue='ML_CLASS_CLF_NB' />
+						</DependentInput>
+						<DependentInput dependsOn="connectorConfig.model_categry" value="ML_CLASS_RES">
+							<SelectInput source="connectorConfig.model_class_method" label="Choose Algorithm" validate={[ required ]} choices={[
+							{ id: 'ML_CLASS_RES_LR', name: 'Linear Regression' },
+							{ id: 'ML_CLASS_RES_DTR', name: 'Decision Tree Regression' },
+							{ id: 'ML_CLASS_RES_RFR', name: 'Random Forest Regression' },
+							{ id: 'ML_CLASS_RES_GBTR', name: 'Gradient-boosted Tree Regression' },
+							]} defaultValue='ML_CLASS_RES_LR' />
+						</DependentInput>
+						<DependentInput dependsOn="connectorConfig.model_categry" value="ML_CLASS_CLS">
+							<SelectInput source="connectorConfig.model_class_method" label="Choose Algorithm" validate={[ required ]} choices={[
+							{ id: 'ML_CLASS_CLS_KM', name: 'K-means' },
+							{ id: 'ML_CLASS_CLS_LDA', name: 'Latent Dirichlet Allocation (LDA)' },
+							{ id: 'ML_CLASS_CLS_BKM', name: 'Bisecting K-means' },
+							{ id: 'ML_CLASS_CLS_GMM', name: 'Gaussian Mixture Model (GMM)' },
+							]} defaultValue='ML_CLASS_CLS_KM' />
+						</DependentInput>
+						<DependentInput dependsOn="connectorConfig.model_categry" value="ML_CLASS_REC">
+							<SelectInput source="connectorConfig.model_class_method" label="Choose Algorithm" validate={[ required ]} choices={[
+							{ id: 'ML_CLASS_REC_CF', name: 'Collaborative Filtering' },
+							]} defaultValue='ML_CLASS_REC_CF' />
+						</DependentInput>
 					</DependentInput>
-					<DependentInput dependsOn="connectorConfig.model_categry" value="ML_CLASS_RES">
-						<SelectInput source="connectorConfig.model_class_method" label="Choose Algorithm" validate={[ required ]} choices={[
-						{ id: 'ML_CLASS_RES_LR', name: 'Linear Regression' },
-						{ id: 'ML_CLASS_RES_DTR', name: 'Decision Tree Regression' },
-						{ id: 'ML_CLASS_RES_RFR', name: 'Random Forest Regression' },
-						{ id: 'ML_CLASS_RES_GBTR', name: 'Gradient-boosted Tree Regression' },
-						]} defaultValue='ML_CLASS_RES_LR' />
-					</DependentInput>
-					<DependentInput dependsOn="connectorConfig.model_categry" value="ML_CLASS_CLS">
-						<SelectInput source="connectorConfig.model_class_method" label="Choose Algorithm" validate={[ required ]} choices={[
-						{ id: 'ML_CLASS_CLS_KM', name: 'K-means' },
-						{ id: 'ML_CLASS_CLS_LDA', name: 'Latent Dirichlet Allocation (LDA)' },
-						{ id: 'ML_CLASS_CLS_BKM', name: 'Bisecting K-means' },
-						{ id: 'ML_CLASS_CLS_GMM', name: 'Gaussian Mixture Model (GMM)' },
-						]} defaultValue='ML_CLASS_CLS_KM' />
-					</DependentInput>
-					<DependentInput dependsOn="connectorConfig.model_categry" value="ML_CLASS_REC">
-						<SelectInput source="connectorConfig.model_class_method" label="Choose Algorithm" validate={[ required ]} choices={[
-						{ id: 'ML_CLASS_REC_CF', name: 'Collaborative Filtering' },
-						]} defaultValue='ML_CLASS_REC_CF' />
+					<DependentInput dependsOn="connectorConfig.ml_guide_enabled" value={false}>
+						<LongTextInput source="connectorConfig.ml_pipe" label="Build machine learning pipeline from API" defaultValue="--support coding in scala/python" validate={[ required ]} style={{ width: 500 }} />
 					</DependentInput>
 				</DependentInput>
             </FormTab>    
