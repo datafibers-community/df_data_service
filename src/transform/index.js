@@ -1,4 +1,3 @@
-// in src/Connects.js
 import React from 'react';
 import { Filter, List, Edit, Create } from 'admin-on-rest';
 import { ReferenceField, Datagrid, SelectField, UrlField, FunctionField, ChipField, LongTextField, TextField, DateField, RichTextField, ImageField } from 'admin-on-rest';
@@ -12,6 +11,8 @@ import Icon from 'material-ui/svg-icons/image/transform';
 import RawJsonRecordField from '../component/RawJsonRecordField';
 import RawJsonRecordSpecificField from '../component/RawJsonRecordSpecificField';
 import RefreshListActions from '../buttons/RefreshListActions'
+import EmbeddedArrayInput from '../component/EmbeddedArrayInput';
+import EmbeddedArrayField from '../component/EmbeddedArrayField';
 
 export const TransformIcon = Icon;
 
@@ -49,12 +50,14 @@ export const TransformList = (props) => (
             <TextField source="taskSeq" label="task seq." />
             <TextField source="name" label="name" />
             <SelectField source="connectorType" label="Task Type" choices={[
-                			{ id: 'TRANSFORM_EXCHANGE_FLINK_SQLA2A', name: 'Stream SQL on Queue' },
-                			{ id: 'TRANSFORM_EXCHANGE_SPARK_SQL', name: 'Batch SQL off Queue' },
-                			{ id: 'TRANSFORM_EXCHANGE_FLINK_Script', name: 'Stream Script on Queue' },
-                			{ id: 'TRANSFORM_EXCHANGE_SPARK_STREAM', name: 'Batch Script off Queue' },
-              		        { id: 'TRANSFORM_EXCHANGE_FLINK_UDF',  name: 'Stream UDF on Queue' },
-              		        { id: 'TRANSFORM_EXCHANGE_SPARK_UDF',  name: 'Batch UDF on Queue' },
+    			{ id: 'TRANSFORM_EXCHANGE_FLINK_SQLA2A', name: 'SQL over Stream' },
+    			{ id: 'TRANSFORM_EXCHANGE_SPARK_SQL', name: 'SQL over Batch' },
+    			{ id: 'TRANSFORM_EXCHANGE_FLINK_Script', name: 'Script over Stream' },
+    			{ id: 'TRANSFORM_EXCHANGE_SPARK_STREAM', name: 'Script over Batch' },
+  		        { id: 'TRANSFORM_EXCHANGE_FLINK_UDF',  name: 'UDF over Stream' },
+  		        { id: 'TRANSFORM_EXCHANGE_SPARK_UDF',  name: 'UDF over Batch' },
+  		        { id: 'TRANSFORM_MODEL_SPARK_STREAM', name: 'Model over Stream'},
+  		        { id: 'TRANSFORM_MODEL_SPARK_TRAIN',  name: 'Model Training' },
             		        ]} />
             <ChipField source="status" label="status" />
             <EditButton />
@@ -71,12 +74,14 @@ export const TransformEdit = (props) => (
                 <TextInput source="name" label="Name" validate={[ required ]} />
 		        <LongTextInput source="description" label="Task Description" style={{ width: 500 }} />
 		        <SelectField source="connectorType" label="Task Type" validate={[ required ]} choices={[
-    			{ id: 'TRANSFORM_EXCHANGE_FLINK_SQLA2A', name: 'Stream SQL on Queue' },
-    			{ id: 'TRANSFORM_EXCHANGE_SPARK_SQL', name: 'Batch SQL off Queue' },
-    			{ id: 'TRANSFORM_EXCHANGE_FLINK_Script', name: 'Stream Script on Queue' },
-    			{ id: 'TRANSFORM_EXCHANGE_SPARK_STREAM', name: 'Batch Script off Queue' },
-  		        { id: 'TRANSFORM_EXCHANGE_FLINK_UDF',  name: 'Stream UDF on Queue' },
-  		        { id: 'TRANSFORM_EXCHANGE_SPARK_UDF',  name: 'Batch UDF on Queue' },
+    			{ id: 'TRANSFORM_EXCHANGE_FLINK_SQLA2A', name: 'SQL over Stream' },
+    			{ id: 'TRANSFORM_EXCHANGE_SPARK_SQL', name: 'SQL over Batch' },
+    			{ id: 'TRANSFORM_EXCHANGE_FLINK_Script', name: 'Script over Stream' },
+    			{ id: 'TRANSFORM_EXCHANGE_SPARK_STREAM', name: 'Script over Batch' },
+  		        { id: 'TRANSFORM_EXCHANGE_FLINK_UDF',  name: 'UDF over Stream' },
+  		        { id: 'TRANSFORM_EXCHANGE_SPARK_UDF',  name: 'UDF over Batch' },
+  		        { id: 'TRANSFORM_MODEL_SPARK_STREAM', name: 'Model over Stream'},
+  		        { id: 'TRANSFORM_MODEL_SPARK_TRAIN',  name: 'Model Training' },
 		        ]} />
 
             </FormTab>
@@ -151,12 +156,14 @@ export const TransformCreate = (props) => (
                 <TextInput source="name" label="Name" validate={[ required ]} style={{ width: 500 }} />
 		        <LongTextInput source="description" label="Task Description" style={{ width: 500 }} />
 		        <SelectInput source="connectorType" label="Task Type" validate={[ required ]} choices={[
-    			{ id: 'TRANSFORM_EXCHANGE_FLINK_SQLA2A', name: 'Stream SQL on Queue' },
-    			{ id: 'TRANSFORM_EXCHANGE_SPARK_SQL', name: 'Batch SQL off Queue' },
-    			{ id: 'TRANSFORM_EXCHANGE_FLINK_Script', name: 'Stream Script on Queue' },
-    			{ id: 'TRANSFORM_EXCHANGE_SPARK_STREAM', name: 'Batch Script off Queue' },
-  		        { id: 'TRANSFORM_EXCHANGE_FLINK_UDF',  name: 'Stream UDF on Queue' },
-  		        { id: 'TRANSFORM_EXCHANGE_SPARK_UDF',  name: 'Batch UDF on Queue' },
+    			{ id: 'TRANSFORM_EXCHANGE_FLINK_SQLA2A', name: 'SQL over Stream' },
+    			{ id: 'TRANSFORM_EXCHANGE_SPARK_SQL', name: 'SQL over Batch' },
+    			{ id: 'TRANSFORM_EXCHANGE_FLINK_Script', name: 'Script over Stream' },
+    			{ id: 'TRANSFORM_EXCHANGE_SPARK_STREAM', name: 'Script over Batch' },
+  		        { id: 'TRANSFORM_EXCHANGE_FLINK_UDF',  name: 'UDF over Stream' },
+  		        { id: 'TRANSFORM_EXCHANGE_SPARK_UDF',  name: 'UDF over Batch' },
+  		        { id: 'TRANSFORM_MODEL_SPARK_STREAM', name: 'Model over Stream'},
+  		        { id: 'TRANSFORM_MODEL_SPARK_TRAIN',  name: 'Model Training' },
 		        ]} defaultValue='TRANSFORM_EXCHANGE_FLINK_SQLA2A' />
             </FormTab>
             <FormTab label="Setting">
@@ -201,6 +208,71 @@ export const TransformCreate = (props) => (
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_FLINK_UDF">
                     <TextInput source="connectorConfig.trans_jar" label="UDF Jar File Name" validate={[ required ]} />
 		        </DependentInput>
+				<DependentInput dependsOn="connectorType" value="TRANSFORM_MODEL_SPARK_TRAIN">
+					<SelectInput source="connectorConfig.feature_source" label="Feature Source" validate={[ required ]} choices={[
+						{ id: 'FEATURE_SRC_LIBSVM', name: 'File Libsvm' },
+						{ id: 'FEATURE_SRC_CSV', name: 'File Csv' },
+						{ id: 'FEATURE_SRC_HTABLE', name: 'Hive Table' },
+						{ id: 'FEATURE_SRC_HQL', name: 'Hive Query' },
+						]} defaultValue='FEATURE_SRC_LIBSVM' />
+                    <BooleanInput source="connectorConfig.feature_extract_enabled" label="Feature Extract?" defaultValue={false} style={{ width: 500 }} />
+					<DependentInput dependsOn="connectorConfig.feature_extract_enabled" value={true}>
+					<EmbeddedArrayInput source="connectorConfig.feature_extract_method_array" label="">
+					<SelectInput source="method" label="Extract Method" validate={[ required ]} style={{ display: 'inline-block', float: 'left' }} choices={[
+							{ id: 'FEATURE_EXTRACT_TFIDF', name: 'TF-IDF' },
+							{ id: 'FEATURE_EXTRACT_W2V', name: 'Word to Vector' },
+							{ id: 'FEATURE_EXTRACT_CV', name: 'Count Vectorizer' },
+							]} defaultValue='FEATURE_EXTRACT_TFIDF' />
+                    <TextInput source="connectorConfig.feature_extract_para_input" label="Set Input Column"/>
+					</EmbeddedArrayInput>
+                    </DependentInput>
+					<BooleanInput source="connectorConfig.feature_transform_enabled" label="Feature Transform?" defaultValue={false} style={{ width: 500 }} />
+					<DependentInput dependsOn="connectorConfig.feature_transform_enabled" value={true}>
+					<EmbeddedArrayInput source="connectorConfig.feature_transform_method_array" label="">
+					<SelectInput source="method" label="Transform Method" validate={[ required ]} style={{ display: 'inline-block', float: 'left' }} choices={[
+							{ id: 'FEATURE_TRANS_STRINGINDEX', name: 'String Indexer' },
+							{ id: 'FEATURE_TRANS_VA', name: 'Vector Assembler' },
+							]} defaultValue='FEATURE_TRANS_STRINGINDEX' />
+                    <TextInput source="connectorConfig.feature_extract_para_input" label="Set Input Columns (, as separator)"/>
+					</EmbeddedArrayInput>
+                    </DependentInput>
+					<BooleanInput source="connectorConfig.feature_selector_enabled" label="Feature Selector?" defaultValue={false} style={{ width: 500 }} />
+					<SelectInput source="connectorConfig.model_categry" label="Choose Algorithm Category" style={{ display: 'inline-block', float: 'left' }} validate={[ required ]} choices={[
+						{ id: 'ML_CLASS_CLF', name: 'Classification' },
+						{ id: 'ML_CLASS_RES', name: 'Regression' },
+						{ id: 'ML_CLASS_CLS', name: 'Clustering' },
+						{ id: 'ML_CLASS_REC', name: 'Recommendation' },
+						]} defaultValue='ML_CLASS_CLF' />
+					<DependentInput dependsOn="connectorConfig.model_categry" value="ML_CLASS_CLF">
+						<SelectInput source="connectorConfig.model_class_method" label="Choose Algorithm" validate={[ required ]} choices={[
+						{ id: 'ML_CLASS_CLF_NB', name: 'Naive Bayes' },
+						{ id: 'ML_CLASS_CLF_LR', name: 'Logistic Regression' },
+						{ id: 'ML_CLASS_CLF_DTC', name: 'Decision Tree Classifier' },
+						{ id: 'ML_CLASS_CLF_LSVM', name: 'Linear Support Vector Machine' },
+						]} defaultValue='ML_CLASS_CLF_NB' />
+					</DependentInput>
+					<DependentInput dependsOn="connectorConfig.model_categry" value="ML_CLASS_RES">
+						<SelectInput source="connectorConfig.model_class_method" label="Choose Algorithm" validate={[ required ]} choices={[
+						{ id: 'ML_CLASS_RES_LR', name: 'Linear Regression' },
+						{ id: 'ML_CLASS_RES_DTR', name: 'Decision Tree Regression' },
+						{ id: 'ML_CLASS_RES_RFR', name: 'Random Forest Regression' },
+						{ id: 'ML_CLASS_RES_GBTR', name: 'Gradient-boosted Tree Regression' },
+						]} defaultValue='ML_CLASS_RES_LR' />
+					</DependentInput>
+					<DependentInput dependsOn="connectorConfig.model_categry" value="ML_CLASS_CLS">
+						<SelectInput source="connectorConfig.model_class_method" label="Choose Algorithm" validate={[ required ]} choices={[
+						{ id: 'ML_CLASS_CLS_KM', name: 'K-means' },
+						{ id: 'ML_CLASS_CLS_LDA', name: 'Latent Dirichlet Allocation (LDA)' },
+						{ id: 'ML_CLASS_CLS_BKM', name: 'Bisecting K-means' },
+						{ id: 'ML_CLASS_CLS_GMM', name: 'Gaussian Mixture Model (GMM)' },
+						]} defaultValue='ML_CLASS_CLS_KM' />
+					</DependentInput>
+					<DependentInput dependsOn="connectorConfig.model_categry" value="ML_CLASS_REC">
+						<SelectInput source="connectorConfig.model_class_method" label="Choose Algorithm" validate={[ required ]} choices={[
+						{ id: 'ML_CLASS_REC_CF', name: 'Collaborative Filtering' },
+						]} defaultValue='ML_CLASS_REC_CF' />
+					</DependentInput>
+				</DependentInput>
             </FormTab>    
         </TabbedForm>
     </Create>
