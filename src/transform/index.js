@@ -13,6 +13,9 @@ import RawJsonRecordSpecificField from '../component/RawJsonRecordSpecificField'
 import RefreshListActions from '../buttons/RefreshListActions'
 import EmbeddedArrayInput from '../component/EmbeddedArrayInput';
 import EmbeddedArrayField from '../component/EmbeddedArrayField';
+import { Card, CardHeader, CardActions, CardText } from 'material-ui/Card';
+import InfoIcon from 'material-ui/svg-icons/content/content-paste';
+import Avatar from 'material-ui/Avatar';
 
 export const TransformIcon = Icon;
 
@@ -271,6 +274,27 @@ export const TransformCreate = (props) => (
 							{ id: 'ML_CLASS_CLF_DTC', name: 'Decision Tree Classifier' },
 							{ id: 'ML_CLASS_CLF_LSVM', name: 'Linear Support Vector Machine' },
 							]} defaultValue='ML_CLASS_CLF_NB' />
+							<DependentInput dependsOn="connectorConfig.model_class_method" value="ML_CLASS_CLF_NB">
+                                <Card style={{ width: 500 }}>
+                                    <CardHeader
+                                                     title="Naive Bayes Classifiers "
+                                                     subtitle="algorithm information and parameters"
+                                                     style={{ fontWeight: 'bold',  textAlign: 'left' }}
+                                                     avatar={<Avatar backgroundColor="#008000" icon={<InfoIcon />} />}
+                                    />
+                                    <CardText>
+                                    Naive Bayes classifiers are a family of simple probabilistic classifiers based on applying Bayes’ theorem with strong (naive) independence assumptions between the features.
+                                    The current implementation supports both multinomial naive Bayes and Bernoulli naive Bayes. For example, by converting documents into TF-IDF vectors, it can be used for document classification.
+                                    By making every vector a binary (0/1) data, it can also be used as Bernoulli NB (see here). The input feature values must be nonnegative.
+                                    <p></p>
+                                    <div>Below is commonly set parameters in the name format of set[Parameters]</div>
+                                    <li>ModelType: "multinomial" as default or "bernoulli"</li>
+                                    <li>FeaturesCol: The name of the feature column</li>
+                                    <li>LabelCol: The name of the label column</li>
+                                    <li>PredictionCol: : The name of the prediction column</li>
+                                    </CardText>
+                                </Card>
+                            </DependentInput>
 						</DependentInput>
 						<DependentInput dependsOn="connectorConfig.model_categry" value="ML_CLASS_RES">
 							<SelectInput source="connectorConfig.model_class_method" label="Choose Algorithm" validate={[ required ]} choices={[
