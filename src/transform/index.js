@@ -50,12 +50,12 @@ export const TransformList = (props) => (
             <TextField source="taskSeq" label="task seq." />
             <TextField source="name" label="name" />
             <SelectField source="connectorType" label="Task Type" choices={[
-    			{ id: 'TRANSFORM_EXCHANGE_FLINK_SQLA2A', name: 'SQL over Stream' },
-    			{ id: 'TRANSFORM_EXCHANGE_SPARK_SQL', name: 'SQL over Batch' },
-    			{ id: 'TRANSFORM_EXCHANGE_FLINK_Script', name: 'Script over Stream' },
-    			{ id: 'TRANSFORM_EXCHANGE_SPARK_STREAM', name: 'Script over Batch' },
-  		        { id: 'TRANSFORM_EXCHANGE_FLINK_UDF',  name: 'UDF over Stream' },
-  		        { id: 'TRANSFORM_EXCHANGE_SPARK_UDF',  name: 'UDF over Batch' },
+    			{ id: 'TRANSFORM_EXCHANGE_FLINK_SQLA2A', name: 'Stream SQL' },
+    			{ id: 'TRANSFORM_EXCHANGE_SPARK_SQL', name: 'Batch SQL' },
+    			{ id: 'TRANSFORM_EXCHANGE_FLINK_Script', name: 'Stream API' },
+    			{ id: 'TRANSFORM_EXCHANGE_SPARK_STREAM', name: 'Batch API' },
+  		        { id: 'TRANSFORM_EXCHANGE_FLINK_UDF',  name: 'Stream UDF/Jar' },
+  		        { id: 'TRANSFORM_EXCHANGE_SPARK_UDF',  name: 'Batch UDF/Jar' },
   		        { id: 'TRANSFORM_MODEL_SPARK_STREAM', name: 'Model over Stream'},
   		        { id: 'TRANSFORM_MODEL_SPARK_TRAIN',  name: 'Model Training' },
             		        ]} />
@@ -74,12 +74,12 @@ export const TransformEdit = (props) => (
                 <TextInput source="name" label="Name" validate={[ required ]} />
 		        <LongTextInput source="description" label="Task Description" style={{ width: 500 }} />
 		        <SelectField source="connectorType" label="Task Type" validate={[ required ]} choices={[
-    			{ id: 'TRANSFORM_EXCHANGE_FLINK_SQLA2A', name: 'SQL over Stream' },
-    			{ id: 'TRANSFORM_EXCHANGE_SPARK_SQL', name: 'SQL over Batch' },
-    			{ id: 'TRANSFORM_EXCHANGE_FLINK_Script', name: 'Script over Stream' },
-    			{ id: 'TRANSFORM_EXCHANGE_SPARK_STREAM', name: 'Script over Batch' },
-  		        { id: 'TRANSFORM_EXCHANGE_FLINK_UDF',  name: 'UDF over Stream' },
-  		        { id: 'TRANSFORM_EXCHANGE_SPARK_UDF',  name: 'UDF over Batch' },
+    			{ id: 'TRANSFORM_EXCHANGE_FLINK_SQLA2A', name: 'Stream SQL' },
+    			{ id: 'TRANSFORM_EXCHANGE_SPARK_SQL', name: 'Batch SQL' },
+    			{ id: 'TRANSFORM_EXCHANGE_FLINK_Script', name: 'Stream API' },
+    			{ id: 'TRANSFORM_EXCHANGE_SPARK_STREAM', name: 'Batch API' },
+  		        { id: 'TRANSFORM_EXCHANGE_FLINK_UDF',  name: 'Stream UDF/Jar' },
+  		        { id: 'TRANSFORM_EXCHANGE_SPARK_UDF',  name: 'Batch UDF/Jar' },
   		        { id: 'TRANSFORM_MODEL_SPARK_STREAM', name: 'Model over Stream'},
   		        { id: 'TRANSFORM_MODEL_SPARK_TRAIN',  name: 'Model Training' },
 		        ]} />
@@ -155,16 +155,26 @@ export const TransformCreate = (props) => (
                 <NumberInput source="taskSeq" label="Task Sequence Number, eg. 1, 2, ..." defaultValue={1}/>
                 <TextInput source="name" label="Name" validate={[ required ]} style={{ width: 500 }} />
 		        <LongTextInput source="description" label="Task Description" style={{ width: 500 }} />
-		        <SelectInput source="connectorType" label="Task Type" validate={[ required ]} choices={[
-    			{ id: 'TRANSFORM_EXCHANGE_FLINK_SQLA2A', name: 'SQL over Stream' },
-    			{ id: 'TRANSFORM_EXCHANGE_SPARK_SQL', name: 'SQL over Batch' },
-    			{ id: 'TRANSFORM_EXCHANGE_FLINK_Script', name: 'Script over Stream' },
-    			{ id: 'TRANSFORM_EXCHANGE_SPARK_STREAM', name: 'Script over Batch' },
-  		        { id: 'TRANSFORM_EXCHANGE_FLINK_UDF',  name: 'UDF over Stream' },
-  		        { id: 'TRANSFORM_EXCHANGE_SPARK_UDF',  name: 'UDF over Batch' },
-  		        { id: 'TRANSFORM_MODEL_SPARK_STREAM', name: 'Model over Stream'},
-  		        { id: 'TRANSFORM_MODEL_SPARK_TRAIN',  name: 'Model Training' },
-		        ]} defaultValue='TRANSFORM_EXCHANGE_FLINK_SQLA2A' />
+		        <RadioButtonGroupInput source="connectorCategory" label="Category" choices={[
+                                    { id: 'stream', name: 'Stream' },
+                                    { id: 'batch', name: 'Batch' },
+                ]} defaultValue='batch' />
+                <DependentInput dependsOn="connectorCategory" value="stream" >
+                    <SelectInput source="connectorType" label="Task Type" validate={[ required ]} choices={[
+                        { id: 'TRANSFORM_EXCHANGE_FLINK_SQLA2A', name: 'Stream SQL' },
+                        { id: 'TRANSFORM_EXCHANGE_FLINK_Script', name: 'Stream API' },
+                        { id: 'TRANSFORM_EXCHANGE_FLINK_UDF',  name: 'Stream UDF/Jar' },
+                        { id: 'TRANSFORM_MODEL_SPARK_STREAM', name: 'Model over Stream'},
+                    ]} />
+                </DependentInput>
+                <DependentInput dependsOn="connectorCategory" value="batch">
+                    <SelectInput source="connectorType" label="Task Type" validate={[ required ]} choices={[
+                        { id: 'TRANSFORM_EXCHANGE_SPARK_SQL', name: 'Batch SQL' },
+                        { id: 'TRANSFORM_EXCHANGE_SPARK_STREAM', name: 'Batch API' },
+                        { id: 'TRANSFORM_EXCHANGE_SPARK_UDF',  name: 'Batch UDF/Jar' },
+                        { id: 'TRANSFORM_MODEL_SPARK_TRAIN',  name: 'Model Training' },
+                    ]} defaultValue='TRANSFORM_MODEL_SPARK_TRAIN'/>
+		        </DependentInput>
             </FormTab>
             <FormTab label="Setting">
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_FLINK_SQLA2A">
@@ -212,12 +222,20 @@ export const TransformCreate = (props) => (
 					<BooleanInput source="connectorConfig.ml_guide_enabled" label="Guideline Enabled?" defaultValue={true}/>
 					<DependentInput dependsOn="connectorConfig.ml_guide_enabled" value={true}>
 						<SelectInput source="connectorConfig.feature_source" label="Feature Source" validate={[ required ]} style={{ display: 'inline-block', float: 'left' }} choices={[
-							{ id: 'FEATURE_SRC_LIBSVM', name: 'File Libsvm' },
-							{ id: 'FEATURE_SRC_CSV', name: 'File Csv' },
+							{ id: 'FEATURE_SRC_FILE', name: 'File Libsvm|CSV' },
 							{ id: 'FEATURE_SRC_HTABLE', name: 'Hive Table' },
 							{ id: 'FEATURE_SRC_HQL', name: 'Hive Query' },
-							]} defaultValue='FEATURE_SRC_LIBSVM' />
-						<NumberInput source="connectorConfig.feature_source_sample" label="Training Data Ratio %" defaultValue={100}/>
+							]} defaultValue='FEATURE_SRC_HQL' />
+                        <NumberInput source="connectorConfig.feature_source_sample" label="Training Data Ratio %" defaultValue={100} step={20}/>
+						<DependentInput dependsOn="connectorConfig.feature_source" value="FEATURE_SRC_FILE">
+							<LongTextInput source="connectorConfig.feature_source_file_path" label="File Path (Local file use file:///. process files based on the extension.)" style={{ width: 500 }} />
+						</DependentInput>
+						<DependentInput dependsOn="connectorConfig.feature_source" value="FEATURE_SRC_HTABLE">
+							<LongTextInput source="connectorConfig.feature_source_hive_table" label="Hive Table/View Name (database_name.table/view_name)" style={{ width: 500 }} />
+						</DependentInput>
+						<DependentInput dependsOn="connectorConfig.feature_source" value="FEATURE_SRC_HQL">
+							<LongTextInput source="connectorConfig.feature_source_hive_query" label="Hive/Spark SQL Query" style={{ width: 500 }} />
+						</DependentInput>
 						<BooleanInput source="connectorConfig.feature_extract_enabled" label="Feature Extract?" defaultValue={false} style={{ width: 500 }} />
 						<DependentInput dependsOn="connectorConfig.feature_extract_enabled" value={true}>
 						<EmbeddedArrayInput source="connectorConfig.feature_extract_method_array" label="">
