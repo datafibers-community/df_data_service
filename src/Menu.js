@@ -8,7 +8,6 @@ import { translate, DashboardMenuItem, MenuItemLink } from 'admin-on-rest';
 import { ProcessorIcon } from './processor';
 import { ConnectIcon } from './connect';
 import { TransformIcon } from './transform';
-import { InsightIcon } from './insight';
 import { SchemaIcon } from './schema';
 import { ModelIcon } from './model';
 import { HistIcon } from './history';
