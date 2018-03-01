@@ -221,6 +221,7 @@ export const TransformCreate = (props) => (
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_FLINK_UDF">
                     <TextInput source="connectorConfig.trans_jar" label="UDF Jar File Name" validate={[ required ]} />
 		        </DependentInput>
+
 				<DependentInput dependsOn="connectorType" value="TRANSFORM_MODEL_SPARK_TRAIN">
 					<BooleanInput source="connectorConfig.ml_guide_enabled" label="Guideline Enabled?" defaultValue={true}/>
 					<DependentInput dependsOn="connectorConfig.ml_guide_enabled" value={true}>
@@ -270,8 +271,8 @@ export const TransformCreate = (props) => (
                                         { id: 'FEATURE_SELE_VS', name: 'Vector Slicer' },
                                         { id: 'FEATURE_SELE_CHISQ', name: 'ChiSq Selector' },
                                         ]} defaultValue='FEATURE_SELE_VS' />
-                            <TextInput source="inputCols" label="Set Input Columns (, as separator)" style={{ display: 'inline-block', marginLeft: 32}} />
-                            <TextInput source="outputCol" label="Set Output Column" style={{ display: 'inline-block', marginLeft: 32}} />
+                                <TextInput source="inputCols" label="Set Input Columns (, as separator)" style={{ display: 'inline-block', marginLeft: 32}} />
+                                <TextInput source="outputCol" label="Set Output Column" style={{ display: 'inline-block', marginLeft: 32}} />
                                 </EmbeddedArrayInput>
                             </DependentInput>
 						<SelectInput source="connectorConfig.model_category" label="Choose Algorithm Category" style={{ display: 'inline-block', float: 'left' }} validate={[ required ]} choices={[
@@ -288,7 +289,7 @@ export const TransformCreate = (props) => (
 							{ id: 'ML_CLASS_CLF_LSVM', name: 'Linear Support Vector Machine' },
 							]} defaultValue='ML_CLASS_CLF_NB' />
 							<DependentInput dependsOn="connectorConfig.model_class_method" value="ML_CLASS_CLF_NB">
-                                <Card style={{ width: 500 }}>
+                                <Card style={{ width: 750 }}>
                                     <CardHeader
                                                      title="Naive Bayes Classifiers "
                                                      subtitle="algorithm information and parameters"
@@ -310,7 +311,7 @@ export const TransformCreate = (props) => (
                             </DependentInput>
 						</DependentInput>
 						<DependentInput dependsOn="connectorConfig.model_category" value="ML_CLASS_RES">
-							<SelectInput source="connectorConfig.model_class_method" label="Choose Algorithm" validate={[ required ]} choices={[
+							<SelectInput source="connectorConfig.model_class_method" label="Choose Algorithm" validate={[ required ]} style={{ display: 'inline-block', marginLeft: 32}} choices={[
 							{ id: 'ML_CLASS_RES_LR', name: 'Linear Regression' },
 							{ id: 'ML_CLASS_RES_DTR', name: 'Decision Tree Regression' },
 							{ id: 'ML_CLASS_RES_RFR', name: 'Random Forest Regression' },
@@ -318,63 +319,57 @@ export const TransformCreate = (props) => (
 							]} defaultValue='ML_CLASS_RES_LR' />
 						</DependentInput>
 						<DependentInput dependsOn="connectorConfig.model_category" value="ML_CLASS_CLS">
-							<SelectInput source="connectorConfig.model_class_method" label="Choose Algorithm" validate={[ required ]} choices={[
+							<SelectInput source="connectorConfig.model_class_method" label="Choose Algorithm" validate={[ required ]} style={{ display: 'inline-block', marginLeft: 32}} choices={[
 							{ id: 'ML_CLASS_CLS_KM', name: 'K-means' },
 							{ id: 'ML_CLASS_CLS_LDA', name: 'Latent Dirichlet Allocation (LDA)' },
 							{ id: 'ML_CLASS_CLS_BKM', name: 'Bisecting K-means' },
 							{ id: 'ML_CLASS_CLS_GMM', name: 'Gaussian Mixture Model (GMM)' },
 							]} defaultValue='ML_CLASS_CLS_KM' />
 						</DependentInput>
-						<DependentInput dependsOn="connectorConfig.model_categry" value="ML_CLASS_REC">
-							<SelectInput source="connectorConfig.model_class_method" label="Choose Algorithm" validate={[ required ]} choices={[
+					    <DependentInput dependsOn="connectorConfig.model_category" value="ML_CLASS_REC">
+							<SelectInput source="connectorConfig.model_class_method" label="Choose Algorithm" validate={[ required ]} style={{ display: 'inline-block', marginLeft: 32}} choices={[
 							{ id: 'ML_CLASS_REC_CF', name: 'Collaborative Filtering' },
-							]} defaultValue='ML_CLASS_REC_CF' />
+							]} defaultValue='ML_CLASS_CLS_KM' />
 						</DependentInput>
-						<BooleanInput source="connectorConfig.model_validation_enabled" label="Validate Model?" defaultValue={false} style={{ width: 500 }} />
-						<DependentInput dependsOn="connectorConfig.model_validation_enabled" value={true}>
-                            <SelectInput source="connectorConfig.model_validator" label="Choose Validation Method" validate={[ required ]} style={{ width: 500 }} choices={[
-                                { id: 'ML_VAL_SP', name: 'Simple Validation - Use evaluator only' },
-                                { id: 'ML_VAL_CV', name: 'Cross Validation - Iterate folders of parameters grid with multiple data sets' },
-                                { id: 'ML_VAL_TVS', name: 'Train Validation Split - Iterate parameters grid with single ratio data sets' },
+                            <RadioButtonGroupInput source="connectorConfig.model_validator" label="Choose Validation Method" validate={[ required ]} style={{ width: 750 }} choices={[
+                                { id: 'ML_VAL_NO',  name: 'No    : Just training' },
+                                { id: 'ML_VAL_SP',  name: 'Simple: Use evaluator only' },
+                                { id: 'ML_VAL_CV',  name: 'Cross : Iterate folders of parameters grid with multiple data sets' },
+                                { id: 'ML_VAL_TVS', name: 'Split : Iterate parameters grid with single ratio data sets' },
                                 ]} defaultValue='ML_VAL_SP' />
                             <DependentInput dependsOn="connectorConfig.model_validator" value="ML_VAL_CV">
-                                <NumberInput source="connectorConfig.model_validator_fold" label="Number of Folds (bigger more expensive iterations)" defaultValue={2} step={1}/>
+                                <NumberInput source="connectorConfig.model_validator_fold" label="Number of Folds, such as 2" step={1}/>
 						    </DependentInput>
                             <DependentInput dependsOn="connectorConfig.model_validator" value="ML_VAL_TVS">
-                                <NumberInput source="connectorConfig.model_validator_ratio" label="Training Data Ratio %" defaultValue={80} step={10}/>
+                                <NumberInput source="connectorConfig.model_validator_ratio" label="Training Data Ratio %, such as 80" step={10}/>
 						    </DependentInput>
 							<SelectInput source="connectorConfig.model_evaluator" label="Choose Evaluator" validate={[ required ]} choices={[
-							{ id: 'ML_EVA_RE', name: 'Regression Evaluator' },
-							{ id: 'ML_EVA_BC', name: 'Binary Classification Evaluator' },
-							{ id: 'ML_EVA_MC', name: 'Multiclass Classification Evaluator' },
-							]} defaultValue='ML_EVA_BC' />
-                            <DependentInput dependsOn="connectorConfig.model_evaluator" value="ML_EVA_RE">
-                                <TextInput source="connectorConfig.model_evaluator_label_col" label="Set Evaluator Label Column" defaultValue= "label" style={{ display: 'inline-block', float: 'left' }} />
-                                <TextInput source="connectorConfig.model_evaluator_metric" label="Set Evaluator Metric name" defaultValue= "rmse" style={{ display: 'inline-block', marginLeft: 32}}/>
-                                <TextInput source="connectorConfig.model_evaluator_pred_col" label="Set Evaluator Predict Column" defaultValue= "prediction" style={{ display: 'inline-block', marginLeft: 32}}/>
-						    </DependentInput>
-                            <DependentInput dependsOn="connectorConfig.model_evaluator" value="ML_EVA_BC">
-                                <TextInput source="connectorConfig.model_evaluator_label_col" label="Set Evaluator Label Column" defaultValue= "label" style={{ display: 'inline-block', float: 'left' }} />
-                                <TextInput source="connectorConfig.model_evaluator_metric" label="Set Evaluator Metric name" defaultValue= "areaUnderROC" style={{ display: 'inline-block', marginLeft: 32}}/>
-                                <TextInput source="connectorConfig.model_evaluator_rawpred_col" label="Set Evaluator Raw Prediction Column" defaultValue= "prediction" style={{ display: 'inline-block', marginLeft: 32}}/>
-						    </DependentInput>
-                            <DependentInput dependsOn="connectorConfig.model_evaluator" value="ML_EVA_MC">
-                                <TextInput source="connectorConfig.model_evaluator_label_col" label="Set Evaluator Label Column" defaultValue= "label" style={{ display: 'inline-block', float: 'left' }} />
-                                <TextInput source="connectorConfig.model_evaluator_metric" label="Set Evaluator Metric name" defaultValue= "f1" style={{ display: 'inline-block', marginLeft: 32}}/>
-                                <TextInput source="connectorConfig.model_evaluator_pred_col" label="Set Evaluator Predict Column" defaultValue= "prediction" style={{ display: 'inline-block', marginLeft: 32}}/>
-						    </DependentInput>
-                            <EmbeddedArrayInput source="mlModelValidationParaGrid" label="Build Model Parameters Grid (Not Needed for Simple Validation">
-                                <TextInput source="para_name" label="Model's Parameter Name"/>
-                                <TextInput source="para_value" label="List of Values for Trail (, as separator)"/>
+							{ id: 'ML_EVA_RE', name: 'Regression' },
+							{ id: 'ML_EVA_BC', name: 'Binary Classification' },
+							{ id: 'ML_EVA_MC', name: 'Multiclass Classification' },
+							]}  defaultValue='ML_EVA_BC' />
+                            <TextInput source="connectorConfig.model_evaluator_label_col" label="Set Evaluator Column Label " defaultValue= "label" style={{ display: 'inline-block', float: 'left' }} />
+                            <TextInput source="connectorConfig.model_evaluator_pred_col" label="Set Evaluator Column Predict " defaultValue= "prediction" style={{ display: 'inline-block', marginLeft: 32}}/>
+     					    <TextInput source="connectorConfig.model_evaluator_metric" label="Set Evaluator Metric Name" defaultValue= "such as rmse, areaUnderROC, f1" style={{ display: 'inline-block', marginLeft: 32}}/>
+                            <DependentInput dependsOn="connectorConfig.model_validator" value="ML_VAL_CV">
+                            <EmbeddedArrayInput source="mlModelValidationParaGrid" label="Build Model Parameters Grid">
+                                <TextInput source="para_name" label="Model's Parameter Name" style={{ display: 'inline-block', float: 'left' }} />
+                                <TextInput source="para_value" label="List of Values for Trail (, as separator)" style={{ display: 'inline-block', marginLeft: 32}}/>
                             </EmbeddedArrayInput>
-						</DependentInput>
-					</DependentInput>
+                            </DependentInput>
+						    <DependentInput dependsOn="connectorConfig.model_validator" value="ML_VAL_TVS">
+                            <EmbeddedArrayInput source="mlModelValidationParaGrid" label="Create A Model Parameters Grid">
+                                <TextInput source="para_name" label="Model's Parameter Name" style={{ display: 'inline-block', float: 'left' }} />
+                                <TextInput source="para_value" label="Trail Values List (, as separator)" style={{ display: 'inline-block', marginLeft: 32}}/>
+                            </EmbeddedArrayInput>
+                            </DependentInput>
+                    </DependentInput>
 					<DependentInput dependsOn="connectorConfig.ml_guide_enabled" value={false}>
                         <SelectInput source="connectorConfig.ml_pipe_kind" label="Choose API" validate={[ required ]} choices={[
-                                                    { id: 'ML_PIPE_PYTHON', name: 'Python' },
-                                                    { id: 'ML_PIPE_SCALA', name: 'Scala' },
-                                                    { id: 'ML_PIPE_MLSQL', name: 'ML SQL' }, ]} defaultValue='ML_PIPE_PYTHON' />
-						<LongTextInput source="connectorConfig.ml_pipe" label="Build machine learning pipeline from API" validate={[ required ]} style={{ width: 500 }} />
+                                                    { id: 'ML_PIPE_PYTHON', name: 'Python DataFrame' },
+                                                    { id: 'ML_PIPE_SCALA', name: 'Scala DataFrame' },
+                                                    { id: 'ML_PIPE_MLSQL', name: 'Machine Learning SQL' }, ]} defaultValue='ML_PIPE_PYTHON' />
+						<LongTextInput source="connectorConfig.ml_pipe" label="API Code" validate={[ required ]} style={{ width: 500 }} />
 					</DependentInput>
 				</DependentInput>
             </FormTab>    
