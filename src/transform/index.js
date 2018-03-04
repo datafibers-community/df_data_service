@@ -388,9 +388,9 @@ export const TransformCreate = (props) => (
                     </DependentInput>
 					<DependentInput dependsOn="connectorConfig.ml_guide_enabled" value={false}>
                         <SelectInput source="connectorConfig.ml_pipe_kind" label="Choose API" validate={[ required ]} choices={[
-                                                    { id: 'ML_PIPE_PYTHON', name: 'Python DataFrame' },
-                                                    { id: 'ML_PIPE_SCALA', name: 'Scala DataFrame' },
-                                                    { id: 'ML_PIPE_MLSQL', name: 'Machine Learning SQL' }, ]} defaultValue='ML_PIPE_PYTHON' />
+                                                    { id: 'pyspark', name: 'Python DataFrame' },
+                                                    { id: 'spark', name: 'Scala DataFrame' },
+                                                    { id: 'mlsql', name: 'Machine Learning SQL' }, ]} defaultValue='ML_PIPE_PYTHON' />
 						<LongTextInput source="connectorConfig.ml_pipe" label="API Code" defaultValue="<div>asda</div>ads" style={{ width: 500 }} />
 					</DependentInput>
 				</DependentInput>
