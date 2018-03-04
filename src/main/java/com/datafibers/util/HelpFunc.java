@@ -659,6 +659,16 @@ public class HelpFunc {
     }
 
     /**
+     * Convert json from web ui ml training guideline (include guide, mlsql, pyspark) to pyspark code.
+     * @return Pyspark code
+     */
+    public static String mlGuideToPySpark(){
+
+        return "";
+
+    }
+
+    /**
      * Convert Json Array to String with proper begin, separator, and end string.
      * @param ja
      * @param begin

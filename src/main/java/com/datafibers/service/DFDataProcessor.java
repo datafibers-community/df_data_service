@@ -1236,17 +1236,18 @@ public class DFDataProcessor extends AbstractVerticle {
      *     }
      */
     private void addOneTransforms(RoutingContext routingContext) {
-        final DFJobPOPJ dfJob = Json.decodeValue(
-                HelpFunc.cleanJsonConfig(routingContext.getBodyAsString()), DFJobPOPJ.class);
+        String rawResBody = HelpFunc.cleanJsonConfig(routingContext.getBodyAsString());
+        System.out.println("TESTING - resRaw = " + rawResBody);
+        final DFJobPOPJ dfJob = Json.decodeValue(rawResBody, DFJobPOPJ.class);
 
         dfJob.setStatus(ConstantApp.DF_STATUS.UNASSIGNED.name());
         String mongoId = (dfJob.getId() != null && !dfJob.getId().isEmpty())? dfJob.getId() : new ObjectId().toString();
         dfJob.setConnectUid(mongoId).setId(mongoId).getConnectorConfig().put(ConstantApp.PK_TRANSFORM_CUID, mongoId);
 
-        if(dfJob.getConnectorType().equalsIgnoreCase(ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_SPARK_SQL.name())) {
-            LOG.info("calling spark add = " + dfJob.toJson());
+        if(dfJob.getConnectorType().contains("SPARK") && dfJob.getConnectorType().contains("TRANSFORM")) {
+            LOG.info("calling spark engine with body = " + dfJob.toJson());
             ProcessorTransformSpark.forwardPostAsAddOne(vertx, wc_spark, dfJob, mongo, COLLECTION,
-                    spark_livy_server_host, spark_livy_server_port
+                    spark_livy_server_host, spark_livy_server_port, rawResBody
             );
         } else {
             // Flink refers to KafkaServerHostPort.java
@@ -2117,6 +2118,7 @@ public class DFDataProcessor extends AbstractVerticle {
         List<String> list = new ArrayList<>();
         // Add all transform
         HelpFunc.addSpecifiedConnectTypetoList(list, "(?i:.*transform_exchange_spark.*)") ;
+        HelpFunc.addSpecifiedConnectTypetoList(list, "(?i:.*transform_model_spark.*)") ;
 
         mongo.find(COLLECTION, new JsonObject().put("connectorType", new JsonObject().put("$in", list)), result -> {
             if (result.succeeded()) {

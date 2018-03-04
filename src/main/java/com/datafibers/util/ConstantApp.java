@@ -240,4 +240,9 @@ public final class ConstantApp {
     public static final String PK_TRANSFORM_STREAM_BACK_TOPIC_CREATION = "choose_or_create";
     public static final String PK_TRANSFORM_STREAM_BACK_TASK_ID = "stream_back_task_id";
     public static final String PK_TRANSFORM_STREAM_BACK_TASK_STATE = "stream_back_task_state";
+
+    // Used for spark ml training
+    public static final String PK_TRANSFORM_MT_GUIDE_ENABLE = "ml_guide_enabled";
+    public static final String PK_TRANSFORM_MT_CODE_KIND = "ml_pipe_kind";
+    public static final String PK_TRANSFORM_MT_CODE = "ml_pipe";
 }
