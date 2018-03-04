@@ -158,26 +158,15 @@ export const TransformCreate = (props) => (
                 <NumberInput source="taskSeq" label="Task Sequence Number, eg. 1, 2, ..." defaultValue={1}/>
                 <TextInput source="name" label="Name" validate={[ required ]} style={{ width: 500 }} />
 		        <LongTextInput source="description" label="Task Description" style={{ width: 500 }} />
-		        <RadioButtonGroupInput source="connectorCategory" label="Category" choices={[
-                                    { id: 'stream', name: 'Stream' },
-                                    { id: 'batch', name: 'Batch' },
-                ]} defaultValue='batch' />
-                <DependentInput dependsOn="connectorCategory" value="stream" >
-                    <SelectInput source="connectorType" label="Task Type" validate={[ required ]} choices={[
+                <SelectInput source="connectorType" label="Task Type" validate={[ required ]} choices={[
                         { id: 'TRANSFORM_EXCHANGE_FLINK_SQLA2A', name: 'Stream SQL' },
-                        { id: 'TRANSFORM_EXCHANGE_FLINK_Script', name: 'Stream API' },
-                        { id: 'TRANSFORM_EXCHANGE_FLINK_UDF',  name: 'Stream UDF/Jar' },
-                        { id: 'TRANSFORM_MODEL_SPARK_STREAM', name: 'Model over Stream'},
-                    ]} />
-                </DependentInput>
-                <DependentInput dependsOn="connectorCategory" value="batch">
-                    <SelectInput source="connectorType" label="Task Type" validate={[ required ]} choices={[
                         { id: 'TRANSFORM_EXCHANGE_SPARK_SQL', name: 'Batch SQL' },
+                        { id: 'TRANSFORM_EXCHANGE_FLINK_Script', name: 'Stream API' },
                         { id: 'TRANSFORM_EXCHANGE_SPARK_STREAM', name: 'Batch API' },
+                        { id: 'TRANSFORM_EXCHANGE_FLINK_UDF',  name: 'Stream UDF/Jar' },
                         { id: 'TRANSFORM_EXCHANGE_SPARK_UDF',  name: 'Batch UDF/Jar' },
-                        { id: 'TRANSFORM_MODEL_SPARK_TRAIN',  name: 'Model Training' },
-                    ]} defaultValue='TRANSFORM_MODEL_SPARK_TRAIN'/>
-		        </DependentInput>
+                        { id: 'TRANSFORM_MODEL_SPARK_STREAM', name: 'Model over Stream'},
+                        { id: 'TRANSFORM_MODEL_SPARK_TRAIN',  name: 'Model Training' }, ]} defaultValue='TRANSFORM_MODEL_SPARK_TRAIN' />
             </FormTab>
             <FormTab label="Setting">
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_FLINK_SQLA2A">
@@ -391,7 +380,7 @@ export const TransformCreate = (props) => (
                                                     { id: 'pyspark', name: 'Python DataFrame' },
                                                     { id: 'spark', name: 'Scala DataFrame' },
                                                     { id: 'mlsql', name: 'Machine Learning SQL' }, ]} defaultValue='ML_PIPE_PYTHON' />
-						<LongTextInput source="connectorConfig.ml_pipe" label="API Code" defaultValue="<div>asda</div>ads" style={{ width: 500 }} />
+						<LongTextInput source="connectorConfig.ml_pipe" label="API Code" defaultValue="" />
 					</DependentInput>
 				</DependentInput>
             </FormTab>    

@@ -54,6 +54,8 @@ export const ProcessorList = (props) => (
                          			{ id: 'TRANSFORM_EXCHANGE_SPARK_STREAM', name: 'Batch Script off Queue' },
                        		        { id: 'TRANSFORM_EXCHANGE_FLINK_UDF',  name: 'Stream UDF on Queue' },
                        		        { id: 'TRANSFORM_EXCHANGE_SPARK_UDF',  name: 'Batch UDF on Queue' },
+                                    { id: 'TRANSFORM_MODEL_SPARK_STREAM', name: 'Model over Stream'},
+                                    { id: 'TRANSFORM_MODEL_SPARK_TRAIN',  name: 'Model Training' },
             ]} />
             <ChipField source="status" label="status" />
             <ShowButton />
