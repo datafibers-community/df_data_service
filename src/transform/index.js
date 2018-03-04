@@ -109,6 +109,9 @@ export const TransformEdit = (props) => (
                     <LongTextInput source="connectorConfig.stream_back_topic" label="Stream Back Topic" style={{ width: 500 }}/>
 		            <LongTextInput source="connectorConfig.trans_sql" label="Spark SQL over Hive Queries (Comments --, Queries separate by ;)" validate={[ required ]} style={{ width: 500 }} />
 		        </DependentInput>
+		        <DependentInput dependsOn="connectorType" value="TRANSFORM_MODEL_SPARK_TRAIN">
+                    <LongTextInput source="connectorConfig.ml_pipe" label="Training Pipe Code" validate={[ required ]} />
+		        </DependentInput>
 		        <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_FLINK_Script">
                     <TextInput source="connectorConfig.topic_in" label="A Topic to Read Data" style={{ display: 'inline-block' }} validate={[ required ]} />
                     <TextInput source="connectorConfig.topic_out" label="A Topic to Write Data" style={{ display: 'inline-block', marginLeft: 32 }} validate={[ required ]} />
@@ -134,6 +137,19 @@ export const TransformEdit = (props) => (
                     </ReferenceManyField>
 		        </DependentInput>
                 <DependentInput dependsOn="connectorType" value="TRANSFORM_EXCHANGE_SPARK_SQL">
+                    <DisabledInput source="jobConfig.livy_session_id" label="Livy Session ID" style={{ display: 'inline-block' }} />
+                    <DisabledInput source="jobConfig.livy_session_state" label="Livy Session State" style={{ display: 'inline-block', marginLeft: 32 }} /><br />
+                    <DisabledInput source="jobConfig.livy_statement_id" label="Livy Statement ID" style={{ display: 'inline-block' }} />
+                    <DisabledInput source="jobConfig.livy_statement_state" label="Livy Statement State" style={{ display: 'inline-block', marginLeft: 32 }} />
+                    <ChipField source="jobConfig.livy_statement_status" label="Query Status" />
+                    <DependentInput dependsOn="status" value="FINISHED">
+                        <RichTextField source="jobConfig.livy_statement_output" label="Last Query Result Set Preview - top 10 rows "/>
+                    </DependentInput>
+                    <DependentInput dependsOn="status" value="FAILED">
+                        <RichTextField source="jobConfig.livy_statement_exception" label="Query Exceptions"/>
+                    </DependentInput>
+		        </DependentInput>
+                <DependentInput dependsOn="connectorType" value="TRANSFORM_MODEL_SPARK_TRAIN">
                     <DisabledInput source="jobConfig.livy_session_id" label="Livy Session ID" style={{ display: 'inline-block' }} />
                     <DisabledInput source="jobConfig.livy_session_state" label="Livy Session State" style={{ display: 'inline-block', marginLeft: 32 }} /><br />
                     <DisabledInput source="jobConfig.livy_statement_id" label="Livy Statement ID" style={{ display: 'inline-block' }} />
