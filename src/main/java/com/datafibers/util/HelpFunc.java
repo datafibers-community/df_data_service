@@ -417,7 +417,11 @@ public class HelpFunc {
                 String separator = "</th><th>";
                 for (int i = 0; i < header.size(); i++) {
                     if(i == header.size() - 1) separator = "";
-                    headerRow = headerRow + header.getJsonObject(i).getString("name") + separator;
+                    String headerName = header.getJsonObject(i).getString("name");
+                    if (headerName.equalsIgnoreCase("0")) {
+                        headerName = "result";
+                    }
+                    headerRow = headerRow + headerName + separator;
                 }
 
                 headerRow = headerRow + "</th></tr>";
@@ -429,7 +433,7 @@ public class HelpFunc {
 
                 return tableHeader + headerRow + dataRow + tableTrailer;
 
-            } else if (livyStatementResult.getString("code").contains("%json")) { // livy magic word %json
+            } else if (livyStatementResult.getString("code").contains("%json")) { // livy magic word %json TODO HAS ISSUES
                 JsonArray data = dataJason.getJsonArray("application/json");
 
                 if (data.size() == 0) return "";
