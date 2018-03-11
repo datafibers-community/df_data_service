@@ -143,7 +143,7 @@ export const TransformEdit = (props) => (
                     <DisabledInput source="jobConfig.livy_statement_state" label="Livy Statement State" style={{ display: 'inline-block', marginLeft: 32 }} />
                     <ChipField source="jobConfig.livy_statement_status" label="Query Status" />
                     <DependentInput dependsOn="status" value="FINISHED">
-                        <RichTextField source="jobConfig.livy_statement_output" label="Last Query Result Set Preview - top 10 rows "/>
+                        <RichTextField source="jobConfig.livy_statement_output" label="Last Query Result Set Preview - top 20 rows "/>
                     </DependentInput>
                     <DependentInput dependsOn="status" value="FAILED">
                         <RichTextField source="jobConfig.livy_statement_exception" label="Query Exceptions"/>
@@ -156,7 +156,7 @@ export const TransformEdit = (props) => (
                     <DisabledInput source="jobConfig.livy_statement_state" label="Livy Statement State" style={{ display: 'inline-block', marginLeft: 32 }} />
                     <ChipField source="jobConfig.livy_statement_status" label="Query Status" />
                     <DependentInput dependsOn="status" value="FINISHED">
-                        <RichTextField source="jobConfig.livy_statement_output" label="Last Query Result Set Preview - top 10 rows "/>
+                        <RichTextField source="jobConfig.livy_statement_output" label="Query Result Set Preview - top 20 rows "/>
                     </DependentInput>
                     <DependentInput dependsOn="status" value="FAILED">
                         <RichTextField source="jobConfig.livy_statement_exception" label="Query Exceptions"/>
@@ -234,11 +234,11 @@ export const TransformCreate = (props) => (
 							{ id: 'FEATURE_SRC_FILE', name: 'File Libsvm|CSV' },
 							{ id: 'FEATURE_SRC_HTABLE', name: 'Hive Table' },
 							{ id: 'FEATURE_SRC_HQL', name: 'Hive Query' },
-							]} defaultValue='FEATURE_SRC_HQL' />
+							]} defaultValue='FEATURE_SRC_FILE' />
                         <NumberInput source="connectorConfig.feature_source_sample" label="Training Data Ratio %" defaultValue={100} step={20} style={{ display: 'inline-block', marginLeft: 32}} />
                         <BooleanInput source="connectorConfig.feature_source_cache" label="Cache?" defaultValue={false} style={{ display: 'inline-block', marginLeft: 32}} />
 						<DependentInput dependsOn="connectorConfig.feature_source" value="FEATURE_SRC_FILE">
-							<LongTextInput source="connectorConfig.feature_source_value" label="File Path (Local file use file:///. process files based on the extension.)" style={{ width: 500 }} />
+							<LongTextInput source="connectorConfig.feature_source_value" label="File Path (Local file use file:///. process files based on the extension.)" defaultValue="/tmp/data/mllib/sample_libsvm_data.txt" style={{ width: 500 }} />
 						</DependentInput>
 						<DependentInput dependsOn="connectorConfig.feature_source" value="FEATURE_SRC_HTABLE">
 							<LongTextInput source="connectorConfig.feature_source_value" label="Hive Table/View Name (database_name.table/view_name)" style={{ width: 500 }} />
