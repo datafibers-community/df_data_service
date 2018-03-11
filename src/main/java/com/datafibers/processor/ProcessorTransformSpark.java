@@ -16,6 +16,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.client.WebClient;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 
 /**
@@ -70,11 +71,11 @@ public class ProcessorTransformSpark {
                                 }
 
                                 if(idleSessionId.equalsIgnoreCase("")) {// No idle session, create one
-                                    // 1. Start a session using python spark, post to localhost:8998/sessions
+                                    // 1. Start a session shared, post to localhost:8998/sessions
                                     webClient.post(sparkRestPort, sparkRestHost, ConstantApp.LIVY_REST_URL_SESSIONS)
                                             .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE,
                                                     ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
-                                            .sendJsonObject(new JsonObject().put("kind", "pyspark"), ar -> {
+                                            .sendJsonObject(new JsonObject().put("name", "df"), ar -> {
                                                 if (ar.succeeded()) {
                                                     String newSessionId = ar.result().bodyAsJsonObject()
                                                             .getInteger("id").toString();
@@ -339,7 +340,7 @@ public class ProcessorTransformSpark {
                                               String sessionId, String rawResBody) {
 
         String connectType = dfJob.getConnectorType();
-        String codeKind = "";
+        String codeKind = "spark";
         String code = "";
 
         // Here set stream back information. Later, the spark job status checker will upload the file to kafka
@@ -356,12 +357,18 @@ public class ProcessorTransformSpark {
         if(connectType.equalsIgnoreCase(ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_SPARK_SQL.name())) {
             // Support multiple sql statement separated by ; and comments by --
             String[] sqlList = HelpFunc.sqlCleaner(dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL));
-            code = HelpFunc.sqlToPySpark(sqlList, streamBackFlag, streamBackBasePath);
-            codeKind = "pyspark";
+            code = HelpFunc.sqlToSparkScala(sqlList, streamBackFlag, streamBackBasePath);
         } else if (connectType.equalsIgnoreCase(ConstantApp.DF_CONNECT_TYPE.TRANSFORM_MODEL_SPARK_TRAIN.name())) {
             if (dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_MT_GUIDE_ENABLE).equalsIgnoreCase("FALSE")) {
-                code = dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_MT_CODE);
+                // remove comments by // from code
+                code = StringUtils.substringBefore(dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_MT_CODE), "//");
                 codeKind = dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_MT_CODE_KIND);
+            } else { // here, we use guideline from ui to generate ml code (scala)
+                System.out.println("ML using guideline");
+                System.out.println("ML code generator source = " + dfJob.toJson().getJsonObject("connectorConfig").toString());
+                code = HelpFunc.mlGuideToScalaSpark(dfJob.toJson().getJsonObject("connectorConfig"));
+                dfJob.setConnectorConfig(ConstantApp.PK_TRANSFORM_MT_CODE, code);
+                System.out.println("ML code generated = " + code);
             }
         }
 
