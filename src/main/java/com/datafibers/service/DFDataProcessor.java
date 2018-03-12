@@ -48,6 +48,7 @@ public class DFDataProcessor extends AbstractVerticle {
 
     // Generic attributes
     public static String COLLECTION;
+    public static String COLLECTION_MODEL;
     public static String COLLECTION_INSTALLED;
     public static String COLLECTION_META;
     public static String COLLECTION_LOG;
@@ -113,6 +114,7 @@ public class DFDataProcessor extends AbstractVerticle {
          **/
         // Get generic variables
         this.COLLECTION = config().getString("db.collection.name", "df_processor");
+        this.COLLECTION_MODEL = config().getString("db.collection_model.name", "df_model");
         this.COLLECTION_INSTALLED = config().getString("db.collection_installed.name", "df_installed");
         this.COLLECTION_META = config().getString("db.metadata.collection.name", "df_meta");
         this.COLLECTION_LOG = config().getString("db.log.collection.name", "df_log");
@@ -297,6 +299,17 @@ public class DFDataProcessor extends AbstractVerticle {
         router.put(ConstantApp.DF_TRANSFORMS_REST_URL_WITH_ID).handler(this::updateOneTransforms); // Flink Forward
         router.delete(ConstantApp.DF_TRANSFORMS_REST_URL_WITH_ID).handler(this::deleteOneTransforms); // Flink Forward
 
+        // Model Rest API definition
+        router.options(ConstantApp.DF_MODEL_REST_URL_WITH_ID).handler(this::corsHandle);
+        router.options(ConstantApp.DF_MODEL_REST_URL).handler(this::corsHandle);
+        router.get(ConstantApp.DF_MODEL_REST_URL).handler(this::getAllModels);
+        router.get(ConstantApp.DF_MODEL_REST_URL_WITH_ID).handler(this::getOne);
+        router.route(ConstantApp.DF_MODEL_REST_URL_WILD).handler(BodyHandler.create());
+
+        router.post(ConstantApp.DF_MODEL_REST_URL).handler(this::addOneTransforms);
+        router.put(ConstantApp.DF_MODEL_REST_URL_WITH_ID).handler(this::updateOneTransforms);
+        router.delete(ConstantApp.DF_MODEL_REST_URL_WITH_ID).handler(this::deleteOneTransforms);
+
         // Schema Registry
         router.options(ConstantApp.DF_SCHEMA_REST_URL_WITH_ID).handler(this::corsHandle);
         router.options(ConstantApp.DF_SCHEMA_REST_URL).handler(this::corsHandle);
@@ -454,7 +467,7 @@ public class DFDataProcessor extends AbstractVerticle {
      * Generic getAll method for REST API End Point
      * @param routingContext
      */
-    private void getAll(RoutingContext routingContext, String connectorCategoryFilter) {
+    private void getAll(RoutingContext routingContext, String collection, String connectorCategoryFilter) {
         JsonObject searchCondition;
         if (connectorCategoryFilter.equalsIgnoreCase("all")) {
             searchCondition = new JsonObject();
@@ -468,7 +481,7 @@ public class DFDataProcessor extends AbstractVerticle {
             );
         }
 
-        mongo.findWithOptions(COLLECTION, searchCondition, HelpFunc.getMongoSortFindOption(routingContext),
+        mongo.findWithOptions(collection, searchCondition, HelpFunc.getMongoSortFindOption(routingContext),
                 results -> {
                     List<JsonObject> objects = results.result();
                     List<DFJobPOPJ> jobs = objects.stream().map(DFJobPOPJ::new).collect(Collectors.toList());
@@ -492,7 +505,7 @@ public class DFDataProcessor extends AbstractVerticle {
      * @apiSampleRequest http://localhost:8080/api/df/processor
      */
     private void getAllProcessor(RoutingContext routingContext) {
-        getAll(routingContext, "ALL");
+        getAll(routingContext, COLLECTION, "ALL");
     }
 
     /**
@@ -538,7 +551,7 @@ public class DFDataProcessor extends AbstractVerticle {
      * @apiSampleRequest http://localhost:8080/api/df/ps
      */
     private void getAllConnects(RoutingContext routingContext) {
-        getAll(routingContext, "CONNECT");
+        getAll(routingContext, COLLECTION,"CONNECT");
     }
 
     /**
@@ -581,7 +594,15 @@ public class DFDataProcessor extends AbstractVerticle {
      * @apiSampleRequest http://localhost:8080/api/df/tr
      */
     private void getAllTransforms(RoutingContext routingContext) {
-        getAll(routingContext, "TRANSFORM");
+        getAll(routingContext, COLLECTION,"TRANSFORM");
+    }
+
+    /**
+     * Get all ML models for REST API End Point
+     * @param routingContext
+     */
+    private void getAllModels(RoutingContext routingContext, String connectorCategoryFilter) {
+        getAll(routingContext, COLLECTION_MODEL,"TRANSFORM");
     }
 
     /**

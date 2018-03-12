@@ -33,6 +33,11 @@ public final class ConstantApp {
     public static final String DF_TRANSFORMS_UPLOAD_FILE_REST_URL_WILD = "/api/df/uploaded_files*";
     public static final String DF_TRANSFORMS_UPLOAD_FILE_REST_URL = "/api/df/uploaded_files";
 
+    // DF Model REST endpoint URLs
+    public static final String DF_MODEL_REST_URL = "/api/df/ml";
+    public static final String DF_MODEL_REST_URL_WILD = "/api/df/ml*";
+    public static final String DF_MODEL_REST_URL_WITH_ID = DF_MODEL_REST_URL + "/:id";
+
     // DF Schema registry endpoint URLs
     public static final String DF_SCHEMA_REST_URL = "/api/df/schema";
     public static final String DF_SCHEMA_REST_URL_WILD = "/api/df/schema*";
