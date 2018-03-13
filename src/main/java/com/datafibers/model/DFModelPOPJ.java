@@ -98,6 +98,15 @@ public class DFModelPOPJ {
         return json;
     }
 
+    public String getId() {
+        return id;
+    }
+
+    public DFModelPOPJ setId(String id) {
+        this.id = id;
+        return this;
+    }
+
     public String getType() {
         return type;
     }

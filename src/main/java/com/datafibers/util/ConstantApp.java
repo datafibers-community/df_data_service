@@ -109,6 +109,10 @@ public final class ConstantApp {
 
     public static final String TRANSFORM_STREAM_BACK_PATH = "/tmp/streamback";
 
+    // WebHDFS rest setting
+    public static final String WEBHDFS_REST_URL = "/webhdfs/v1";
+    public static final String WEBHDFS_REST_DELETE_PARA = "?op=DELETE&recursive=true";
+
     // HTTP req/res constants
     public static final String HTTP_HEADER_CONTENT_TYPE = "content-type";
     public static final String HTTP_HEADER_APPLICATION_JSON_CHARSET = "application/json; charset=utf-8";

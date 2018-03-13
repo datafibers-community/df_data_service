@@ -1,6 +1,7 @@
 package com.datafibers.service;
 
 import com.datafibers.model.DFLogPOPJ;
+import com.datafibers.model.DFModelPOPJ;
 import com.datafibers.processor.*;
 import com.datafibers.util.*;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
@@ -98,6 +99,12 @@ public class DFDataProcessor extends AbstractVerticle {
     private static Integer schema_registry_rest_port;
     private static String schema_registry_rest_hostname;
 
+    // Web HDFS attributes
+    private static String webhdfs_host_and_port;
+    private static Integer webhdfs_rest_port;
+    private static String webhdfs_rest_hostname;
+
+
     private static final Logger LOG = Logger.getLogger(DFDataProcessor.class);
 
     @Override
@@ -133,15 +140,15 @@ public class DFDataProcessor extends AbstractVerticle {
 
         // Check Flink Transforms config
         this.transform_engine_flink_enabled = config().getBoolean("transform.engine.flink.enable", Boolean.TRUE);
-        this.flink_server_host = config().getString("flink.servers.host", "localhost");
+        this.flink_server_host = config().getString("flink.server.host", "localhost");
         this.flink_rest_server_port = config().getInteger("flink.rest.server.port", 8001); // Same to Flink Web Dashboard
         this.flink_rest_server_host_port = (this.flink_server_host.contains("http")?
                 this.flink_server_host : "http://" + this.flink_server_host) + ":" + this.flink_rest_server_port;
 
         // Check Spark Transforms config
         this.transform_engine_spark_enabled = config().getBoolean("transform.engine.spark.enable", Boolean.TRUE);
-        this.spark_livy_server_host = config().getString("spark.livy.servers.host", "localhost");
-        this.spark_livy_server_port = config().getInteger("spark.livy.servers.port", 8998);
+        this.spark_livy_server_host = config().getString("spark.livy.server.host", "localhost");
+        this.spark_livy_server_port = config().getInteger("spark.livy.server.port", 8998);
         this.spark_livy_server_host_port = (this.flink_server_host.contains("http")?
                 this.spark_livy_server_host : "http://" + this.spark_livy_server_host) + ":" +
                 this.spark_livy_server_port;
@@ -155,6 +162,12 @@ public class DFDataProcessor extends AbstractVerticle {
         this.schema_registry_rest_hostname = kafka_connect_rest_host;
         this.schema_registry_rest_port = config().getInteger("kafka.schema.registry.rest.port", 8081);
         this.schema_registry_host_and_port = this.schema_registry_rest_hostname + ":" + this.schema_registry_rest_port;
+
+        // WebHDFS
+        this.webhdfs_rest_port = config().getInteger("webhdfs.server.port", 50070);
+        this.webhdfs_rest_hostname = config().getString("webhdfs.server.host", "localhost");
+        this.webhdfs_host_and_port = this.webhdfs_rest_hostname + ":" + this.webhdfs_rest_port;
+
 
         // Application init in separate thread and report complete once done
         vertx.executeBlocking(future -> {
@@ -303,12 +316,12 @@ public class DFDataProcessor extends AbstractVerticle {
         router.options(ConstantApp.DF_MODEL_REST_URL_WITH_ID).handler(this::corsHandle);
         router.options(ConstantApp.DF_MODEL_REST_URL).handler(this::corsHandle);
         router.get(ConstantApp.DF_MODEL_REST_URL).handler(this::getAllModels);
-        router.get(ConstantApp.DF_MODEL_REST_URL_WITH_ID).handler(this::getOne);
+        router.get(ConstantApp.DF_MODEL_REST_URL_WITH_ID).handler(this::getOneModel);
         router.route(ConstantApp.DF_MODEL_REST_URL_WILD).handler(BodyHandler.create());
 
-        router.post(ConstantApp.DF_MODEL_REST_URL).handler(this::addOneTransforms);
-        router.put(ConstantApp.DF_MODEL_REST_URL_WITH_ID).handler(this::updateOneTransforms);
-        router.delete(ConstantApp.DF_MODEL_REST_URL_WITH_ID).handler(this::deleteOneTransforms);
+        router.post(ConstantApp.DF_MODEL_REST_URL).handler(this::addOneModel);
+        router.put(ConstantApp.DF_MODEL_REST_URL_WITH_ID).handler(this::updateOneModel);
+        router.delete(ConstantApp.DF_MODEL_REST_URL_WITH_ID).handler(this::deleteOneModel);
 
         // Schema Registry
         router.options(ConstantApp.DF_SCHEMA_REST_URL_WITH_ID).handler(this::corsHandle);
@@ -467,7 +480,7 @@ public class DFDataProcessor extends AbstractVerticle {
      * Generic getAll method for REST API End Point
      * @param routingContext
      */
-    private void getAll(RoutingContext routingContext, String collection, String connectorCategoryFilter) {
+    private void getAll(RoutingContext routingContext, String connectorCategoryFilter) {
         JsonObject searchCondition;
         if (connectorCategoryFilter.equalsIgnoreCase("all")) {
             searchCondition = new JsonObject();
@@ -481,7 +494,7 @@ public class DFDataProcessor extends AbstractVerticle {
             );
         }
 
-        mongo.findWithOptions(collection, searchCondition, HelpFunc.getMongoSortFindOption(routingContext),
+        mongo.findWithOptions(COLLECTION, searchCondition, HelpFunc.getMongoSortFindOption(routingContext),
                 results -> {
                     List<JsonObject> objects = results.result();
                     List<DFJobPOPJ> jobs = objects.stream().map(DFJobPOPJ::new).collect(Collectors.toList());
@@ -505,7 +518,7 @@ public class DFDataProcessor extends AbstractVerticle {
      * @apiSampleRequest http://localhost:8080/api/df/processor
      */
     private void getAllProcessor(RoutingContext routingContext) {
-        getAll(routingContext, COLLECTION, "ALL");
+        getAll(routingContext, "ALL");
     }
 
     /**
@@ -551,7 +564,7 @@ public class DFDataProcessor extends AbstractVerticle {
      * @apiSampleRequest http://localhost:8080/api/df/ps
      */
     private void getAllConnects(RoutingContext routingContext) {
-        getAll(routingContext, COLLECTION,"CONNECT");
+        getAll(routingContext,"CONNECT");
     }
 
     /**
@@ -594,15 +607,22 @@ public class DFDataProcessor extends AbstractVerticle {
      * @apiSampleRequest http://localhost:8080/api/df/tr
      */
     private void getAllTransforms(RoutingContext routingContext) {
-        getAll(routingContext, COLLECTION,"TRANSFORM");
+        getAll(routingContext,"TRANSFORM");
     }
 
     /**
      * Get all ML models for REST API End Point
      * @param routingContext
      */
-    private void getAllModels(RoutingContext routingContext, String connectorCategoryFilter) {
-        getAll(routingContext, COLLECTION_MODEL,"TRANSFORM");
+    private void getAllModels(RoutingContext routingContext) {
+        mongo.findWithOptions(COLLECTION_MODEL, new JsonObject(), HelpFunc.getMongoSortFindOption(routingContext),
+                results -> {
+                    List<JsonObject> objects = results.result();
+                    List<DFModelPOPJ> jobs = objects.stream().map(DFModelPOPJ::new).collect(Collectors.toList());
+                    HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                            .putHeader("X-Total-Count", jobs.size() + "" )
+                            .end(Json.encodePrettily(jobs));
+                });
     }
 
     /**
@@ -969,6 +989,41 @@ public class DFDataProcessor extends AbstractVerticle {
     }
 
     /**
+     * Get one model from repository
+     */
+    private void getOneModel(RoutingContext routingContext) {
+        final String id = routingContext.request().getParam("id");
+        if (id == null) {
+            routingContext.response()
+                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                    .end(DFAPIMessage.getResponseMessage(9000));
+            LOG.error(DFAPIMessage.getResponseMessage(9000, "id=null"));
+        } else {
+            mongo.findOne(COLLECTION_MODEL, new JsonObject().put("_id", id), null, ar -> {
+                if (ar.succeeded()) {
+                    if (ar.result() == null) {
+                        routingContext.response()
+                                .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
+                                .end(DFAPIMessage.getResponseMessage(9001));
+                        LOG.error(DFAPIMessage.logResponseMessage(9001, id));
+                        return;
+                    } else {
+                        HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                .setStatusCode(ConstantApp.STATUS_CODE_OK)
+                                .end(Json.encodePrettily(ar.result()));
+                        LOG.info(DFAPIMessage.logResponseMessage(1003, id));
+                    }
+                } else {
+                    routingContext.response()
+                            .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
+                            .end(DFAPIMessage.getResponseMessage(9002));
+                    LOG.error(DFAPIMessage.logResponseMessage(9002, id));
+                }
+            });
+        }
+    }
+
+    /**
      * @api {get} /config/:id    5. Get a config info.
      * @apiVersion 0.1.1
      * @apiName getOneProcessorConfig
@@ -1258,7 +1313,6 @@ public class DFDataProcessor extends AbstractVerticle {
      */
     private void addOneTransforms(RoutingContext routingContext) {
         String rawResBody = HelpFunc.cleanJsonConfig(routingContext.getBodyAsString());
-        System.out.println("TESTING - resRaw = " + rawResBody);
         final DFJobPOPJ dfJob = Json.decodeValue(rawResBody, DFJobPOPJ.class);
 
         dfJob.setStatus(ConstantApp.DF_STATUS.UNASSIGNED.name());
@@ -1290,6 +1344,23 @@ public class DFDataProcessor extends AbstractVerticle {
                         .setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
                         .end(Json.encodePrettily(dfJob)));
         LOG.info(DFAPIMessage.logResponseMessage(1000, dfJob.getId()));
+    }
+
+    /**
+     * Add one model's meta information to repository
+     */
+    private void addOneModel(RoutingContext routingContext) {
+        String rawResBody = HelpFunc.cleanJsonConfig(routingContext.getBodyAsString());
+        LOG.debug("TESTING addOneModel - resRaw = " + rawResBody);
+        final DFModelPOPJ dfModel = Json.decodeValue(rawResBody, DFModelPOPJ.class);
+        String mongoId = (dfModel.getId() != null && !dfModel.getId().isEmpty())? dfModel.getId() : new ObjectId().toString();
+        dfModel.setId(mongoId);
+
+        mongo.insert(COLLECTION_MODEL, dfModel.toJson(), r ->
+                HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                        .setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
+                        .end(Json.encodePrettily(dfModel)));
+        LOG.info(DFAPIMessage.logResponseMessage(1000, dfModel.getId()));
     }
 
     /** Add one schema to schema registry
@@ -1553,6 +1624,37 @@ public class DFDataProcessor extends AbstractVerticle {
     }
 
     /**
+     * Update one model information
+     */
+    private void updateOneModel(RoutingContext routingContext) {
+        final String id = routingContext.request().getParam("id");
+        final DFModelPOPJ dfModel = Json.decodeValue(routingContext.getBodyAsString(),DFModelPOPJ.class);
+
+        if (id == null) {
+            routingContext.response()
+                    .setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                    .end(DFAPIMessage.getResponseMessage(9000));
+            LOG.error(DFAPIMessage.logResponseMessage(9000, id));
+        } else {
+            mongo.updateCollection(COLLECTION_MODEL, new JsonObject().put("_id", id), // Select a unique document
+                    // The update syntax: {$set, the json object containing the fields to update}
+                    new JsonObject().put("$set", dfModel.toJson()), v -> {
+                        if (v.failed()) {
+                            routingContext.response()
+                                    .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
+                                    .end(DFAPIMessage.getResponseMessage(9003));
+                            LOG.error(DFAPIMessage.logResponseMessage(9003, id));
+                        } else {
+                            HelpFunc.responseCorsHandleAddOn(routingContext.response())
+                                    .end(DFAPIMessage.getResponseMessage(1001));
+                            LOG.info(DFAPIMessage.logResponseMessage(1001, id));
+                        }
+                    }
+            );
+        }
+    }
+
+    /**
      * Update specified schema in schema registry
      * @api {put} /schema/:id   4.Update a schema
      * @apiVersion 0.1.1
@@ -1741,6 +1843,49 @@ public class DFDataProcessor extends AbstractVerticle {
                             .setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
                             .end(DFAPIMessage.getResponseMessage(9001));
                     LOG.error(DFAPIMessage.logResponseMessage(9001, id));
+                }
+            });
+        }
+    }
+
+    /**
+     * Delete model information as well as mode it's self. Now, we use hdfs cml for instead
+     */
+    private void deleteOneModel(RoutingContext routingContext) {
+        String id = routingContext.request().getParam("id");
+
+        if (id == null) {
+            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
+                    .end(DFAPIMessage.getResponseMessage(9000));
+            LOG.error(DFAPIMessage.logResponseMessage(9000, id));
+        } else {
+            mongo.findOne(COLLECTION_MODEL, new JsonObject().put("_id", id), null, ar -> {
+                if (ar.succeeded()) {
+                    if (ar.result() == null) {
+                        routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
+                                .end(DFAPIMessage.getResponseMessage(9001));
+                        LOG.error(DFAPIMessage.logResponseMessage(9001, id));
+                        return;
+                    } else {
+                        // TODO call hdfs command or rest api to delete the model
+                        DFModelPOPJ dfModelPOPJ = new DFModelPOPJ(ar.result());
+                        wc_connect.delete(webhdfs_rest_port, webhdfs_rest_hostname,
+                                ConstantApp.WEBHDFS_REST_URL + "/" + dfModelPOPJ.getPath() + ConstantApp.WEBHDFS_REST_DELETE_PARA)
+                                .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                                .sendJsonObject(DFAPIMessage.getResponseJsonObj(1002),
+                                        ard -> {
+                                            if (ard.succeeded()) {
+                                                mongo.removeDocument(COLLECTION_MODEL, new JsonObject().put("_id", id),
+                                                        remove -> routingContext.response()
+                                                                .end(DFAPIMessage.getResponseMessage(1002, id)));
+                                                LOG.info(DFAPIMessage.logResponseMessage(1002, id));
+                                            } else {
+                                                routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
+                                                        .end(DFAPIMessage.getResponseMessage(9001));
+                                                LOG.error(DFAPIMessage.logResponseMessage(9001, id));
+                                            }
+                                        });
+                    }
                 }
             });
         }
