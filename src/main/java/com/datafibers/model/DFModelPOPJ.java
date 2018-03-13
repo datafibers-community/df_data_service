@@ -21,6 +21,7 @@ public class DFModelPOPJ {
     private String updateDate; // The creation date for the model
     private HashMap<String, String> modelInputPara; //ordered input parameters for the model // TODO check if useful
     private String modelOutputPara; //Output parameters for the model // TODO check if useful
+    private String idTrained; // Job id which trains and persist the model if avaliable
 
     public DFModelPOPJ() {
         this.id = "";
@@ -28,7 +29,7 @@ public class DFModelPOPJ {
 
     public DFModelPOPJ(String id, String name, String type, String category, String description,
                        String path, String udf, String createDate, String updateDate,
-                       HashMap<String, String> modelInputPara, String modelOutputPara) {
+                       HashMap<String, String> modelInputPara, String modelOutputPara, String idTrained) {
         this.id = id;
         this.name = name;
         this.type = type;
@@ -40,6 +41,7 @@ public class DFModelPOPJ {
         this.updateDate = updateDate.isEmpty() ? LocalTime.now().toString():updateDate;
         this.modelInputPara = modelInputPara;
         this.modelOutputPara = modelOutputPara;
+        this.idTrained = idTrained;
     }
 
     // Used by
@@ -56,6 +58,7 @@ public class DFModelPOPJ {
         this.modelInputPara = (json.containsKey("modelInputPara") && json.getValue("modelInputPara") != null) ?
                 HelpFunc.mapToHashMapFromJson(json.getJsonObject("modelInputPara")) : null;
         this.modelOutputPara = json.getString("modelOutputPara");
+        this.idTrained = json.getString("idTrained");
     }
 
     public JsonObject toJson() {
@@ -70,7 +73,9 @@ public class DFModelPOPJ {
                 .put("createDate", createDate)
                 .put("updateDate", updateDate)
                 .put("jobConfig", modelInputPara == null ? null : HelpFunc.mapToJsonFromHashMapD2U(modelInputPara))
-                .put("modelOutputPara", modelOutputPara);
+                .put("modelOutputPara", modelOutputPara)
+                .put("idTrained", idTrained)
+                ;
 
         if (id != null && !id.isEmpty()) {
             json.put("_id", id);
@@ -90,7 +95,9 @@ public class DFModelPOPJ {
                 .put("createDate", createDate)
                 .put("updateDate", updateDate)
                 .put("jobConfig", modelInputPara == null ? null : HelpFunc.mapToJsonFromHashMapD2U(modelInputPara))
-                .put("modelOutputPara", modelOutputPara);
+                .put("modelOutputPara", modelOutputPara)
+                .put("idTrained", idTrained)
+                ;
 
         if (id != null && !id.isEmpty()) {
             json.put("id", id);
@@ -176,6 +183,15 @@ public class DFModelPOPJ {
 
     public DFModelPOPJ setModelOutputPara(String modelOutputPara) {
         this.modelOutputPara = modelOutputPara;
+        return this;
+    }
+
+    public String getIdTrained() {
+        return idTrained;
+    }
+
+    public DFModelPOPJ setIdTrained(String idTrained) {
+        this.idTrained = idTrained;
         return this;
     }
 }
