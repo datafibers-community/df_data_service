@@ -533,7 +533,7 @@ public class HelpFunc {
     public static HashMap<String, String> mapToHashMapFromJson( JsonObject jo) {
         HashMap<String, String> hm = new HashMap();
         for (String key : jo.fieldNames()) {
-            hm.put(key, jo.getString(key));
+            hm.put(key, jo.getValue(key).toString()); // JsonArray will convert to [{"method":1},{"method":2}]
         }
         return hm;
     }
