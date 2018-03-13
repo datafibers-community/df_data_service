@@ -246,9 +246,9 @@ export const TransformCreate = (props) => (
 						<DependentInput dependsOn="connectorConfig.feature_source" value="FEATURE_SRC_HQL">
 							<LongTextInput source="connectorConfig.feature_source_value" label="Hive/Spark SQL Query" style={{ width: 500 }} />
 						</DependentInput>
-						<BooleanInput source="mlFeatureExtractEnabled" label="Feature Extract?" defaultValue={false} style={{ width: 500 }} />
-						<DependentInput dependsOn="mlFeatureExtractEnabled" value={true}>
-                            <EmbeddedArrayInput source="mlFeatureExtractArray" label="">
+						<BooleanInput source="connectorConfig.ml_feature_extract_enabled" label="Feature Extract?" defaultValue={false} style={{ width: 500 }} />
+						<DependentInput dependsOn="connectorConfig.ml_feature_extract_enabled" value={true}>
+                            <EmbeddedArrayInput source="connectorConfig.ml_feature_extract_array" label="">
                             <SelectInput source="method" label="Extract Method" validate={[ required ]} style={{ display: 'inline-block', float: 'left' }} choices={[
                                     { id: 'FEATURE_EXTRACT_TFIDF', name: 'TF-IDF' },
                                     { id: 'FEATURE_EXTRACT_W2V', name: 'Word to Vector' },
@@ -258,7 +258,7 @@ export const TransformCreate = (props) => (
                             <TextInput source="outputCol" label="Set Output Column" style={{ display: 'inline-block', marginLeft: 32}} />
                             </EmbeddedArrayInput>
 						</DependentInput>
-						<BooleanInput source="mlFeatureTransformEnabled" label="Feature Transform?" defaultValue={false} style={{ width: 500 }} />
+						<BooleanInput source="connectorConfig.ml_feature_extract_enabled" label="Feature Transform?" defaultValue={false} style={{ width: 500 }} />
 						<DependentInput dependsOn="mlFeatureTransformEnabled" value={true}>
                             <EmbeddedArrayInput source="mlFeatureTransformArray" label="">
                             <SelectInput source="method" label="Transform Method" validate={[ required ]} style={{ display: 'inline-block', float: 'left' }} choices={[
@@ -269,7 +269,7 @@ export const TransformCreate = (props) => (
                             <TextInput source="outputCol" label="Set Output Column" style={{ display: 'inline-block', marginLeft: 32}} />
                             </EmbeddedArrayInput>
 						</DependentInput>
-						<BooleanInput source="mlFeatureSelectorEnabled" label="Feature Selector?" defaultValue={false} style={{ width: 500 }} />
+						<BooleanInput source="connectorConfig.ml_feature_extract_enabled" label="Feature Selector?" defaultValue={false} style={{ width: 500 }} />
 						    <DependentInput dependsOn="mlFeatureSelectorEnabled" value={true}>
                                 <EmbeddedArrayInput source="mlFeatureTransformArray" label="">
                                 <SelectInput source="method" label="Transform Method" validate={[ required ]} style={{ display: 'inline-block', float: 'left' }} choices={[
