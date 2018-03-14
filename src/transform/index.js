@@ -235,16 +235,16 @@ export const TransformCreate = (props) => (
 							{ id: 'FEATURE_SRC_HTABLE', name: 'Hive Table' },
 							{ id: 'FEATURE_SRC_HQL', name: 'Hive Query' },
 							]} defaultValue='FEATURE_SRC_FILE' />
-                        <NumberInput source="connectorConfig.feature_source_sample" label="Training Data Ratio %" defaultValue={100} step={20} style={{ display: 'inline-block', marginLeft: 32}} />
-                        <BooleanInput source="connectorConfig.feature_source_cache" label="Cache?" defaultValue={false} style={{ display: 'inline-block', marginLeft: 32}} />
-						<DependentInput dependsOn="connectorConfig.feature_source" value="FEATURE_SRC_FILE">
-							<LongTextInput source="connectorConfig.feature_source_value" label="File Path (Local file use file:///. process files based on the extension.)" defaultValue="/tmp/data/mllib/sample_libsvm_data.txt" style={{ width: 500 }} />
+                        <NumberInput source="connectorConfig.ml_feature_source_sample" label="Training Data Ratio %" defaultValue={100} step={20} style={{ display: 'inline-block', marginLeft: 32}} />
+                        <BooleanInput source="connectorConfig.ml_feature_source_cache" label="Cache?" defaultValue={false} style={{ display: 'inline-block', marginLeft: 32}} />
+						<DependentInput dependsOn="connectorConfig.ml_feature_source" value="FEATURE_SRC_FILE">
+							<LongTextInput source="connectorConfig.ml_feature_source_value" label="File Path (Local file use file:///. process files based on the extension.)" defaultValue="/tmp/data/mllib/sample_libsvm_data.txt" style={{ width: 500 }} />
 						</DependentInput>
-						<DependentInput dependsOn="connectorConfig.feature_source" value="FEATURE_SRC_HTABLE">
-							<LongTextInput source="connectorConfig.feature_source_value" label="Hive Table/View Name (database_name.table/view_name)" style={{ width: 500 }} />
+						<DependentInput dependsOn="connectorConfig.ml_feature_source" value="FEATURE_SRC_HTABLE">
+							<LongTextInput source="connectorConfig.ml_feature_source_value" label="Hive Table/View Name (database_name.table/view_name)" style={{ width: 500 }} />
 						</DependentInput>
-						<DependentInput dependsOn="connectorConfig.feature_source" value="FEATURE_SRC_HQL">
-							<LongTextInput source="connectorConfig.feature_source_value" label="Hive/Spark SQL Query" style={{ width: 500 }} />
+						<DependentInput dependsOn="connectorConfig.ml_feature_source" value="FEATURE_SRC_HQL">
+							<LongTextInput source="connectorConfig.ml_feature_source_value" label="Hive/Spark SQL Query" style={{ width: 500 }} />
 						</DependentInput>
 						<BooleanInput source="connectorConfig.ml_feature_extract_enabled" label="Feature Extract?" defaultValue={false} style={{ width: 500 }} />
 						<DependentInput dependsOn="connectorConfig.ml_feature_extract_enabled" value={true}>
@@ -258,9 +258,9 @@ export const TransformCreate = (props) => (
                             <TextInput source="outputCol" label="Set Output Column" style={{ display: 'inline-block', marginLeft: 32}} />
                             </EmbeddedArrayInput>
 						</DependentInput>
-						<BooleanInput source="connectorConfig.ml_feature_extract_enabled" label="Feature Transform?" defaultValue={false} style={{ width: 500 }} />
-						<DependentInput dependsOn="mlFeatureTransformEnabled" value={true}>
-                            <EmbeddedArrayInput source="mlFeatureTransformArray" label="">
+						<BooleanInput source="connectorConfig.ml_feature_transform_enabled" label="Feature Transform?" defaultValue={false} style={{ width: 500 }} />
+						<DependentInput dependsOn="connectorConfig.ml_feature_transform_enabled" value={true}>
+                            <EmbeddedArrayInput source="connectorConfig.ml_feature_transform_array" label="">
                             <SelectInput source="method" label="Transform Method" validate={[ required ]} style={{ display: 'inline-block', float: 'left' }} choices={[
                                     { id: 'FEATURE_TRANS_STRINGINDEX', name: 'String Indexer' },
                                     { id: 'FEATURE_TRANS_VA', name: 'Vector Assembler' },
@@ -269,9 +269,9 @@ export const TransformCreate = (props) => (
                             <TextInput source="outputCol" label="Set Output Column" style={{ display: 'inline-block', marginLeft: 32}} />
                             </EmbeddedArrayInput>
 						</DependentInput>
-						<BooleanInput source="connectorConfig.ml_feature_extract_enabled" label="Feature Selector?" defaultValue={false} style={{ width: 500 }} />
-						    <DependentInput dependsOn="mlFeatureSelectorEnabled" value={true}>
-                                <EmbeddedArrayInput source="mlFeatureTransformArray" label="">
+						<BooleanInput source="connectorConfig.ml_feature_selector_enabled" label="Feature Selector?" defaultValue={false} style={{ width: 500 }} />
+						    <DependentInput dependsOn="connectorConfig.ml_feature_selector_enabled" value={true}>
+                                <EmbeddedArrayInput source="connectorConfig.ml_feature_selector_array" label="">
                                 <SelectInput source="method" label="Transform Method" validate={[ required ]} style={{ display: 'inline-block', float: 'left' }} choices={[
                                         { id: 'FEATURE_SELE_VS', name: 'Vector Slicer' },
                                         { id: 'FEATURE_SELE_CHISQ', name: 'ChiSq Selector' },
@@ -280,20 +280,20 @@ export const TransformCreate = (props) => (
                                 <TextInput source="outputCol" label="Set Output Column" style={{ display: 'inline-block', marginLeft: 32}} />
                                 </EmbeddedArrayInput>
                             </DependentInput>
-						<SelectInput source="connectorConfig.model_category" label="Choose Algorithm Category" style={{ display: 'inline-block', float: 'left' }} validate={[ required ]} choices={[
+						<SelectInput source="connectorConfig.ml_model_category" label="Choose Algorithm Category" style={{ display: 'inline-block', float: 'left' }} validate={[ required ]} choices={[
 							{ id: 'ML_CLASS_CLF', name: 'Classification' },
 							{ id: 'ML_CLASS_RES', name: 'Regression' },
 							{ id: 'ML_CLASS_CLS', name: 'Clustering' },
 							{ id: 'ML_CLASS_REC', name: 'Recommendation' },
 							]} defaultValue='ML_CLASS_CLF' />
-						<DependentInput dependsOn="connectorConfig.model_category" value="ML_CLASS_CLF">
-							<SelectInput source="connectorConfig.model_class_method" label="Choose Algorithm" validate={[ required ]} style={{ display: 'inline-block', marginLeft: 32}} choices={[
+						<DependentInput dependsOn="connectorConfig.ml_model_category" value="ML_CLASS_CLF">
+							<SelectInput source="connectorConfig.ml_model_class_method" label="Choose Algorithm" validate={[ required ]} style={{ display: 'inline-block', marginLeft: 32}} choices={[
 							{ id: 'ML_CLASS_CLF_NB', name: 'Naive Bayes' },
 							{ id: 'ML_CLASS_CLF_LR', name: 'Logistic Regression' },
 							{ id: 'ML_CLASS_CLF_DTC', name: 'Decision Tree Classifier' },
 							{ id: 'ML_CLASS_CLF_LSVM', name: 'Linear Support Vector Machine' },
 							]} defaultValue='ML_CLASS_CLF_NB' />
-							<DependentInput dependsOn="connectorConfig.model_class_method" value="ML_CLASS_CLF_NB">
+							<DependentInput dependsOn="connectorConfig.ml_model_class_method" value="ML_CLASS_CLF_NB">
                                 <Card style={{ width: 750 }}>
                                     <CardHeader
                                                      title="Naive Bayes Classifiers "
@@ -316,79 +316,79 @@ export const TransformCreate = (props) => (
                                 </Card>
                             </DependentInput>
 						</DependentInput>
-						<DependentInput dependsOn="connectorConfig.model_category" value="ML_CLASS_RES">
-							<SelectInput source="connectorConfig.model_class_method" label="Choose Algorithm" validate={[ required ]} style={{ display: 'inline-block', marginLeft: 32}} choices={[
+						<DependentInput dependsOn="connectorConfig.ml_model_category" value="ML_CLASS_RES">
+							<SelectInput source="connectorConfig.ml_model_class_method" label="Choose Algorithm" validate={[ required ]} style={{ display: 'inline-block', marginLeft: 32}} choices={[
 							{ id: 'ML_CLASS_RES_LR', name: 'Linear Regression' },
 							{ id: 'ML_CLASS_RES_DTR', name: 'Decision Tree Regression' },
 							{ id: 'ML_CLASS_RES_RFR', name: 'Random Forest Regression' },
 							{ id: 'ML_CLASS_RES_GBTR', name: 'Gradient-boosted Tree Regression' },
 							]} defaultValue='ML_CLASS_RES_LR' />
 						</DependentInput>
-						<DependentInput dependsOn="connectorConfig.model_category" value="ML_CLASS_CLS">
-							<SelectInput source="connectorConfig.model_class_method" label="Choose Algorithm" validate={[ required ]} style={{ display: 'inline-block', marginLeft: 32}} choices={[
+						<DependentInput dependsOn="connectorConfig.ml_model_category" value="ML_CLASS_CLS">
+							<SelectInput source="connectorConfig.ml_model_class_method" label="Choose Algorithm" validate={[ required ]} style={{ display: 'inline-block', marginLeft: 32}} choices={[
 							{ id: 'ML_CLASS_CLS_KM', name: 'K-means' },
 							{ id: 'ML_CLASS_CLS_LDA', name: 'Latent Dirichlet Allocation (LDA)' },
 							{ id: 'ML_CLASS_CLS_BKM', name: 'Bisecting K-means' },
 							{ id: 'ML_CLASS_CLS_GMM', name: 'Gaussian Mixture Model (GMM)' },
 							]} defaultValue='ML_CLASS_CLS_KM' />
 						</DependentInput>
-					    <DependentInput dependsOn="connectorConfig.model_category" value="ML_CLASS_REC">
-							<SelectInput source="connectorConfig.model_class_method" label="Choose Algorithm" validate={[ required ]} style={{ display: 'inline-block', marginLeft: 32}} choices={[
+					    <DependentInput dependsOn="connectorConfig.ml_model_category" value="ML_CLASS_REC">
+							<SelectInput source="connectorConfig.ml_model_class_method" label="Choose Algorithm" validate={[ required ]} style={{ display: 'inline-block', marginLeft: 32}} choices={[
 							{ id: 'ML_CLASS_REC_CF', name: 'Collaborative Filtering' },
 							]} defaultValue='ML_CLASS_CLS_KM' />
 						</DependentInput>
-						<EmbeddedArrayInput source="mlModelParaOverwriteArray" label="Add Model Parameters Overwrite">
+						<EmbeddedArrayInput source="connectorConfig.ml_model_para_overwrite_array" label="Add Model Parameters Overwrite">
                               <TextInput source="para_name" label="Model's Parameter Name" style={{ display: 'inline-block', float: 'left' }} />
                               <TextInput source="para_value" label="Model's Parameter Value" style={{ display: 'inline-block', marginLeft: 32}}/>
                         </EmbeddedArrayInput>
-						<SelectInput source="connectorConfig.model_evaluator" label="Disable or Choose Evaluator" validate={[ required ]} style={{ display: 'inline-block', float: 'left' }} choices={[
+						<SelectInput source="connectorConfig.ml_model_evaluator" label="Disable or Choose Evaluator" validate={[ required ]} style={{ display: 'inline-block', float: 'left' }} choices={[
 			            { id: 'ML_EVA_NA', name: 'Do Not Evaluate' },
 						{ id: 'ML_EVA_RE', name: 'Regression' },
 						{ id: 'ML_EVA_BC', name: 'Binary Classification' },
 						{ id: 'ML_EVA_MC', name: 'Multiclass Classification' },
 						]}  defaultValue='ML_EVA_NA' />
-                        <DependentInput dependsOn="connectorConfig.model_evaluator" value="ML_EVA_RE">
-							<SelectInput source="connectorConfig.model_evaluator_metric" label="Choose Evaluator Metric" validate={[ required ]} style={{ display: 'inline-block', marginLeft: 32}} choices={[
+                        <DependentInput dependsOn="connectorConfig.ml_model_evaluator" value="ML_EVA_RE">
+							<SelectInput source="connectorConfig.ml_model_evaluator_metric" label="Choose Evaluator Metric" validate={[ required ]} style={{ display: 'inline-block', marginLeft: 32}} choices={[
 							{ id: 'rmse', name: 'Root Mean Squared Error' },
 							{ id: 'mse', name: 'Mean Squared Error' },
 							{ id: 'r2', name: 'r2 Metric' },
 							{ id: 'mae', name: 'Mean Absolute Error' },
 							]} defaultValue='rmse' />
 						</DependentInput>
-                        <DependentInput dependsOn="connectorConfig.model_evaluator" value="ML_EVA_BC">
-							<SelectInput source="connectorConfig.model_evaluator_metric" label="Choose Evaluator Metric" validate={[ required ]} style={{ display: 'inline-block', marginLeft: 32}} choices={[
+                        <DependentInput dependsOn="connectorConfig.ml_model_evaluator" value="ML_EVA_BC">
+							<SelectInput source="connectorConfig.ml_model_evaluator_metric" label="Choose Evaluator Metric" validate={[ required ]} style={{ display: 'inline-block', marginLeft: 32}} choices={[
 							{ id: 'areaUnderROC', name: 'Area Under ROC ' },
 							{ id: 'areaUnderPR', name: 'Area Under PR' },
 							]} defaultValue='areaUnderROC' />
 						</DependentInput>
-                        <DependentInput dependsOn="connectorConfig.model_evaluator" value="ML_EVA_MC">
-							<SelectInput source="connectorConfig.model_evaluator_metric" label="Choose Evaluator Metric" validate={[ required ]} style={{ display: 'inline-block', marginLeft: 32}} choices={[
+                        <DependentInput dependsOn="connectorConfig.ml_model_evaluator" value="ML_EVA_MC">
+							<SelectInput source="connectorConfig.ml_model_evaluator_metric" label="Choose Evaluator Metric" validate={[ required ]} style={{ display: 'inline-block', marginLeft: 32}} choices={[
 							{ id: 'f1', name: 'F1' },
 							{ id: 'weightedPrecision', name: 'Weighted Precision' },
 							{ id: 'weightedRecall', name: 'Weighted Recall' },
 							{ id: 'accuracy', name: 'Accuracy' },
 							]} defaultValue='f1' />
 						</DependentInput>
-						<BooleanInput source="connectorConfig.mlModelAutoTuning" label="Model Tuning?" defaultValue={false} options={{ labelPosition: 'right' }} style={{ width: 500 }} />
-						<DependentInput dependsOn="connectorConfig.mlModelAutoTuning" value={true}>
+						<BooleanInput source="connectorConfig.ml_model_tuning" label="Model Tuning?" defaultValue={false} options={{ labelPosition: 'right' }} style={{ width: 500 }} />
+						<DependentInput dependsOn="connectorConfig.ml_model_tuning" value={true}>
                             <RadioButtonGroupInput source="connectorConfig.model_validator" label="Choose Validation Method" validate={[ required ]} style={{ width: 750 }} choices={[
                                 { id: 'ML_VAL_CV',  name: 'Cross : Iterate folders of parameters grid with multiple data sets' },
                                 { id: 'ML_VAL_TVS', name: 'Split : Iterate parameters grid with single ratio data sets' },
                                 ]} defaultValue='ML_VAL_CV' />
-                            <DependentInput dependsOn="connectorConfig.model_validator" value="ML_VAL_CV">
+                            <DependentInput dependsOn="connectorConfig.ml_model_validator" value="ML_VAL_CV">
                                 <NumberInput source="connectorConfig.model_validator_fold" label="Number of Folds, such as 2" step={1}/>
                             </DependentInput>
-                            <DependentInput dependsOn="connectorConfig.model_validator" value="ML_VAL_TVS">
+                            <DependentInput dependsOn="connectorConfig.ml_model_validator" value="ML_VAL_TVS">
                                 <NumberInput source="connectorConfig.model_validator_ratio" label="Training Data Ratio %, such as 80" step={10}/>
                             </DependentInput>
-                            <EmbeddedArrayInput source="mlModelValidationParaGrid" label="Add Model Parameters Grid">
+                            <EmbeddedArrayInput source="connectorConfig.ml_model_validator_para_array" label="Add Model Parameters Grid">
                                 <TextInput source="para_name" label="Model's Parameter Name" style={{ display: 'inline-block', float: 'left' }} />
                                 <TextInput source="para_value" label="Trail Values List (, as separator)" style={{ display: 'inline-block', marginLeft: 32}}/>
                             </EmbeddedArrayInput>
                         </DependentInput>
-                        <BooleanInput source="connectorConfig.mlModelPersistEnabled" label="Model Persist?" defaultValue={false} options={{ labelPosition: 'right' }} style={{ width: 250 }} />
-						<DependentInput dependsOn="connectorConfig.mlModelPersistEnabled" value={true}>
-                            <LongTextInput source="connectorConfig.mlModelPersisPath" label="HDFS path to save the trained model" style={{ width: 500 }}/>
+                        <BooleanInput source="connectorConfig.ml_model_persist_enabled" label="Model Persist?" defaultValue={false} options={{ labelPosition: 'right' }} style={{ width: 250 }} />
+						<DependentInput dependsOn="connectorConfig.ml_model_persist_enabled" value={true}>
+                            <LongTextInput source="connectorConfig.ml_model_persist_path" label="HDFS path to save the trained model" style={{ width: 500 }}/>
                         </DependentInput>
                     </DependentInput>
 					<DependentInput dependsOn="connectorConfig.ml_guide_enabled" value={false}>
