@@ -406,7 +406,7 @@ public class HelpFunc {
         if (livyStatementResult.getJsonObject("output").containsKey("data")) {
             JsonObject dataJason = livyStatementResult.getJsonObject("output").getJsonObject("data");
 
-            if (livyStatementResult.getString("code").contains("%table")) { //livy magic word %table
+            if (livyStatementResult.getString("code").contains("%table")) { //livy magic word %table TODO has issues on livy 0.5
                 JsonObject output = dataJason.getJsonObject("application/vnd.livy.table.v1+json");
                 JsonArray header = output.getJsonArray("headers");
                 JsonArray data = output.getJsonArray("data");
@@ -417,7 +417,11 @@ public class HelpFunc {
                 String separator = "</th><th>";
                 for (int i = 0; i < header.size(); i++) {
                     if(i == header.size() - 1) separator = "";
-                    headerRow = headerRow + header.getJsonObject(i).getString("name") + separator;
+                    String headerName = header.getJsonObject(i).getString("name");
+                    if (headerName.equalsIgnoreCase("0")) {
+                        headerName = "result";
+                    }
+                    headerRow = headerRow + headerName + separator;
                 }
 
                 headerRow = headerRow + "</th></tr>";
@@ -429,7 +433,11 @@ public class HelpFunc {
 
                 return tableHeader + headerRow + dataRow + tableTrailer;
 
-            } else if (livyStatementResult.getString("code").contains("%json")) { // livy magic word %json
+            } else if (livyStatementResult.getString("code").contains("%json")) {
+                // livy magic word %json.
+                // There are two scenarios,
+                // code = sql, under "application/json" is json
+                // code = spark, under ""application/json" is array
                 JsonArray data = dataJason.getJsonArray("application/json");
 
                 if (data.size() == 0) return "";
@@ -443,8 +451,7 @@ public class HelpFunc {
 
             } else { // livy no magic word
                 String data = dataJason.getString("text/plain");
-                return data.trim().replaceAll("\\[|]", "")
-                        .replaceAll(",Row", ",</br>Row");
+                return "<pre>" + data.trim() + "</pre>";
             }
         } else {
             return "";
@@ -526,7 +533,7 @@ public class HelpFunc {
     public static HashMap<String, String> mapToHashMapFromJson( JsonObject jo) {
         HashMap<String, String> hm = new HashMap();
         for (String key : jo.fieldNames()) {
-            hm.put(key, jo.getString(key));
+            hm.put(key, jo.getValue(key).toString()); // JsonArray will convert to [{"method":1},{"method":2}]
         }
         return hm;
     }
@@ -649,13 +656,60 @@ public class HelpFunc {
                             "\").coalesce(1).write.format(\"json\").mode(\"overwrite\").save(\"" + streamPath + "\")\n";
                 }
                 // Keep result only for the last query and only top 10 rows
-                pySparkCode = pySparkCode + "a = sqlContext.sql(\"" + sqlList[i] + "\").take(10)\n%table a";
+                pySparkCode = pySparkCode + "a = sqlContext.sql(\"" + sqlList[i] + "\").show(10)\n%table a";
             } else {
                 pySparkCode = pySparkCode + "sqlContext.sql(\"" + sqlList[i] + "\")\n";
             }
         }
 
         return pySparkCode;
+    }
+
+    /**
+     * Convert standard SQL to spark scala api code. If stream the result back is needed, add additional code.
+     * @return
+     */
+    public static String sqlToSparkScala(String[] sqlList, boolean streamBackFlag, String streamPath) {
+
+        String pySparkCode = "";
+        if(!streamPath.startsWith("file://")) streamPath = "file://" + streamPath;
+
+        for(int i = 0; i < sqlList.length; i++) {
+            if(i == sqlList.length - 1) { // This is the last query
+                // Check if we need to stream the result set
+                if(streamBackFlag) {
+                    pySparkCode = pySparkCode + "spark.sql(\"" + sqlList[i] +
+                            "\").coalesce(1).write.format(\"json\").mode(\"overwrite\").save(\"" + streamPath + "\")\n";
+                }
+                // Keep result only for the last query and only top 10 rows
+                pySparkCode = pySparkCode + "val a = spark.sql(\"" + sqlList[i] + "\").show()\n";
+            } else {
+                pySparkCode = pySparkCode + "spark.sql(\"" + sqlList[i] + "\")\n";
+            }
+        }
+
+        return pySparkCode;
+    }
+
+    /**
+     * Convert json from web ui ml training guideline (include guide, mlsql, pyspark) to pyspark code.
+     * @return scala code
+     */
+    public static String mlGuideToScalaSpark(JsonObject config){
+        String code = "";
+        if(config.getString("feature_source").equalsIgnoreCase("FEATURE_SRC_FILE")) {
+            code = "val data = spark.read.format(\"libsvm\").load(\"" + config.getString("feature_source_value") + "\")";
+            code = code + "\n" + "val Array(trainingData, testData) = data.randomSplit(Array(" +
+                    Integer.parseInt(config.getString("feature_source_sample"))/100 + "," +
+                    (1 - Integer.parseInt(config.getString("feature_source_sample"))/100) + "), seed = 1234L)";
+            if(config.getString("model_class_method").equalsIgnoreCase("ML_CLASS_CLF_NB")) {
+                code = code + "\n" + "import org.apache.spark.ml.classification.NaiveBayes" + "\n" +
+                        "val model = new NaiveBayes().fit(trainingData)";
+            }
+            code = code + "\n" + "val predictions = model.transform(data)";
+            code = code + "\n" + "predictions.show()";
+        }
+        return code;
     }
 
     /**

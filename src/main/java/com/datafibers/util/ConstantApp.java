@@ -33,6 +33,11 @@ public final class ConstantApp {
     public static final String DF_TRANSFORMS_UPLOAD_FILE_REST_URL_WILD = "/api/df/uploaded_files*";
     public static final String DF_TRANSFORMS_UPLOAD_FILE_REST_URL = "/api/df/uploaded_files";
 
+    // DF Model REST endpoint URLs
+    public static final String DF_MODEL_REST_URL = "/api/df/ml";
+    public static final String DF_MODEL_REST_URL_WILD = "/api/df/ml*";
+    public static final String DF_MODEL_REST_URL_WITH_ID = DF_MODEL_REST_URL + "/:id";
+
     // DF Schema registry endpoint URLs
     public static final String DF_SCHEMA_REST_URL = "/api/df/schema";
     public static final String DF_SCHEMA_REST_URL_WILD = "/api/df/schema*";
@@ -104,6 +109,10 @@ public final class ConstantApp {
 
     public static final String TRANSFORM_STREAM_BACK_PATH = "/tmp/streamback";
 
+    // WebHDFS rest setting
+    public static final String WEBHDFS_REST_URL = "/webhdfs/v1";
+    public static final String WEBHDFS_REST_DELETE_PARA = "?op=DELETE&recursive=true";
+
     // HTTP req/res constants
     public static final String HTTP_HEADER_CONTENT_TYPE = "content-type";
     public static final String HTTP_HEADER_APPLICATION_JSON_CHARSET = "application/json; charset=utf-8";
@@ -160,6 +169,8 @@ public final class ConstantApp {
         TRANSFORM_EXCHANGE_SPARK_UDF,          // Spark user defined jar/program
         TRANSFORM_EXCHANGE_HIVE_TRANS,         // Hive batch SQL
         TRANSFORM_EXCHANGE_HIVE_JOINS,         // Hive batch join
+        TRANSFORM_MODEL_SPARK_STREAM,          // ML model over spark stream
+        TRANSFORM_MODEL_SPARK_TRAIN,           // ML model training
         INTERNAL_METADATA_COLLECT,             // Reserved metadata sink
         NONE
     }
@@ -238,4 +249,9 @@ public final class ConstantApp {
     public static final String PK_TRANSFORM_STREAM_BACK_TOPIC_CREATION = "choose_or_create";
     public static final String PK_TRANSFORM_STREAM_BACK_TASK_ID = "stream_back_task_id";
     public static final String PK_TRANSFORM_STREAM_BACK_TASK_STATE = "stream_back_task_state";
+
+    // Used for spark ml training
+    public static final String PK_TRANSFORM_MT_GUIDE_ENABLE = "ml_guide_enabled";
+    public static final String PK_TRANSFORM_MT_CODE_KIND = "ml_pipe_kind";
+    public static final String PK_TRANSFORM_MT_CODE = "ml_pipe";
 }

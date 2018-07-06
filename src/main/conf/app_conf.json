@@ -21,12 +21,15 @@
   "kafka.topic.df.metadata":"df_meta",
 
   "transform.engine.flink.enable":"true",
-  "flink.servers.host":"localhost",
+  "flink.server.host":"localhost",
   "flink.rest.server.port":8001,
 
   "transform.engine.spark.enable":"true",
-  "spark.livy.servers.host":"localhost",
+  "spark.livy.server.host":"localhost",
   "spark.livy.server.port":8998,
+
+  "webhdfs.server.host":"localhost",
+  "webhdfs.server.port":8998,
 
   "df.metadata.schema":"{\"type\":\"record\",\"name\": \"df_meta\",\"fields\":[{\"name\": \"cuid\", \"type\": \"string\"},{\"name\": \"file_name\", \"type\": \"string\"},{\"name\": \"file_size\", \"type\": \"string\"}, {\"name\": \"file_owner\", \"type\": \"string\"},{\"name\": \"last_modified_timestamp\", \"type\": \"string\"},{\"name\": \"current_timestamp\", \"type\": \"string\"},{\"name\": \"current_timemillis\", \"type\": \"long\"},{\"name\": \"stream_offset\", \"type\": \"string\"},{\"name\": \"topic_sent\", \"type\": \"string\"},{\"name\": \"schema_subject\", \"type\": \"string\"},{\"name\": \"schema_version\", \"type\": \"string\"},{\"name\": \"status\", \"type\": \"string\"}]}"
 }

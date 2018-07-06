@@ -1,7 +1,6 @@
 package com.datafibers.model;
 
 import io.vertx.core.json.JsonObject;
-import org.codehaus.jackson.annotate.JsonIgnore;
 
 /**
  * Created by will on 2017-08-11.
