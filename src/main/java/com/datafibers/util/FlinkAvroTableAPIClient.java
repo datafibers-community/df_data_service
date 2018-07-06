@@ -1,7 +1,7 @@
 package com.datafibers.util;
 
-import com.datafibers.flinknext.Kafka010AvroTableSource;
-import com.datafibers.flinknext.Kafka09AvroTableSink;
+import com.datafibers.flinknext.Kafka011AvroTableSource;
+import com.datafibers.flinknext.Kafka011AvroTableSink;
 import net.openhft.compiler.CompilerUtils;
 import org.apache.commons.codec.DecoderException;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -36,7 +36,7 @@ public class FlinkAvroTableAPIClient {
             properties.setProperty(ConstantApp.PK_SCHEMA_SUB_INPUT, srcTopicList[i]);
             properties.setProperty(ConstantApp.PK_SCHEMA_ID_INPUT, SchemaRegistryClient.getLatestSchemaIDFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_INPUT) + "");
             properties.setProperty(ConstantApp.PK_SCHEMA_STR_INPUT, SchemaRegistryClient.getLatestSchemaFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_INPUT).toString());
-            tableEnv.registerTableSource(srcTopic, new Kafka010AvroTableSource(srcTopicList[i], properties));
+            tableEnv.registerTableSource(srcTopic, new Kafka011AvroTableSource(srcTopicList[i], properties));
         }
 
         try {
@@ -66,8 +66,8 @@ public class FlinkAvroTableAPIClient {
             properties.setProperty(ConstantApp.PK_SCHEMA_ID_OUTPUT, SchemaRegistryClient.getLatestSchemaIDFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT) + "");
             properties.setProperty(ConstantApp.PK_SCHEMA_STR_OUTPUT, SchemaRegistryClient.getLatestSchemaFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT).toString());
 
-            Kafka09AvroTableSink avro_sink =
-                    new Kafka09AvroTableSink(targetTopic, properties, new FlinkFixedPartitioner());
+            Kafka011AvroTableSink avro_sink =
+                    new Kafka011AvroTableSink(targetTopic, properties, new FlinkFixedPartitioner());
             result.writeToSink(avro_sink);
             env.execute("DF_FlinkTableAPI_Client_" + srcTopic + "-" + targetTopic);
         } catch (Exception e) {

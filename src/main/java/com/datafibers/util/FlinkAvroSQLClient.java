@@ -1,7 +1,7 @@
 package com.datafibers.util;
 
-import com.datafibers.flinknext.Kafka010AvroTableSource;
-import com.datafibers.flinknext.Kafka09AvroTableSink;
+import com.datafibers.flinknext.Kafka011AvroTableSource;
+import com.datafibers.flinknext.Kafka011AvroTableSink;
 import org.apache.commons.codec.DecoderException;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.partitioner.FlinkFixedPartitioner;
@@ -34,11 +34,11 @@ public class FlinkAvroSQLClient {
             properties.setProperty(ConstantApp.PK_SCHEMA_SUB_INPUT, srcTopicList[i]);
             properties.setProperty(ConstantApp.PK_SCHEMA_ID_INPUT, SchemaRegistryClient.getLatestSchemaIDFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_INPUT) + "");
             properties.setProperty(ConstantApp.PK_SCHEMA_STR_INPUT, SchemaRegistryClient.getLatestSchemaFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_INPUT).toString());
-            tableEnv.registerTableSource(srcTopicList[i], new Kafka010AvroTableSource(srcTopicList[i], properties));
+            tableEnv.registerTableSource(srcTopicList[i], new Kafka011AvroTableSource(srcTopicList[i], properties));
         }
 
         try {
-            Table result = tableEnv.sql(sqlState);
+            Table result = tableEnv.sqlQuery(sqlState);
             SchemaRegistryClient.addSchemaFromTableResult(SchemaRegistryHostPort, targetTopic, result);
             // For old producer, we need to create topic-value subject as well
             SchemaRegistryClient.addSchemaFromTableResult(SchemaRegistryHostPort, targetTopic + "-value", result);
@@ -48,8 +48,8 @@ public class FlinkAvroSQLClient {
             properties.setProperty(ConstantApp.PK_SCHEMA_ID_OUTPUT, SchemaRegistryClient.getLatestSchemaIDFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT) + "");
             properties.setProperty(ConstantApp.PK_SCHEMA_STR_OUTPUT, SchemaRegistryClient.getLatestSchemaFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT).toString());
 
-            Kafka09AvroTableSink avro_sink =
-                    new Kafka09AvroTableSink(targetTopic, properties, new FlinkFixedPartitioner());
+            Kafka011AvroTableSink avro_sink =
+                    new Kafka011AvroTableSink(targetTopic, properties, new FlinkFixedPartitioner());
             result.writeToSink(avro_sink);
             env.execute("DF_FlinkSQL_Client_" + srcTopic + "-" + targetTopic);
         } catch (Exception e) {

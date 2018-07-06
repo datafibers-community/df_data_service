@@ -1,41 +1,42 @@
 package com.datafibers.flinknext;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.Properties;
+import com.datafibers.util.ConstantApp;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.BinaryDecoder;
 import org.apache.avro.io.DecoderFactory;
+import org.apache.flink.api.common.serialization.AbstractDeserializationSchema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.api.java.typeutils.TypeExtractor;
-import org.apache.flink.streaming.util.serialization.DeserializationSchema;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.Preconditions;
 import org.apache.log4j.Logger;
-import com.datafibers.util.ConstantApp;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Properties;
 
 /**
  * Deserialization schema from AVRO to {@link Row}.
  *
- * <p>Deserializes the <code>byte[]</code> messages as a AVROject and reads
- * the specified fields.
- *
+ * <p>Deserializes the <code>byte[]</code> messages as a AVROject and reads the specified fields.
  * <p>Failure during deserialization are forwarded as wrapped IOExceptions.
  */
-public class AvroRowDeserializationSchema implements DeserializationSchema<Row> {
+public class AvroRowDeserializationSchema extends AbstractDeserializationSchema<Row> {
 
     private static final long serialVersionUID = 4330538776656642779L;
     private static final Logger LOG = Logger.getLogger(AvroRowDeserializationSchema.class);
 
     /** Field names to parse. Indices match fieldTypes indices. */
     private final String[] fieldNames;
+
     /** Types to parse fields as. Indices match fieldNames indices. */
     private final TypeInformation<?>[] fieldTypes;
+
     /** Avro Schema for the row is in this properties. It has to be final. */
     private final Properties properties;
     private final String static_avro_schema;
@@ -49,13 +50,16 @@ public class AvroRowDeserializationSchema implements DeserializationSchema<Row> 
     /** Generic Avro Schema reader for the row */
     private transient GenericDatumReader<GenericRecord> reader;
 
-    /** TODO - When schema changes, the Source table does not need to be recreated.*/
+    /**
+     * TODO - When schema changes, the Source table does not need to be recreated.
+     * This requires to get record level schema from the Avro record instead of static schema
+     * */
 
     /**
-     * Creates a AVRO deserializtion schema for the given fields and type classes.
+     * Creates an AVRO deserializtion schema for the given fields and type classes.
      *
      * @param fieldNames Names of AVRO fields to parse.
-     * @param fieldTypes Type classes to parse JSON fields as.
+     * @param fieldTypes Type classes to parse AVRO fields as.
      */
     public AvroRowDeserializationSchema(String[] fieldNames, Class<?>[] fieldTypes, Properties properties) {
 
@@ -118,8 +122,7 @@ public class AvroRowDeserializationSchema implements DeserializationSchema<Row> 
 
                 if (node == null) {
                     if (failOnMissingField) {
-                        throw new IllegalStateException("Failed to find field with name '"
-                                + fieldNames[i] + "'.");
+                        throw new IllegalStateException("Failed to find field with name '" + fieldNames[i] + "'.");
                     } else {
                         row.setField(i, null);
                     }
@@ -147,7 +150,7 @@ public class AvroRowDeserializationSchema implements DeserializationSchema<Row> 
     }
 
     /**
-     * Configures the failure behaviour if a JSON field is missing.
+     * Configures the failure behaviour if a Avro field is missing.
      *
      * <p>By default, a missing field is ignored and the field is set to null.
      *

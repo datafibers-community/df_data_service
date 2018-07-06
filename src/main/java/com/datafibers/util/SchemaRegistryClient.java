@@ -45,7 +45,7 @@ public class SchemaRegistryClient {
             }
 
             JsonNode responseJson = new ObjectMapper().readValue(response.toString(), JsonNode.class);
-            schemaString = responseJson.get("schema").getValueAsText();
+            schemaString = responseJson.get("schema").asText();
 
             try {
                 return new Schema.Parser().parse(schemaString);
@@ -83,7 +83,7 @@ public class SchemaRegistryClient {
             }
 
             JsonNode responseJson = new ObjectMapper().readValue(response.toString(), JsonNode.class);
-            schemaString = responseJson.get("schema").getValueAsText();
+            schemaString = responseJson.get("schema").asText();
 
             try {
                 return new Schema.Parser().parse(schemaString);
@@ -155,7 +155,7 @@ public class SchemaRegistryClient {
         	}
 
         	JsonNode responseJson = new ObjectMapper().readValue(response.toString(), JsonNode.class);
-        	schemaString = responseJson.get("schema").getValueAsText();
+        	schemaString = responseJson.get("schema").asText();
         	LOG.warn("schemaString: " + schemaString);
         	return schemaString;
          } catch(Exception ex) {
@@ -245,7 +245,7 @@ public class SchemaRegistryClient {
             }
 
             JsonNode responseJson = new ObjectMapper().readValue(response.toString(), JsonNode.class);
-            schemaId = responseJson.get("id").getValueAsInt();
+            schemaId = responseJson.get("id").asInt();
 
          } catch(Exception ex) {
             ex.printStackTrace();

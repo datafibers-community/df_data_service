@@ -1,7 +1,7 @@
 package com.datafibers.test_tool;
 
-import com.datafibers.flinknext.Kafka010AvroTableSource;
-import com.datafibers.flinknext.Kafka09AvroTableSink;
+import com.datafibers.flinknext.Kafka011AvroTableSource;
+import com.datafibers.flinknext.Kafka011AvroTableSink;
 import com.datafibers.util.ConstantApp;
 import com.datafibers.util.SchemaRegistryClient;
 import org.apache.commons.codec.DecoderException;
@@ -28,8 +28,9 @@ public class TCFlinkAvroSQL {
 
         String jarPath = "C:/Users/dadu/Coding/df_data_service/target/df-data-service-1.1-SNAPSHOT-fat.jar";
         //String jarPath = "/Users/will/Documents/Coding/GitHub/df_data_service/target/df-data-service-1.1-SNAPSHOT-fat.jar";
-        StreamExecutionEnvironment env = StreamExecutionEnvironment.createRemoteEnvironment("localhost", 6123, jarPath)
-                .setParallelism(1);
+        StreamExecutionEnvironment env = StreamExecutionEnvironment
+                        .createRemoteEnvironment("localhost", 6123, jarPath)
+                        .setParallelism(1);
         StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
 
         Properties properties = new Properties();
@@ -44,11 +45,11 @@ public class TCFlinkAvroSQL {
             properties.setProperty(ConstantApp.PK_SCHEMA_SUB_INPUT, srcTopicList[i]);
             properties.setProperty(ConstantApp.PK_SCHEMA_ID_INPUT, SchemaRegistryClient.getLatestSchemaIDFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_INPUT) + "");
             properties.setProperty(ConstantApp.PK_SCHEMA_STR_INPUT, SchemaRegistryClient.getLatestSchemaFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_INPUT).toString());
-            tableEnv.registerTableSource(srcTopicList[i], new Kafka010AvroTableSource(srcTopicList[i], properties));
+            tableEnv.registerTableSource(srcTopicList[i], new Kafka011AvroTableSource(srcTopicList[i], properties));
         }
 
         try {
-            Table result = tableEnv.sql(sqlState);
+            Table result = tableEnv.sqlQuery(sqlState);
             result.printSchema();
             System.out.println("generated avro schema is = " + SchemaRegistryClient.tableAPIToAvroSchema(result, targetTopic));
             SchemaRegistryClient.addSchemaFromTableResult(SchemaRegistryHostPort, targetTopic, result);
@@ -59,8 +60,8 @@ public class TCFlinkAvroSQL {
             properties.setProperty(ConstantApp.PK_SCHEMA_STR_OUTPUT, SchemaRegistryClient.getLatestSchemaFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT).toString());
 
             System.out.println(Paths.get(resultFile).toAbsolutePath());
-            Kafka09AvroTableSink avro_sink =
-                    new Kafka09AvroTableSink(targetTopic, properties, new FlinkFixedPartitioner());
+            Kafka011AvroTableSink avro_sink =
+                    new Kafka011AvroTableSink(targetTopic, properties, new FlinkFixedPartitioner());
             result.writeToSink(avro_sink);
             //result.writeToSink(new CsvTableSink(resultFile, "|", 1, FileSystem.WriteMode.OVERWRITE));
             env.execute("tcFlinkAvroSQL");

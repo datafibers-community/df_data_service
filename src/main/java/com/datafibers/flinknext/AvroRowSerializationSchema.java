@@ -8,7 +8,7 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.*;
 import org.apache.avro.util.Utf8;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.streaming.util.serialization.SerializationSchema;
+import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.types.Row;
 import org.apache.log4j.Logger;
 import java.io.ByteArrayOutputStream;

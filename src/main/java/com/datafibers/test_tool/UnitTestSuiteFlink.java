@@ -9,32 +9,27 @@ import java.util.Properties;
 import net.openhft.compiler.CompilerUtils;
 
 import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.codec.DecoderException;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.environment.RemoteStreamEnvironment;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer09;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer09;
 import org.apache.flink.streaming.connectors.kafka.partitioner.FlinkFixedPartitioner;
-import org.apache.flink.streaming.util.serialization.SimpleStringSchema;
+import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableEnvironment;
 import org.apache.flink.table.api.java.StreamTableEnvironment;
 import org.apache.flink.table.sinks.CsvTableSink;
 import org.apache.flink.table.sinks.TableSink;
 import org.apache.log4j.Logger;
-import com.datafibers.flinknext.DFRemoteStreamEnvironment;
-import com.datafibers.flinknext.Kafka09AvroTableSink;
-import com.datafibers.flinknext.Kafka09AvroTableSource;
-import com.datafibers.model.DFJobPOPJ;
+import com.datafibers.flinknext.Kafka011AvroTableSink;
+import com.datafibers.flinknext.Kafka011AvroTableSource;
 import com.datafibers.service.DFInitService;
 import com.datafibers.util.DynamicRunner;
 import com.datafibers.util.SchemaRegistryClient;
 
-/**
- * TC for Flink features
- */
 public class UnitTestSuiteFlink {
 
     private static final Logger LOG = Logger.getLogger(UnitTestSuiteFlink.class);
@@ -52,8 +47,6 @@ public class UnitTestSuiteFlink {
             String kafkaTopic = "finance";
             String kafkaTopic_stage = "df_trans_stage_finance";
             String kafkaTopic_out = "df_trans_out_finance";
-
-
 
             StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
             Properties properties = new Properties();
@@ -75,18 +68,16 @@ public class UnitTestSuiteFlink {
             String[] fieldNames =  new String[] {"name"};
             Class<?>[] fieldTypes = new Class<?>[] {String.class};
 
-            Kafka09AvroTableSource kafkaTableSource = new Kafka09AvroTableSource(
+            Kafka011AvroTableSource kafkaTableSource = new Kafka011AvroTableSource(
                     kafkaTopic_stage,
-                    properties,
-                    fieldNames,
-                    fieldTypes);
+                    properties);
 
             //kafkaTableSource.setFailOnMissingField(true);
 
             tableEnv.registerTableSource("Orders", kafkaTableSource);
 
             //Table result = tableEnv.sql("SELECT STREAM name FROM Orders");
-            Table result = tableEnv.sql("SELECT name FROM Orders");
+            Table result = tableEnv.sqlQuery("SELECT name FROM Orders");
 
             Files.deleteIfExists(Paths.get(resultFile));
 
@@ -118,11 +109,11 @@ public class UnitTestSuiteFlink {
         properties.setProperty("static.avro.schema", "empty_schema");
 
         try {
-            Kafka09AvroTableSource kafkaAvroTableSource =  new Kafka09AvroTableSource("test", properties);
+            Kafka011AvroTableSource kafkaAvroTableSource =  new Kafka011AvroTableSource("test", properties);
             tableEnv.registerTableSource("Orders", kafkaAvroTableSource);
 
             //Table result = tableEnv.sql("SELECT STREAM name, symbol, exchange FROM Orders");
-            Table result = tableEnv.sql("SELECT name, symbol, exchangecode FROM Orders");
+            Table result = tableEnv.sqlQuery("SELECT name, symbol, exchangecode FROM Orders");
 
             Files.deleteIfExists(Paths.get(resultFile));
 
@@ -161,11 +152,11 @@ public class UnitTestSuiteFlink {
         properties.setProperty("static.avro.schema", STATIC_USER_SCHEMA);
 
         try {
-            Kafka09AvroTableSource kafkaAvroTableSource =  new Kafka09AvroTableSource("test", properties);
+            Kafka011AvroTableSource kafkaAvroTableSource =  new Kafka011AvroTableSource("test", properties);
             tableEnv.registerTableSource("Orders", kafkaAvroTableSource);
 
             //Table result = tableEnv.sql("SELECT STREAM name, symbol, exchange FROM Orders");
-            Table result = tableEnv.sql("SELECT name, symbol, exchangecode FROM Orders");
+            Table result = tableEnv.sqlQuery("SELECT name, symbol, exchangecode FROM Orders");
 
             Files.deleteIfExists(Paths.get(resultFile));
 
@@ -191,7 +182,7 @@ public class UnitTestSuiteFlink {
                 + "]}";
 
         String jarPath = DFInitService.class.getProtectionDomain().getCodeSource().getLocation().getPath();
-        DFRemoteStreamEnvironment env = new DFRemoteStreamEnvironment("localhost", 6123, jarPath)
+        final StreamExecutionEnvironment env = new RemoteStreamEnvironment("localhost", 6123, jarPath)
                 .setParallelism(1);
         StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
         Properties properties = new Properties();
@@ -205,16 +196,16 @@ public class UnitTestSuiteFlink {
 
         try {
             HashMap<String, String> hm = new HashMap<>();
-            Kafka09AvroTableSource kafkaAvroTableSource =  new Kafka09AvroTableSource("test", properties);
+            Kafka011AvroTableSource kafkaAvroTableSource =  new Kafka011AvroTableSource("test", properties);
             tableEnv.registerTableSource("Orders", kafkaAvroTableSource);
 
-            Table result = tableEnv.sql("SELECT name, symbol, exchangecode FROM Orders");
+            Table result = tableEnv.sqlQuery("SELECT name, symbol, exchangecode FROM Orders");
             //Kafka09JsonTableSink json_sink = new Kafka09JsonTableSink ("test_json", properties, new FlinkFixedPartitioner());
-            Kafka09AvroTableSink json_sink = new Kafka09AvroTableSink ("test_json", properties, new FlinkFixedPartitioner());
+            Kafka011AvroTableSink json_sink = new Kafka011AvroTableSink ("test_json", properties, new FlinkFixedPartitioner());
 
             // write the result Table to the TableSink
             result.writeToSink(json_sink);
-            env.executeWithDFObj("Flink AVRO SQL KAFKA Test", new DFJobPOPJ().setJobConfig(hm) );
+            env.execute("Flink AVRO SQL KAFKA Test");
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -273,7 +264,7 @@ public class UnitTestSuiteFlink {
         properties.setProperty("static.avro.schema", STATIC_USER_SCHEMA);
 
         try {
-            Kafka09AvroTableSource kafkaAvroTableSource =  new Kafka09AvroTableSource("test", properties);
+            Kafka011AvroTableSource kafkaAvroTableSource =  new Kafka011AvroTableSource("test", properties);
             tableEnv.registerTableSource("Orders", kafkaAvroTableSource);
 
             Table ingest = tableEnv.scan("Orders");
@@ -301,8 +292,8 @@ public class UnitTestSuiteFlink {
             DynamicRunner runner = (DynamicRunner) aClass.newInstance();
             Table result = runner.transTableObj(ingest);
 
-            Kafka09AvroTableSink sink =
-                    new Kafka09AvroTableSink ("test_json", properties, new FlinkFixedPartitioner());
+            Kafka011AvroTableSink sink =
+                    new Kafka011AvroTableSink ("test_json", properties, new FlinkFixedPartitioner());
             // write the result Table to the TableSink
             result.writeToSink(sink);
             env.execute("Flink AVRO SQL KAFKA Test");
