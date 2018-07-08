@@ -34,7 +34,12 @@ public class FlinkAvroSQLClient {
             properties.setProperty(ConstantApp.PK_SCHEMA_SUB_INPUT, srcTopicList[i]);
             properties.setProperty(ConstantApp.PK_SCHEMA_ID_INPUT, SchemaRegistryClient.getLatestSchemaIDFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_INPUT) + "");
             properties.setProperty(ConstantApp.PK_SCHEMA_STR_INPUT, SchemaRegistryClient.getLatestSchemaFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_INPUT).toString());
-            tableEnv.registerTableSource(srcTopicList[i], new Kafka011AvroTableSource(srcTopicList[i], properties));
+            tableEnv.registerTableSource(srcTopicList[i],
+                    Kafka011AvroTableSource
+                    .builder()
+                    .forTopic(srcTopicList[i])
+                    .withKafkaProperties(properties)
+                    .build());
         }
 
         try {
@@ -58,7 +63,7 @@ public class FlinkAvroSQLClient {
     }
 
     public static void main(String[] args) throws IOException, DecoderException {
-        //tcFlinkAvroSQL("localhost:9092", "localhost:8081", "test_stock", "SQLSTATE_UNION_01", "symbol", "consumergroupid", SQLSTATE_UNION_01);
+        //tcFlinkAvroSQL("localhost:9092", "localhost:8081", "test_stock", "SQLSTATE_UNION_01", "consumergroupid", "symbol", SQLSTATE_UNION_01);
         tcFlinkAvroSQL(args[0], args[1], args[2], args[3], args[4], args[5], args[6]);
 
     }

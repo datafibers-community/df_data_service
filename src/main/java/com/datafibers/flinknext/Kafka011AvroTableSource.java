@@ -69,5 +69,43 @@ public class Kafka011AvroTableSource extends KafkaAvroTableSource {
 	protected FlinkKafkaConsumerBase<Row> createKafkaConsumer(String topic, Properties properties, DeserializationSchema<Row> deserializationSchema) {
 		return new FlinkKafkaConsumer011<>(topic, deserializationSchema, properties);
 	}
+
+	/**
+	 * Returns a builder to configure and create a {@link org.apache.flink.streaming.connectors.kafka.Kafka011AvroTableSource}.
+	 * @return A builder to configure and create a {@link org.apache.flink.streaming.connectors.kafka.Kafka011AvroTableSource}.
+	 */
+	public static Kafka011AvroTableSource.Builder builder() {
+		return new Kafka011AvroTableSource.Builder();
+	}
+
+	/**
+	 * A builder to configure and create a {@link Kafka011AvroTableSource}.
+	 */
+	public static class Builder extends KafkaAvroTableSource.Builder<Kafka011AvroTableSource, Kafka011AvroTableSource.Builder> {
+
+		@Override
+		protected boolean supportsKafkaTimestamps() {
+			return true;
+		}
+
+		@Override
+		protected Kafka011AvroTableSource.Builder builder() {
+			return this;
+		}
+
+		/**
+		 * Builds and configures a {@link Kafka011AvroTableSource}.
+		 *
+		 * @return A configured {@link Kafka011AvroTableSource}.
+		 */
+		@Override
+		public Kafka011AvroTableSource build() {
+			Kafka011AvroTableSource tableSource = new Kafka011AvroTableSource(
+					getTopic(),
+					getKafkaProps());
+			super.configureTableSource(tableSource);
+			return tableSource;
+		}
+	}
 }
 

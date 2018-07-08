@@ -68,9 +68,11 @@ public class UnitTestSuiteFlink {
             String[] fieldNames =  new String[] {"name"};
             Class<?>[] fieldTypes = new Class<?>[] {String.class};
 
-            Kafka011AvroTableSource kafkaTableSource = new Kafka011AvroTableSource(
-                    kafkaTopic_stage,
-                    properties);
+            Kafka011AvroTableSource kafkaTableSource = Kafka011AvroTableSource
+                    .builder()
+                    .forTopic(kafkaTopic_stage)
+                    .withKafkaProperties(properties)
+                    .build();
 
             //kafkaTableSource.setFailOnMissingField(true);
 
@@ -109,7 +111,12 @@ public class UnitTestSuiteFlink {
         properties.setProperty("static.avro.schema", "empty_schema");
 
         try {
-            Kafka011AvroTableSource kafkaAvroTableSource =  new Kafka011AvroTableSource("test", properties);
+            Kafka011AvroTableSource kafkaAvroTableSource = Kafka011AvroTableSource
+                    .builder()
+                    .forTopic("test")
+                    .withKafkaProperties(properties)
+                    .build();
+
             tableEnv.registerTableSource("Orders", kafkaAvroTableSource);
 
             //Table result = tableEnv.sql("SELECT STREAM name, symbol, exchange FROM Orders");
@@ -152,7 +159,12 @@ public class UnitTestSuiteFlink {
         properties.setProperty("static.avro.schema", STATIC_USER_SCHEMA);
 
         try {
-            Kafka011AvroTableSource kafkaAvroTableSource =  new Kafka011AvroTableSource("test", properties);
+            Kafka011AvroTableSource kafkaAvroTableSource = Kafka011AvroTableSource
+                    .builder()
+                    .forTopic("test")
+                    .withKafkaProperties(properties)
+                    .build();
+
             tableEnv.registerTableSource("Orders", kafkaAvroTableSource);
 
             //Table result = tableEnv.sql("SELECT STREAM name, symbol, exchange FROM Orders");
@@ -196,7 +208,12 @@ public class UnitTestSuiteFlink {
 
         try {
             HashMap<String, String> hm = new HashMap<>();
-            Kafka011AvroTableSource kafkaAvroTableSource =  new Kafka011AvroTableSource("test", properties);
+            Kafka011AvroTableSource kafkaAvroTableSource = Kafka011AvroTableSource
+                    .builder()
+                    .forTopic("test")
+                    .withKafkaProperties(properties)
+                    .build();
+
             tableEnv.registerTableSource("Orders", kafkaAvroTableSource);
 
             Table result = tableEnv.sqlQuery("SELECT name, symbol, exchangecode FROM Orders");
@@ -264,7 +281,12 @@ public class UnitTestSuiteFlink {
         properties.setProperty("static.avro.schema", STATIC_USER_SCHEMA);
 
         try {
-            Kafka011AvroTableSource kafkaAvroTableSource =  new Kafka011AvroTableSource("test", properties);
+            Kafka011AvroTableSource kafkaAvroTableSource = Kafka011AvroTableSource
+                    .builder()
+                    .forTopic("test")
+                    .withKafkaProperties(properties)
+                    .build();
+
             tableEnv.registerTableSource("Orders", kafkaAvroTableSource);
 
             Table ingest = tableEnv.scan("Orders");

@@ -5,11 +5,13 @@ import com.datafibers.flinknext.Kafka011AvroTableSink;
 import com.datafibers.util.ConstantApp;
 import com.datafibers.util.SchemaRegistryClient;
 import org.apache.commons.codec.DecoderException;
+import org.apache.flink.core.fs.FileSystem;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.partitioner.FlinkFixedPartitioner;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableEnvironment;
 import org.apache.flink.table.api.java.StreamTableEnvironment;
+import org.apache.flink.table.sinks.CsvTableSink;
 import org.apache.log4j.Logger;
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -26,17 +28,19 @@ public class TCFlinkAvroSQL {
         System.out.println("tcFlinkAvroSQL");
         String resultFile = "testResult";
 
-        String jarPath = "C:/Users/dadu/Coding/df_data_service/target/df-data-service-1.1-SNAPSHOT-fat.jar";
-        //String jarPath = "/Users/will/Documents/Coding/GitHub/df_data_service/target/df-data-service-1.1-SNAPSHOT-fat.jar";
-        StreamExecutionEnvironment env = StreamExecutionEnvironment
-                        .createRemoteEnvironment("localhost", 6123, jarPath)
-                        .setParallelism(1);
+        //String jarPath = "C:/Users/dadu/Coding/df_data_service/target/df-data-service-1.1-SNAPSHOT-fat.jar";
+        String jarPath = "/Users/will/Documents/Coding/GitHub/df_data_service/target/df-data-service-1.1-SNAPSHOT-fat.jar";
+        //StreamExecutionEnvironment env = StreamExecutionEnvironment
+        //                .createRemoteEnvironment("localhost", 6123, jarPath)
+        //                .setParallelism(1); // Test remotely
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+
+
         StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
 
         Properties properties = new Properties();
         properties.setProperty(ConstantApp.PK_KAFKA_HOST_PORT.replace("_", "."), "localhost:9092");
         properties.setProperty(ConstantApp.PK_KAFKA_CONSUMER_GROURP, "consumer_test");
-        //properties.setProperty(ConstantApp.PK_SCHEMA_SUB_OUTPUT, "test");
         properties.setProperty(ConstantApp.PK_KAFKA_SCHEMA_REGISTRY_HOST_PORT.replace("_", "."), SchemaRegistryHostPort);
         properties.setProperty(ConstantApp.PK_FLINK_TABLE_SINK_KEYS, "symbol");
 
@@ -45,7 +49,12 @@ public class TCFlinkAvroSQL {
             properties.setProperty(ConstantApp.PK_SCHEMA_SUB_INPUT, srcTopicList[i]);
             properties.setProperty(ConstantApp.PK_SCHEMA_ID_INPUT, SchemaRegistryClient.getLatestSchemaIDFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_INPUT) + "");
             properties.setProperty(ConstantApp.PK_SCHEMA_STR_INPUT, SchemaRegistryClient.getLatestSchemaFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_INPUT).toString());
-            tableEnv.registerTableSource(srcTopicList[i], new Kafka011AvroTableSource(srcTopicList[i], properties));
+            tableEnv.registerTableSource(srcTopicList[i],
+                    Kafka011AvroTableSource
+                            .builder()
+                            .forTopic(srcTopicList[i])
+                            .withKafkaProperties(properties)
+                            .build());
         }
 
         try {
@@ -60,10 +69,9 @@ public class TCFlinkAvroSQL {
             properties.setProperty(ConstantApp.PK_SCHEMA_STR_OUTPUT, SchemaRegistryClient.getLatestSchemaFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT).toString());
 
             System.out.println(Paths.get(resultFile).toAbsolutePath());
-            Kafka011AvroTableSink avro_sink =
-                    new Kafka011AvroTableSink(targetTopic, properties, new FlinkFixedPartitioner());
-            result.writeToSink(avro_sink);
-            //result.writeToSink(new CsvTableSink(resultFile, "|", 1, FileSystem.WriteMode.OVERWRITE));
+            //Kafka011AvroTableSink avro_sink = new Kafka011AvroTableSink(targetTopic, properties, new FlinkFixedPartitioner());
+            //result.writeToSink(avro_sink);
+            result.writeToSink(new CsvTableSink(resultFile, "|", 1, FileSystem.WriteMode.OVERWRITE));
             env.execute("tcFlinkAvroSQL");
         } catch (Exception e) {
             e.printStackTrace();
@@ -111,7 +119,7 @@ public class TCFlinkAvroSQL {
                 "SELECT symbol, sum(bid_size) as total_bids FROM (SELECT symbol, bid_size FROM test_stock where symbol = 'FB' union all SELECT symbol, bid_size FROM test_stock2 where symbol = 'SAP') group by symbol having sum(bid_size) > 1000";
 
 
-        tcFlinkAvroSQL("localhost:8002", "test_stock", "SQLSTATE_UNION_01", SQLSTATE_UNION_01);
+        tcFlinkAvroSQL("localhost:8002", "test_stock", "SQLSTATE_PROJECT_01", SQLSTATE_PROJECT_01);
         // Test: kafka-avro-console-consumer --zookeeper localhost:2181 --topic stock_int_test --from-beginning
         // To test it locally, remove the jar from Flink Rest API.
     }
