@@ -19,6 +19,13 @@ public class FlinkAvroSQLClient {
     public static void tcFlinkAvroSQL(String KafkaServerHostPort, String SchemaRegistryHostPort,
                                       String srcTopic, String targetTopic,
                                       String consumerGroupId, String sinkKeys, String sqlState) {
+        // TODO Flink v1.5.0 job run "program-args" does use commas as separators.
+        // TODO In this case, we have to replace , to ^ from UI input, pass to flink SQL client, then replace ^ back to ,
+        // TODO similar use ? to replace '
+        srcTopic = srcTopic.replace("^", ",");
+        sqlState = sqlState.replace("^", ",").replace("?", "'");
+
+        System.out.println("sqlState = " + sqlState);
 
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
@@ -63,8 +70,8 @@ public class FlinkAvroSQLClient {
     }
 
     public static void main(String[] args) throws IOException, DecoderException {
-        //tcFlinkAvroSQL("localhost:9092", "localhost:8081", "test_stock", "SQLSTATE_UNION_01", "consumergroupid", "symbol", SQLSTATE_UNION_01);
+        //tcFlinkAvroSQL("localhost:9092", "localhost:8002", "source_stock", "source_stock_out", "consumergroupid", "symbol", "select symbol, open_price from source_stock");
         tcFlinkAvroSQL(args[0], args[1], args[2], args[3], args[4], args[5], args[6]);
-
+        // System.out.println("where a = 'd'".replace("'", "%27").replace("%27", "'"));
     }
 }

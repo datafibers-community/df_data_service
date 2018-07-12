@@ -15,6 +15,7 @@ import io.vertx.ext.mongo.FindOptions;
 import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.client.WebClient;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.json.JSONArray;
@@ -187,9 +188,9 @@ public class HelpFunc {
             programArgs = String.join(" ", kafkaRestHostName, SchemaRegistryRestHostName,
                     dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_INPUT),
                     dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_TOPIC_OUTPUT),
-                    dfJob.getConnectorConfig().get(ConstantApp.PK_FLINK_TABLE_SINK_KEYS),
                     HelpFunc.coalesce(dfJob.getConnectorConfig().get(ConstantApp.PK_KAFKA_CONSUMER_GROURP),
                             ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
+                    dfJob.getConnectorConfig().get(ConstantApp.PK_FLINK_TABLE_SINK_KEYS),
                     // Use 0 as we only support one query in flink
                     "\"" + sqlCleaner(dfJob.getConnectorConfig().get(ConstantApp.PK_TRANSFORM_SQL))[0] + "\"");
         } else if (dfJob.getConnectorType() == ConstantApp.DF_CONNECT_TYPE.TRANSFORM_EXCHANGE_FLINK_UDF.name()) {
@@ -788,7 +789,7 @@ public class HelpFunc {
 
         JsonObject response = new JsonObject(jsonResponse.getBody());
         if(response.containsKey("filename")) {
-            return response.getString("filename");
+            return FilenameUtils.getName(response.getString("filename")); // Flink v1.5.0 returns full file and path
         } else {
             return "";
         }

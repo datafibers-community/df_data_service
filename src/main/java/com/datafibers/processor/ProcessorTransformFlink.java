@@ -35,18 +35,26 @@ public class ProcessorTransformFlink {
                                       String taskCollection, String flinkRestHost, int flinkRestPort, String jarId,
                                       String allowNonRestoredState, String savepointPath, String entryClass,
                                       String parallelism, String programArgs) {
+
+        programArgs = programArgs.replace(",", "^").replace("'", "?");
+
+        LOG.debug("jarId=" + jarId);
+        LOG.debug("flinkRestPort, flinkRestHost = " + flinkRestPort + "," + flinkRestHost);
+        LOG.debug("entry-class=" + entryClass);
+        LOG.debug("program-args=" + programArgs);
+
+
         String taskId = dfJob.getId();
         if (jarId.isEmpty()) {
             LOG.error(DFAPIMessage.logResponseMessage(9000, taskId));
         } else {
             // Search mongo to get the flink_jar_id
             webClient.post(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL_JARS + "/" + jarId + "/run")
-                    .addQueryParam("allowNonRestoredState", allowNonRestoredState)
-                    .addQueryParam("savepointPath", savepointPath)
-                    .addQueryParam("entry-class", entryClass)
-                    .addQueryParam("parallelism", parallelism)
-                    .addQueryParam("allowNonRestoredState", allowNonRestoredState)
-                    .addQueryParam("program-args", programArgs)
+                    //.addQueryParam("savepointPath", savepointPath)
+                    .addQueryParam("entry-class", entryClass)    // TODO Flink 1.5.0 does not allow empty parameters
+                    //.addQueryParam("parallelism", parallelism)
+                    //.addQueryParam("allowNonRestoredState", allowNonRestoredState)
+                    .addQueryParam("program-args", programArgs) // TODO Flink v1.5.0 job run "program-args" does use commas as separators.
                     .send(ar -> {
                         if (ar.succeeded()) {
                             String flinkJobId =  ar.result().bodyAsJsonObject()
@@ -60,6 +68,9 @@ public class ProcessorTransformFlink {
                             }
 
                             LOG.debug("dfJob to Json = " + dfJob.toJson());
+                            LOG.debug("flink submit statusMessage = " + ar.result().statusMessage());
+                            LOG.debug("flink submit statusCode = " + ar.result().statusCode());
+                            LOG.debug("flink submit cause = " + ar.cause());
 
                             mongo.updateCollection(taskCollection, new JsonObject().put("_id", taskId),
                                     new JsonObject().put("$set", dfJob.toJson()), v -> {
