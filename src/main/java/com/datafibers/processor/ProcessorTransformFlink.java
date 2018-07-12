@@ -213,10 +213,16 @@ public class ProcessorTransformFlink {
                     .end(DFAPIMessage.getResponseMessage(9000, taskId,
                             "Cannot Get State Without JobId."));
         } else {
+            LOG.debug("flinkRestPort, flinkRestHost = " + flinkRestPort + "," + flinkRestHost );
             webClient.get(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL + "/" + jobId)
                     .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
-                    .sendJsonObject(DFAPIMessage.getResponseJsonObj(1003),
+                    .send(
                             ar -> {
+                            LOG.debug("ar.succeeded() = " + ar.succeeded());
+                                LOG.debug("ar.result().statusCode() = " + ar.result().statusCode());
+                                LOG.debug("ar.cause = " + ar.cause());
+                                LOG.debug("ar.result = " + ar.result().bodyAsJsonObject().toString());
+
                                 if (ar.succeeded() && ar.result().statusCode() == ConstantApp.STATUS_CODE_OK) {
                                     JsonObject jo = ar.result().bodyAsJsonObject();
                                     JsonArray subTaskArray = jo.getJsonArray("vertices");
