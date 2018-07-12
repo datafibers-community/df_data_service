@@ -110,13 +110,18 @@ public class ProcessorTransformFlink {
         if (jobID == null || jobID.trim().isEmpty()) {
             LOG.error(DFAPIMessage.logResponseMessage(9000, id));
         } else {
-            webClient.delete(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL + "/" + jobID + "/cancel")
+            //webClient.delete(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL + "/" + jobID + "/cancel")
+                    //.putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                    //.sendJsonObject(DFAPIMessage.getResponseJsonObj(1002),
+
+             webClient.get(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL + "/" + jobID + "/yarn-cancel")
                     .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
-                    .sendJsonObject(DFAPIMessage.getResponseJsonObj(1002),
+                    .send(
                             ar -> {
                                 if (ar.succeeded()) {
                                     // Only if response is succeeded, delete from repo
-                                    int response = (ar.result().statusCode() == ConstantApp.STATUS_CODE_OK) ? 1002:9012;
+                                    // TODO Flink v1.5.0 Use get the status code is changed from 200 to 202
+                                    int response = (ar.result().statusCode() == ConstantApp.STATUS_CODE_OK_ACCEPTED) ? 1002:9012;
                                     mongoClient.removeDocument(mongoCOLLECTION, new JsonObject().put("_id", id),
                                             mar -> HelpFunc
                                                     .responseCorsHandleAddOn(routingContext.response())
