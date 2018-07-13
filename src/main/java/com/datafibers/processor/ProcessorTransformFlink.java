@@ -67,7 +67,7 @@ public class ProcessorTransformFlink {
                                         .setStatus(ConstantApp.DF_STATUS.RUNNING.name());
                             }
 
-                            LOG.debug("dfJob to Json = " + dfJob.toJson());
+                            //LOG.debug("dfJob to Json = " + dfJob.toJson());
                             LOG.debug("flink submit statusMessage = " + ar.result().statusMessage());
                             LOG.debug("flink submit statusCode = " + ar.result().statusCode());
                             LOG.debug("flink submit cause = " + ar.cause());
@@ -113,12 +113,15 @@ public class ProcessorTransformFlink {
             //webClient.delete(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL + "/" + jobID + "/cancel")
                     //.putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
                     //.sendJsonObject(DFAPIMessage.getResponseJsonObj(1002),
+            LOG.debug("jobID to cancel = " + jobID);
 
              webClient.get(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL + "/" + jobID + "/yarn-cancel")
                     .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
                     .send(
                             ar -> {
                                 if (ar.succeeded()) {
+                                    LOG.debug("cancel status message = " + ar.result().statusMessage());
+                                    LOG.debug("cancel status code = " + ar.result().statusCode());
                                     // Only if response is succeeded, delete from repo
                                     // TODO Flink v1.5.0 Use get the status code is changed from 200 to 202
                                     int response = (ar.result().statusCode() == ConstantApp.STATUS_CODE_OK_ACCEPTED) ? 1002:9012;
@@ -163,13 +166,16 @@ public class ProcessorTransformFlink {
         if (jobID == null || jobID.trim().isEmpty()) {
             LOG.error(DFAPIMessage.logResponseMessage(9000, id));
         } else {
-            webClient.delete(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL + "/" + jobID + "/cancel")
+            //webClient.delete(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL + "/" + jobID + "/cancel")
+            //        .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
+            //        .sendJsonObject(DFAPIMessage.getResponseJsonObj(1002),
+            webClient.get(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL + "/" + jobID + "/yarn-cancel")
                     .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
-                    .sendJsonObject(DFAPIMessage.getResponseJsonObj(1002),
+                    .send(
                             ar -> {
                                 if (ar.succeeded()) {
                                     // If cancel response is succeeded, we'll submit the job
-                                    int response = (ar.result().statusCode() == ConstantApp.STATUS_CODE_OK) ? 1002:9012;
+                                    int response = (ar.result().statusCode() == ConstantApp.STATUS_CODE_OK_ACCEPTED) ? 1002:9012;
                                     LOG.info(DFAPIMessage.logResponseMessage(response, id));
                                     forwardPostAsSubmitJar(webClient,
                                             dfJob,
