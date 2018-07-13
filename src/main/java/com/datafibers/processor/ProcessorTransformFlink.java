@@ -35,18 +35,26 @@ public class ProcessorTransformFlink {
                                       String taskCollection, String flinkRestHost, int flinkRestPort, String jarId,
                                       String allowNonRestoredState, String savepointPath, String entryClass,
                                       String parallelism, String programArgs) {
+
+        programArgs = programArgs.replace(",", "^").replace("'", "?");
+
+        LOG.debug("jarId=" + jarId);
+        LOG.debug("flinkRestPort, flinkRestHost = " + flinkRestPort + "," + flinkRestHost);
+        LOG.debug("entry-class=" + entryClass);
+        LOG.debug("program-args=" + programArgs);
+
+
         String taskId = dfJob.getId();
         if (jarId.isEmpty()) {
             LOG.error(DFAPIMessage.logResponseMessage(9000, taskId));
         } else {
             // Search mongo to get the flink_jar_id
             webClient.post(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL_JARS + "/" + jarId + "/run")
-                    .addQueryParam("allowNonRestoredState", allowNonRestoredState)
-                    .addQueryParam("savepointPath", savepointPath)
-                    .addQueryParam("entry-class", entryClass)
-                    .addQueryParam("parallelism", parallelism)
-                    .addQueryParam("allowNonRestoredState", allowNonRestoredState)
-                    .addQueryParam("program-args", programArgs)
+                    //.addQueryParam("savepointPath", savepointPath)
+                    .addQueryParam("entry-class", entryClass)    // TODO Flink 1.5.0 does not allow empty parameters
+                    //.addQueryParam("parallelism", parallelism)
+                    //.addQueryParam("allowNonRestoredState", allowNonRestoredState)
+                    .addQueryParam("program-args", programArgs) // TODO Flink v1.5.0 job run "program-args" does use commas as separators.
                     .send(ar -> {
                         if (ar.succeeded()) {
                             String flinkJobId =  ar.result().bodyAsJsonObject()
@@ -59,7 +67,10 @@ public class ProcessorTransformFlink {
                                         .setStatus(ConstantApp.DF_STATUS.RUNNING.name());
                             }
 
-                            LOG.debug("dfJob to Json = " + dfJob.toJson());
+                            //LOG.debug("dfJob to Json = " + dfJob.toJson());
+                            LOG.debug("flink submit statusMessage = " + ar.result().statusMessage());
+                            LOG.debug("flink submit statusCode = " + ar.result().statusCode());
+                            LOG.debug("flink submit cause = " + ar.cause());
 
                             mongo.updateCollection(taskCollection, new JsonObject().put("_id", taskId),
                                     new JsonObject().put("$set", dfJob.toJson()), v -> {
@@ -99,13 +110,21 @@ public class ProcessorTransformFlink {
         if (jobID == null || jobID.trim().isEmpty()) {
             LOG.error(DFAPIMessage.logResponseMessage(9000, id));
         } else {
-            webClient.delete(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL + "/" + jobID + "/cancel")
+            //webClient.delete(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL + "/" + jobID + "/cancel")
+                    //.putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
+                    //.sendJsonObject(DFAPIMessage.getResponseJsonObj(1002),
+            LOG.debug("jobID to cancel = " + jobID);
+
+             webClient.get(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL + "/" + jobID + "/yarn-cancel")
                     .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
-                    .sendJsonObject(DFAPIMessage.getResponseJsonObj(1002),
+                    .send(
                             ar -> {
                                 if (ar.succeeded()) {
+                                    LOG.debug("cancel status message = " + ar.result().statusMessage());
+                                    LOG.debug("cancel status code = " + ar.result().statusCode());
                                     // Only if response is succeeded, delete from repo
-                                    int response = (ar.result().statusCode() == ConstantApp.STATUS_CODE_OK) ? 1002:9012;
+                                    // TODO Flink v1.5.0 Use get the status code is changed from 200 to 202
+                                    int response = (ar.result().statusCode() == ConstantApp.STATUS_CODE_OK_ACCEPTED) ? 1002:9012;
                                     mongoClient.removeDocument(mongoCOLLECTION, new JsonObject().put("_id", id),
                                             mar -> HelpFunc
                                                     .responseCorsHandleAddOn(routingContext.response())
@@ -147,13 +166,16 @@ public class ProcessorTransformFlink {
         if (jobID == null || jobID.trim().isEmpty()) {
             LOG.error(DFAPIMessage.logResponseMessage(9000, id));
         } else {
-            webClient.delete(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL + "/" + jobID + "/cancel")
+            //webClient.delete(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL + "/" + jobID + "/cancel")
+            //        .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
+            //        .sendJsonObject(DFAPIMessage.getResponseJsonObj(1002),
+            webClient.get(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL + "/" + jobID + "/yarn-cancel")
                     .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
-                    .sendJsonObject(DFAPIMessage.getResponseJsonObj(1002),
+                    .send(
                             ar -> {
                                 if (ar.succeeded()) {
                                     // If cancel response is succeeded, we'll submit the job
-                                    int response = (ar.result().statusCode() == ConstantApp.STATUS_CODE_OK) ? 1002:9012;
+                                    int response = (ar.result().statusCode() == ConstantApp.STATUS_CODE_OK_ACCEPTED) ? 1002:9012;
                                     LOG.info(DFAPIMessage.logResponseMessage(response, id));
                                     forwardPostAsSubmitJar(webClient,
                                             dfJob,
@@ -202,10 +224,16 @@ public class ProcessorTransformFlink {
                     .end(DFAPIMessage.getResponseMessage(9000, taskId,
                             "Cannot Get State Without JobId."));
         } else {
+            LOG.debug("flinkRestPort, flinkRestHost = " + flinkRestPort + "," + flinkRestHost );
             webClient.get(flinkRestPort, flinkRestHost, ConstantApp.FLINK_REST_URL + "/" + jobId)
                     .putHeader(ConstantApp.HTTP_HEADER_CONTENT_TYPE, ConstantApp.HTTP_HEADER_APPLICATION_JSON_CHARSET)
-                    .sendJsonObject(DFAPIMessage.getResponseJsonObj(1003),
+                    .send(
                             ar -> {
+                            LOG.debug("ar.succeeded() = " + ar.succeeded());
+                                LOG.debug("ar.result().statusCode() = " + ar.result().statusCode());
+                                LOG.debug("ar.cause = " + ar.cause());
+                                LOG.debug("ar.result = " + ar.result().bodyAsJsonObject().toString());
+
                                 if (ar.succeeded() && ar.result().statusCode() == ConstantApp.STATUS_CODE_OK) {
                                     JsonObject jo = ar.result().bodyAsJsonObject();
                                     JsonArray subTaskArray = jo.getJsonArray("vertices");
