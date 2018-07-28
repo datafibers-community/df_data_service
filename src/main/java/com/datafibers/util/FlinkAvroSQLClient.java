@@ -15,7 +15,7 @@ import java.util.Properties;
  * Flink Client to Submit SQL job through Flink Rest API
  */
 public class FlinkAvroSQLClient {
-
+   // this is Test Class
     public static void tcFlinkAvroSQL(String KafkaServerHostPort, String SchemaRegistryHostPort,
                                       String srcTopic, String targetTopic,
                                       String consumerGroupId, String sinkKeys, String sqlState) {
@@ -68,7 +68,7 @@ public class FlinkAvroSQLClient {
             e.printStackTrace();
         }
     }
-
+//sssssssssssss
     public static void main(String[] args) throws IOException, DecoderException {
         //tcFlinkAvroSQL("localhost:9092", "localhost:8002", "source_stock", "source_stock_out", "consumergroupid", "symbol", "select symbol, open_price from source_stock");
         tcFlinkAvroSQL(args[0], args[1], args[2], args[3], args[4], args[5], args[6]);
