@@ -1,4 +1,4 @@
-# sdfs DataFibers Data Services
+# DataFibers Data Services
 DataFibers (DF) - A pure streaming processing application on Kafka and Flink. 
 The DF processor has two components defined to deal with stream ETL (Extract, Transform, and Load).
 * **Connects** is to leverage Kafka Connect REST API on Confluent to landing or publishing data in or out of Apache Kafka.
