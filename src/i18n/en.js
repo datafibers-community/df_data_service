@@ -129,7 +129,7 @@ export default {
                     },
 
         },
-        model: {
+        ml: {
                     name: 'Model |||| Model',
                             fields: {
                                 commands: 'Orders',
