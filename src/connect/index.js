@@ -55,6 +55,7 @@ export const ConnectList = (props) => (
             <SelectField source="connectorType" label="Task Type" choices={[
                                     { id: 'CONNECT_SOURCE_KAFKA_AvroFile', name: 'Source Avro Files' },
                                     { id: 'CONNECT_SOURCE_STOCK_AvroFile', name: 'Source Stock API' },
+                                    { id: 'CONNECT_SOURCE_UKMEET_NetCDFFile', name: 'Source UKMeet API' },
                                     { id: 'CONNECT_SINK_HDFS_AvroFile', name: 'Sink Hadoop|Hive' },
                                     { id: 'CONNECT_SINK_MONGODB_AvroDB',  name: 'Sink MongoDB' },
                                     { id: 'CONNECT_SINK_KAFKA_JDBC',  name: 'Sink JDBC' },
@@ -77,6 +78,7 @@ export const ConnectEdit = (props) => (
                 <SelectField source="connectorType" label="Task Type" validate={[ required ]} choices={[
                         { id: 'CONNECT_SOURCE_KAFKA_AvroFile', name: 'Source Avro Files' },
                         { id: 'CONNECT_SOURCE_STOCK_AvroFile', name: 'Source Stock API' },
+                        { id: 'CONNECT_SOURCE_UKMEET_NetCDFFile', name: 'Source UKMeet API' },
                         { id: 'CONNECT_SINK_HDFS_AvroFile', name: 'Sink Hadoop|Hive' },
                         { id: 'CONNECT_SINK_MONGODB_AvroDB',  name: 'Sink MongoDB' },
                         { id: 'CONNECT_SINK_KAFKA_JDBC',  name: 'Sink JDBC' },
@@ -93,6 +95,13 @@ export const ConnectEdit = (props) => (
                     <BooleanInput source="connectorConfig.file_overwrite" label="Allow File Overwrite?" />
                     <TextInput source="connectorConfig.file_location" label="Path where to load the files" style={{ display: 'inline-block' }} validate={[ required ]} />
                     <TextInput source="connectorConfig.file_glob" label="Pattern/Glob to match the files" style={{ display: 'inline-block' }} validate={[ required ]} />
+                </DependentInput>
+                <DependentInput dependsOn="connectorType" value="CONNECT_SOURCE_UKMEET_NetCDFFile">
+                    <TextInput source="connectorConfig.topic" label="Edit a topic to write data" validate={[ required ]} />
+                    <TextInput source="connectorConfig.prefix" label="Edit the prefix of the file" validate={[ required ]} />
+                    <BooleanInput source="connectorConfig.purge" label="Edit if purge message and staging files" validate={[ required ]} />
+                    <TextInput source="connectorConfig.s3_downloaddir" label="Edit path for staging files" validate={[ required ]} />
+                    <NumberInput source="connectorConfig.interval" label="API Refresh Interval (sec.)" defaultValue={5} step={5} validate={[ required, minValue(5) ]} />
                 </DependentInput>
                 <DependentInput dependsOn="connectorType" value="CONNECT_SOURCE_STOCK_AvroFile">
                     <TextInput source="connectorConfig.topic" label="Edit a topic to write data" validate={[ required ]} />
@@ -173,6 +182,7 @@ export const ConnectCreate = (props) => (
                     <SelectInput source="connectorType" label="Task Type" validate={[ required ]} choices={[
                             { id: 'CONNECT_SOURCE_KAFKA_AvroFile', name: 'Avro Files' },
                             { id: 'CONNECT_SOURCE_STOCK_AvroFile', name: 'Stock API' },
+                            { id: 'CONNECT_SOURCE_UKMEET_NetCDFFile', name: 'UKMeet API' },
                     ]} />
                 </DependentInput>
                 <DependentInput dependsOn="connectorCategory" value="sink">
@@ -193,6 +203,24 @@ export const ConnectCreate = (props) => (
                     <BooleanInput source="connectorConfig.file_overwrite" label="Allow File Overwrite ?" defaultValue={true} />
                     <TextInput source="connectorConfig.file_location" label="Path where to load the files" style={{ display: 'inline-block' }} defaultValue={"/home/vagrant/df_data/"} validate={[ required ]} />
                     <TextInput source="connectorConfig.file_glob" label="Pattern/Glob to match the files" style={{ display: 'inline-block', marginLeft: 32 }} defaultValue="*.{json,csv}" validate={[ required ]} />
+                </DependentInput>
+                <DependentInput dependsOn="connectorType" value="CONNECT_SOURCE_UKMEET_NetCDFFile">
+                    <LongTextInput source="connectorConfig.topic" label="Automatically create a topic to write data" validate={[ required ]} style={{ width: 500 }} />
+                    <LongTextInput source="connectorConfig.schema_registry_uri" label="Schema Registry URI" defaultValue="http://localhost:8081" validate={[ required ]} style={{ width: 500 }} />
+                    <LongTextInput source="connectorConfig.prefix" label="Fetch file name prefix/subject" defaultValue="surface_air_pressure" validate={[ required ]} style={{ width: 500 }} />
+                    <BooleanInput source="connectorConfig.purge" label="Purge local staging file and sqs message ?" defaultValue={true} />
+                    <LongTextInput source="connectorConfig.sqs_uri" label="AWS SQS URI" defaultValue="https://sqs.us-east-2.amazonaws.com/520169828690/netcdf-queue" validate={[ required ]} style={{ width: 500 }} />
+                    <SelectInput source="connectorConfig.sqs_region" label="AWS SQS Region" validate={[ required ]} choices={[
+                            { id: 'us-east-1', name: 'us-east-1' },
+                            { id: 'eu-west-2', name: 'eu-west-2' },
+                    ]} />
+                    <TextInput source="connectorConfig.s3_bucket" label="AWS S3 bucket name to download the files" style={{ display: 'inline-block' }} defaultValue={"aws-earth-mo-atmospheric-mogreps-uk-prd"} validate={[ required ]} />
+                    <SelectInput source="connectorConfig.s3_region" label="AWS SQS Region" validate={[ required ]} choices={[
+                            { id: 'eu-west-2', name: 'eu-west-2' },
+                            { id: 'us-east-1', name: 'us-east-1' },
+                    ]} />
+                    <LongTextInput source="connectorConfig.s3_downloaddir" label="Local path to stage s3 downloaded" defaultValue="/tmp/s3downloaded" validate={[ required ]} style={{ width: 500 }} />
+                    <NumberInput source="connectorConfig.interval" label="Poll Interval (sec.)" style={{ display: 'inline-block' }} defaultValue={5} step={5} validate={[ required, minValue(5) ]} />
                 </DependentInput>
                 <DependentInput dependsOn="connectorType" value="CONNECT_SOURCE_STOCK_AvroFile">
                     <LongTextInput source="connectorConfig.topic" label="Automatically create a topic to write data" validate={[ required ]} style={{ width: 500 }} />

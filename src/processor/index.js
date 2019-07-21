@@ -45,6 +45,7 @@ export const ProcessorList = (props) => (
                                     { id: 'INTERNAL_METADATA_COLLECT', name: 'Internal Meta Sink'},
                                     { id: 'CONNECT_SOURCE_KAFKA_AvroFile', name: 'Source Avro Files' },
                                     { id: 'CONNECT_SOURCE_STOCK_AvroFile', name: 'Source Stock API' },
+                                    { id: 'CONNECT_SOURCE_UKMEET_NetCDFFile', name: 'UKMEET API' },
                                     { id: 'CONNECT_SINK_HDFS_AvroFile', name: 'Sink Hadoop|Hive' },
                                     { id: 'CONNECT_SINK_MONGODB_AvroDB',  name: 'Sink MongoDB' },
                                     { id: 'CONNECT_SINK_KAFKA_JDBC',  name: 'Sink JDBC' },
