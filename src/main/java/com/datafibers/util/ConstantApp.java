@@ -160,6 +160,7 @@ public final class ConstantApp {
         CONNECT_SOURCE_HDFS_AvroFile,
         CONNECT_SINK_HDFS_AvroFile,
         CONNECT_SOURCE_STOCK_AvroFile,
+        CONNECT_SOURCE_UKMEET_NetCDFFile,
         TRANSFORM_EXCHANGE_FLINK_SQLA2A,
         TRANSFORM_EXCHANGE_FLINK_Script,
         TRANSFORM_EXCHANGE_FLINK_UDF,
