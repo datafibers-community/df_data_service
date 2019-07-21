@@ -28,7 +28,6 @@ import com.datafibers.flinknext.DFRemoteStreamEnvironment;
 import com.datafibers.flinknext.Kafka09AvroTableSink;
 import com.datafibers.flinknext.Kafka09AvroTableSource;
 import com.datafibers.model.DFJobPOPJ;
-import com.datafibers.processor.FlinkTransformProcessor;
 import com.datafibers.service.DFInitService;
 import com.datafibers.util.DynamicRunner;
 import com.datafibers.util.SchemaRegistryClient;
@@ -39,12 +38,6 @@ import com.datafibers.util.SchemaRegistryClient;
 public class UnitTestSuiteFlink {
 
     private static final Logger LOG = Logger.getLogger(UnitTestSuiteFlink.class);
-
-    public static void testFlinkRun() {
-        LOG.info("Only Unit Testing Function is enabled - Test Flink Run UDF");
-        String jarFile = "/home/vagrant/quick-start-1.0-fat.jar";
-        FlinkTransformProcessor.runFlinkJar(jarFile, "localhost:6123");
-    }
 
     public static void testFlinkSQL() {
 

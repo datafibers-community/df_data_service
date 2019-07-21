@@ -1,8 +1,6 @@
 package com.datafibers.util;
 
-import com.datafibers.processor.FlinkTransformProcessor;
-import com.datafibers.processor.KafkaConnectProcessor;
-import com.datafibers.processor.SchemaRegisterProcessor;
+import com.datafibers.processor.*;
 import com.datafibers.service.DFDataProcessor;
 import com.datafibers.service.DFInitService;
 import com.datafibers.service.DFWebUI;
@@ -56,9 +54,11 @@ public class CLIParser {
                 LogManager.getLogger(DFInitService.class).setLevel(Level.DEBUG);
                 LogManager.getLogger(DFWebUI.class).setLevel(Level.DEBUG);
                 LogManager.getLogger(DFDataProcessor.class).setLevel(Level.DEBUG);
-                LogManager.getLogger(FlinkTransformProcessor.class).setLevel(Level.DEBUG);
-                LogManager.getLogger(KafkaConnectProcessor.class).setLevel(Level.DEBUG);
-                LogManager.getLogger(SchemaRegisterProcessor.class).setLevel(Level.DEBUG);
+                LogManager.getLogger(ProcessorConnectKafka.class).setLevel(Level.DEBUG);
+                LogManager.getLogger(ProcessorStreamBack.class).setLevel(Level.DEBUG);
+                LogManager.getLogger(ProcessorTopicSchemaRegistry.class).setLevel(Level.DEBUG);
+                LogManager.getLogger(ProcessorTransformFlink.class).setLevel(Level.DEBUG);
+                LogManager.getLogger(ProcessorTransformSpark.class).setLevel(Level.DEBUG);
             }
 
             if (cmd.hasOption("m")) {
@@ -103,6 +103,10 @@ public class CLIParser {
             LOG.info("Starting both DataFibers Service and Web UI ...");
             return null;
         }
+
+        if(args.length > 0 && args[0].contains("-conf")) // ignore -conf option which is used by vertx config
+            return null;
+
         LOG.info("Starting DataFibers in customized options.");
         LOG.info("run_mode = " + this.run_mode);
         LOG.info("service_mode = " + this.service_mode);

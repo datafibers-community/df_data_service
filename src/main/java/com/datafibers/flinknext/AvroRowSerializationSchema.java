@@ -1,9 +1,6 @@
 package com.datafibers.flinknext;
 
 import com.datafibers.util.ConstantApp;
-
-import com.datafibers.util.SchemaRegistryClient;
-
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumWriter;
@@ -14,12 +11,10 @@ import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.util.serialization.SerializationSchema;
 import org.apache.flink.types.Row;
 import org.apache.log4j.Logger;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
-
 import java.util.Properties;
 
 
