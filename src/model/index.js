@@ -11,6 +11,7 @@ import Icon from 'material-ui/svg-icons/device/widgets.js';
 import RawJsonRecordField from '../component/RawJsonRecordField';
 import RawJsonRecordSpecificField from '../component/RawJsonRecordSpecificField';
 import RefreshListActions from '../buttons/RefreshListActions'
+import EmbeddedArrayInput from '../component/EmbeddedArrayInput';
 
 export const ModelIcon = Icon;
 
