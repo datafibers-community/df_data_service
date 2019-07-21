@@ -214,8 +214,8 @@ export const ConnectCreate = (props) => (
                             { id: 'us-east-1', name: 'us-east-1' },
                             { id: 'eu-west-2', name: 'eu-west-2' },
                     ]} />
-                    <LongTextInput source="connectorConfig.s3_bucket" label="AWS S3 bucket name to download the files" style={{ display: 'inline-block' }} defaultValue={"aws-earth-mo-atmospheric-mogreps-uk-prd"} validate={[ required ]} />
-                    <SelectInput source="connectorConfig.s3_region" label="AWS SQS Region" validate={[ required ]} choices={[
+                    <LongTextInput source="connectorConfig.s3_bucket" label="AWS S3 bucket name to download the files" defaultValue={"aws-earth-mo-atmospheric-mogreps-uk-prd"} validate={[ required ]} />
+                    <SelectInput source="connectorConfig.s3_region" label="AWS S3 Region" validate={[ required ]} choices={[
                             { id: 'eu-west-2', name: 'eu-west-2' },
                             { id: 'us-east-1', name: 'us-east-1' },
                     ]} />
