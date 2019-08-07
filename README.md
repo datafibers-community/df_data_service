@@ -42,6 +42,9 @@ http://localhost:8000/ or http://localhost:8000/dfa/
 ## Manual
 https://datafibers-community.gitbooks.io/datafibers-complete-guide/content/
 
+## Demo
+[![DataFibers Demo](http://img.youtube.com/vi/S1CsAf5qCBQ/0.jpg)](http://www.youtube.com/watch?v=S1CsAf5qCBQ "DataFibers Demo")
+
 ## Todo
 - [x] Fetch all installed connectors/plugins in regularly frequency
 - [x] Need to report connector or job status
