@@ -25,9 +25,10 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer011;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducerBase;
 import org.apache.flink.streaming.connectors.kafka.partitioner.FlinkKafkaPartitioner;
-import org.apache.flink.streaming.util.serialization.SerializationSchema;
+import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.table.sinks.UpsertStreamTableSink;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.Preconditions;
@@ -79,10 +80,15 @@ public abstract class KafkaTableSink implements UpsertStreamTableSink<Row> {
 	 * @param partitioner         Partitioner to select Kafka partition.
 	 * @return The version-specific Kafka producer
 	 */
-	protected abstract FlinkKafkaProducerBase<Tuple2<Boolean, Row>> createKafkaProducer(
+	protected abstract FlinkKafkaProducer011<Tuple2<Boolean, Row>> createKafkaProducer(
 		String topic, Properties properties,
 		SerializationSchema<Tuple2<Boolean, Row>> serializationSchema,
 		FlinkKafkaPartitioner<Tuple2<Boolean, Row>> partitioner);
+
+/*	protected abstract FlinkKafkaProducerBase<Tuple2<Boolean, Row>> createKafkaProducer(
+			String topic, Properties properties,
+			SerializationSchema<Tuple2<Boolean, Row>> serializationSchema,
+			FlinkKafkaPartitioner<Tuple2<Boolean, Row>> partitioner);*/
 
 	/**
 	 * Create serialization schema for converting table rows into bytes.

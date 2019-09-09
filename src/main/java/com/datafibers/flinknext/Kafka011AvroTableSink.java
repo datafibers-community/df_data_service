@@ -17,24 +17,26 @@
  */
 package com.datafibers.flinknext;
 
-import java.util.Properties;
-
 import com.datafibers.util.ConstantApp;
 import com.datafibers.util.SchemaRegistryClient;
+import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.api.java.typeutils.TupleTypeInfo;
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer011;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer09;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducerBase;
 import org.apache.flink.streaming.connectors.kafka.partitioner.FlinkKafkaPartitioner;
-import org.apache.flink.streaming.util.serialization.SerializationSchema;
 import org.apache.flink.table.api.Types;
 import org.apache.flink.types.Row;
+
+import java.util.Optional;
+import java.util.Properties;
 
 /**
  * Kafka 0.9 {@link KafkaTableSink} that serializes data in JSON format.
  */
-public class Kafka09AvroTableSink extends KafkaAvroTableSink {
+public class Kafka011AvroTableSink extends KafkaAvroTableSink {
 	/**
 	 * Creates {@link KafkaTableSink} for Kafka 0.9
 	 *
@@ -45,18 +47,23 @@ public class Kafka09AvroTableSink extends KafkaAvroTableSink {
 
 	private Boolean isAppendOnly;
 
-	public Kafka09AvroTableSink(String topic, Properties properties, FlinkKafkaPartitioner<Tuple2<Boolean, Row>> partitioner) {
+	public Kafka011AvroTableSink(String topic, Properties properties, FlinkKafkaPartitioner<Tuple2<Boolean, Row>> partitioner) {
 		super(topic, properties, partitioner);
 	}
 
-	@Override
+/*	@Override
 	protected FlinkKafkaProducerBase<Tuple2<Boolean, Row>> createKafkaProducer(String topic, Properties properties, SerializationSchema<Tuple2<Boolean, Row>> serializationSchema, FlinkKafkaPartitioner<Tuple2<Boolean, Row>> partitioner) {
 		return new FlinkKafkaProducer09<>(topic, serializationSchema, properties, partitioner);
+	}*/
+
+	@Override
+	protected FlinkKafkaProducer011<Tuple2<Boolean, Row>> createKafkaProducer(String topic, Properties properties, SerializationSchema<Tuple2<Boolean, Row>> serializationSchema, FlinkKafkaPartitioner<Tuple2<Boolean, Row>> partitioner) {
+		return new FlinkKafkaProducer011<>(topic, serializationSchema, properties, Optional.ofNullable(partitioner));
 	}
 
 	@Override
-	protected Kafka09AvroTableSink createCopy() {
-		return new Kafka09AvroTableSink(topic, properties, partitioner);
+	protected Kafka011AvroTableSink createCopy() {
+		return new Kafka011AvroTableSink(topic, properties, partitioner);
 	}
 
 	
