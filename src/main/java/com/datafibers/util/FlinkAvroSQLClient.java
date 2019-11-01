@@ -58,8 +58,10 @@ public class FlinkAvroSQLClient {
     }
 
     public static void main(String[] args) throws IOException, DecoderException {
-        //tcFlinkAvroSQL("localhost:9092", "localhost:8081", "test_stock", "SQLSTATE_UNION_01", "symbol", "consumergroupid", SQLSTATE_UNION_01);
-        tcFlinkAvroSQL(args[0], args[1], args[2], args[3], args[4], args[5], args[6]);
+        tcFlinkAvroSQL("3.13.64.3:9092", "3.13.64.3:8081",
+                "surface_air_pressure_01", "trans_surface_air_pressure_01", "file_name", "consumergroupid",
+                "select file_name from surface_air_pressure_01");
+        //tcFlinkAvroSQL(args[0], args[1], args[2], args[3], args[4], args[5], args[6]);
 
     }
 }

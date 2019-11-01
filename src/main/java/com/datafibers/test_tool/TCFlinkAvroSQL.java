@@ -26,10 +26,13 @@ public class TCFlinkAvroSQL {
         System.out.println("tcFlinkAvroSQL");
         String resultFile = "testResult";
 
-        String jarPath = "C:/Users/dadu/Coding/df_data_service/target/df-data-service-1.1-SNAPSHOT-fat.jar";
-        //String jarPath = "/Users/will/Documents/Coding/GitHub/df_data_service/target/df-data-service-1.1-SNAPSHOT-fat.jar";
+/*        //String jarPath = "C:/Users/dadu/Coding/df_data_service/target/df-data-service-1.1-SNAPSHOT-fat.jar";
+        String jarPath = "/Users/will/Documents/Coding/GitHub/df_data_service/target/df-data-service-1.1-SNAPSHOT-fat.jar";
         StreamExecutionEnvironment env = StreamExecutionEnvironment.createRemoteEnvironment("localhost", 6123, jarPath)
                 .setParallelism(1);
+        StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);*/
+
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment().setParallelism(1);
         StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
 
         Properties properties = new Properties();
@@ -52,13 +55,14 @@ public class TCFlinkAvroSQL {
             result.printSchema();
             System.out.println("generated avro schema is = " + SchemaRegistryClient.tableAPIToAvroSchema(result, targetTopic));
             SchemaRegistryClient.addSchemaFromTableResult(SchemaRegistryHostPort, targetTopic, result);
+            SchemaRegistryClient.addSchemaFromTableResult(SchemaRegistryHostPort, targetTopic + "-value", result);
 
             // delivered properties
             properties.setProperty(ConstantApp.PK_SCHEMA_SUB_OUTPUT, targetTopic);
             properties.setProperty(ConstantApp.PK_SCHEMA_ID_OUTPUT, SchemaRegistryClient.getLatestSchemaIDFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT) + "");
             properties.setProperty(ConstantApp.PK_SCHEMA_STR_OUTPUT, SchemaRegistryClient.getLatestSchemaFromProperty(properties, ConstantApp.PK_SCHEMA_SUB_OUTPUT).toString());
 
-            System.out.println(Paths.get(resultFile).toAbsolutePath());
+            //System.out.println(Paths.get(resultFile).toAbsolutePath());
             Kafka09AvroTableSink avro_sink =
                     new Kafka09AvroTableSink(targetTopic, properties, new FlinkFixedPartitioner());
             result.writeToSink(avro_sink);
@@ -104,13 +108,17 @@ public class TCFlinkAvroSQL {
                 "SELECT symbol, sum(bid_size) as total_bids FROM test_stock group by symbol having sum(bid_size) > 1000";
 
         final String SQLSTATE_UNION_01 =
-                "SELECT symbol, bid_size FROM test_stock where symbol = 'FB' union all SELECT symbol, bid_size FROM test_stock where symbol = 'SAP'";
+                "SELECT symbol, bid_size FROM source_stock where symbol = 'BAC' union all SELECT symbol, bid_size FROM stock_source where symbol = 'EPAM'";
 
         final String SQLSTATE_UNION_HAVING_GROUPBY_01 =
                 "SELECT symbol, sum(bid_size) as total_bids FROM (SELECT symbol, bid_size FROM test_stock where symbol = 'FB' union all SELECT symbol, bid_size FROM test_stock2 where symbol = 'SAP') group by symbol having sum(bid_size) > 1000";
 
+        final String SQLSTATE_UNION_02 =
+                "SELECT * FROM source_stock union all SELECT * FROM stock_source";
 
-        tcFlinkAvroSQL("localhost:8002", "test_stock", "SQLSTATE_UNION_01", SQLSTATE_UNION_01);
+
+
+        tcFlinkAvroSQL("localhost:8002", "source_stock,stock_source", "test_stock2", SQLSTATE_UNION_02);
         // Test: kafka-avro-console-consumer --zookeeper localhost:2181 --topic stock_int_test --from-beginning
         // To test it locally, remove the jar from Flink Rest API.
     }
