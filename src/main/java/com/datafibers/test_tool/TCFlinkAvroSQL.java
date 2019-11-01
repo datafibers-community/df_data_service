@@ -118,7 +118,7 @@ public class TCFlinkAvroSQL {
 
 
 
-        tcFlinkAvroSQL("localhost:8002", "source_stock,stock_source", "test_stock2", SQLSTATE_UNION_02);
+        tcFlinkAvroSQL("localhost:8002", "source_stock,stock_source", "test_stock", SQLSTATE_UNION_02);
         // Test: kafka-avro-console-consumer --zookeeper localhost:2181 --topic stock_int_test --from-beginning
         // To test it locally, remove the jar from Flink Rest API.
     }
